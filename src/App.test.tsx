@@ -2,17 +2,23 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import App from './App'
 
+const seedPreference = (cityPair = '교토 · 경주') => {
+  localStorage.setItem('lovv.preference', JSON.stringify({ cityPair }))
+}
+
 describe('MVP main entry screen', () => {
   it('renders the Lovv landing content from the MVP Figma frame', () => {
+    seedPreference()
     render(<App />)
 
     expect(screen.getByRole('banner')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /나만 아는 여행 앱, Lovv/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'AI 일정 짜기' })).toHaveAttribute('href', '#onboarding')
+    expect(screen.getByRole('link', { name: 'AI 일정 짜기' })).toHaveAttribute('href', '#chat')
     expect(screen.getByText('처음엔 작게, 추천은 정확하게')).toBeInTheDocument()
   })
 
   it('uses a grounded pale green button color that turns yellow on hover', () => {
+    seedPreference()
     render(<App />)
 
     const buttonLabels = ['새 여정 만들기', 'AI 일정 짜기', 'AI 일정', '챗봇', '소도시 보기']
@@ -26,39 +32,42 @@ describe('MVP main entry screen', () => {
     })
   })
 
-  it('reveals onboarding preference choices only after clicking the AI schedule CTA', () => {
+  it('shows onboarding before the main screen on first entry', () => {
+    render(<App />)
+
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /나만 아는 여행 앱, Lovv/i })).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: '대도시 예시로 여행 취향을 가볍게 고르기' }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /후쿠오카 · 부산/ }))
+    fireEvent.click(screen.getByRole('button', { name: '이 취향으로 Lovv 시작하기' }))
+
+    expect(localStorage.getItem('lovv.preference')).toContain('후쿠오카 · 부산')
+    expect(
+      screen.queryByRole('heading', { name: '대도시 예시로 여행 취향을 가볍게 고르기' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('banner')).toBeInTheDocument()
+    expect(screen.getByText('후쿠오카 · 부산 감성으로 시작합니다')).toBeInTheDocument()
+  })
+
+  it('skips onboarding for returning users and opens the chat map workspace directly', () => {
+    seedPreference('오키나와 · 제주')
     render(<App />)
 
     expect(
       screen.queryByRole('heading', { name: '대도시 예시로 여행 취향을 가볍게 고르기' }),
     ).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'AI 일정 챗봇' })).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('link', { name: 'AI 일정' }))
-
-    expect(
-      screen.queryByRole('heading', { name: '대도시 예시로 여행 취향을 가볍게 고르기' }),
-    ).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'AI 일정 챗봇' })).not.toBeInTheDocument()
+    expect(screen.getByText('오키나와 · 제주 감성으로 시작합니다')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('link', { name: 'AI 일정 짜기' }))
 
     expect(screen.getByRole('heading', { name: 'AI 일정 챗봇' })).toBeInTheDocument()
-    expect(screen.getByTestId('onboarding-overlay')).toHaveClass('fixed')
-    expect(screen.getByTestId('onboarding-overlay')).toHaveClass('backdrop-blur-[6px]')
+    expect(screen.getByRole('region', { name: '여행 지도' })).toBeInTheDocument()
+    expect(screen.getByText('오키나와 · 제주 기반 지도')).toBeInTheDocument()
     expect(
-      screen.getByRole('dialog', { name: '대도시 예시로 여행 취향을 가볍게 고르기' }),
-    ).toHaveAttribute('aria-modal', 'true')
-    expect(screen.getByRole('button', { name: /교토 · 경주/ })).toHaveAttribute('aria-pressed', 'true')
-
-    fireEvent.click(screen.getByRole('button', { name: /후쿠오카 · 부산/ }))
-
-    expect(screen.getByText('미식 +2')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('link', { name: '이 느낌으로 대화 시작' }))
-
-    expect(localStorage.getItem('lovv.preference')).toContain('후쿠오카 · 부산')
-    expect(screen.queryByTestId('onboarding-overlay')).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'AI 일정 챗봇' })).toBeInTheDocument()
+      screen.queryByRole('heading', { name: '대도시 예시로 여행 취향을 가볍게 고르기' }),
+    ).not.toBeInTheDocument()
   })
 })

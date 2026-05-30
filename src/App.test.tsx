@@ -52,7 +52,7 @@ describe('MVP main entry screen', () => {
     expect(screen.getByText('후쿠오카 · 부산 감성으로 시작합니다')).toBeInTheDocument()
   })
 
-  it('skips onboarding for returning users and opens the chat map workspace directly', () => {
+  it('skips onboarding for returning users and opens the chat workspace without a map', () => {
     seedPreference('오키나와 · 제주')
     render(<App />)
 
@@ -64,8 +64,8 @@ describe('MVP main entry screen', () => {
     fireEvent.click(screen.getByRole('link', { name: 'AI 일정 짜기' }))
 
     expect(screen.getByRole('heading', { name: 'AI 일정 챗봇' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: '여행 지도' })).toBeInTheDocument()
-    expect(screen.getByText('오키나와 · 제주 기반 지도')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: '여행 지도' })).not.toBeInTheDocument()
+    expect(screen.queryByText('오키나와 · 제주 기반 지도')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: '이번 여행의 첫 분위기를 골라주세요' }),
     ).not.toBeInTheDocument()

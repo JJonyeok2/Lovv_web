@@ -404,11 +404,10 @@ function App() {
                     AI 일정 챗봇
                   </h2>
                   <p className="mt-4 text-sm leading-6 text-[#577861]">
-                    {selectedPreference.cityPair} 감성을 기준으로 대화와 지도를 함께 보며 여행 흐름을
-                    만듭니다.
+                    {selectedPreference.cityPair} 감성을 기준으로 여행 조건을 대화로 정리합니다.
                   </p>
                   <div className="mt-8 space-y-3">
-                    {['취향 반영 완료', '소도시 후보 탐색', '지도 동선 구성'].map((item) => (
+                    {['취향 반영 완료', '소도시 후보 탐색', '일정 초안 구성'].map((item) => (
                       <div
                         key={item}
                         className="rounded-[14px] border border-[#bed0b1] bg-[#f0f6e9] px-4 py-3 text-sm font-semibold text-[#10392d]"
@@ -420,7 +419,7 @@ function App() {
                 </aside>
 
                 <div className="flex min-h-[660px] flex-col gap-5">
-                  <div className="flex min-h-[410px] flex-1 flex-col rounded-[18px] border border-[#d7d3a2] bg-[#fffffa] shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]">
+                  <div className="flex min-h-[660px] flex-1 flex-col rounded-[18px] border border-[#d7d3a2] bg-[#fffffa] shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]">
                     <div className="border-b border-[#e0d6a8] px-6 py-5">
                       <p className="text-sm font-semibold text-[#617566]">AI 일정 짜기</p>
                       <h3 className="mt-2 text-2xl font-bold text-[#10392d]">여행 조건을 대화로 정리하기</h3>
@@ -428,10 +427,10 @@ function App() {
                     <div className="flex-1 space-y-4 px-6 py-6">
                       <div className="max-w-[560px] rounded-[18px] border border-[#bed0b1] bg-[#f0f6e9] px-5 py-4 text-sm leading-6 text-[#10392d]">
                         {selectedPreference.cityPair} 감성에 맞춰 시작할게요. 여행 기간, 동행, 걷는 양을
-                        알려주면 지도에 후보 동선을 바로 붙여볼게요.
+                        알려주면 어울리는 소도시와 일정 흐름을 먼저 정리할게요.
                       </div>
                       <div className="ml-auto max-w-[520px] rounded-[18px] border border-[#d7d3a2] bg-[#ffe25a] px-5 py-4 text-sm font-semibold leading-6 text-[#10392d]">
-                        하단 지도에서 후보 지역을 확인하면서 일정을 만들고 싶어요.
+                        대화로 먼저 여행 조건을 좁혀보고 싶어요.
                       </div>
                     </div>
                     <div className="border-t border-[#e0d6a8] p-5">
@@ -440,54 +439,6 @@ function App() {
                       </div>
                     </div>
                   </div>
-
-                  <section
-                    aria-label="여행 지도"
-                    className="rounded-[18px] border border-[#d7d3a2] bg-[#fffffa] p-5 shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]"
-                  >
-                    <div className="grid grid-cols-[1fr_auto] items-center gap-4 max-sm:grid-cols-1">
-                      <div>
-                        <p className="text-sm font-semibold text-[#617566]">Map Preview</p>
-                        <h3 className="mt-1 text-xl font-bold text-[#10392d]">
-                          {selectedPreference.cityPair} 기반 지도
-                        </h3>
-                      </div>
-                      <div className="flex flex-wrap justify-end gap-2 max-sm:justify-start">
-                        {selectedPreference.signals.slice(0, 3).map((signal) => (
-                          <span
-                            key={signal}
-                            className="inline-flex h-[30px] items-center rounded-full border border-[#bed0b1] bg-[#f0f6e9] px-3 text-[12px] font-semibold text-[#10392d]"
-                          >
-                            {signal}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 h-[210px] overflow-hidden rounded-[16px] border border-[#bed0b1] bg-[#edf4e8] p-4">
-                      <div className="relative h-full rounded-[12px] bg-[#f9f6df]">
-                        <div className="absolute left-[8%] top-[52%] h-10 w-[70%] rounded-full border-2 border-dashed border-[#d7d3a2]" />
-                        <div className="absolute left-[20%] top-[30%] h-20 w-28 rounded-full bg-[#dbe8d3]" />
-                        <div className="absolute right-[18%] top-[38%] h-24 w-32 rounded-full bg-[#dbe8d3]" />
-                        {['출발', '점심', '산책', '숙소'].map((label, index) => (
-                          <span
-                            key={label}
-                            className={`absolute flex h-9 min-w-12 items-center justify-center rounded-full border border-[#ccb23d] bg-[#ffe25a] px-3 text-[12px] font-bold text-[#10392d] shadow-[0_6px_18px_-12px_rgba(16,57,45,0.55)] ${
-                              index === 0
-                                ? 'left-[12%] top-[54%]'
-                                : index === 1
-                                  ? 'left-[36%] top-[38%]'
-                                  : index === 2
-                                    ? 'right-[28%] top-[54%]'
-                                    : 'right-[10%] top-[32%]'
-                            }`}
-                          >
-                            {label}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </section>
                 </div>
               </div>
             </section>

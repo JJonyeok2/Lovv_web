@@ -11,4 +11,17 @@ describe('MVP main entry screen', () => {
     expect(screen.getByRole('link', { name: 'AI 일정 짜기' })).toHaveAttribute('href', '#onboarding')
     expect(screen.getByText('처음엔 작게, 추천은 정확하게')).toBeInTheDocument()
   })
+
+  it('uses pale green buttons that turn yellow on hover', () => {
+    render(<App />)
+
+    const buttonLabels = ['새 여정 만들기', 'AI 일정 짜기', 'AI 일정', '챗봇', '소도시 데이터']
+
+    buttonLabels.forEach((label) => {
+      const button = screen.getByRole('link', { name: label })
+
+      expect(button).toHaveClass('bg-[#e8f0e2]')
+      expect(button).toHaveClass('hover:bg-[#ffe55f]')
+    })
+  })
 })

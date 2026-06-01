@@ -422,7 +422,7 @@ function App() {
                     id="onboarding-title"
                     className="mt-4 max-w-[820px] break-keep text-[56px] font-bold leading-[64px] text-[#0b3b2e] max-sm:text-[34px] max-sm:leading-[42px]"
                   >
-                    이번 여행의 첫 분위기를 골라주세요
+                    여행의 분위기를 골라주세요
                   </h1>
                   <p className="mt-5 max-w-[680px] break-keep text-base leading-7 text-[#0b3b2e] max-sm:text-[15px] max-sm:leading-6">
                     익숙한 대도시 감각을 Lovv가 한국과 일본 소도시 후보로 바꿔둘게요.

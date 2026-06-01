@@ -51,6 +51,7 @@ describe('MVP main entry screen', () => {
     render(<App />)
 
     expect(screen.getByRole('banner')).toBeInTheDocument()
+    expect(screen.queryByText('Lovv Tester')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /나만 아는 여행 앱, Lovv/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'AI 일정 짜기' })).toHaveAttribute('href', '#chat')
     expect(screen.getByText('처음엔 작게, 추천은 정확하게')).toBeInTheDocument()
@@ -205,6 +206,9 @@ describe('MVP main entry screen', () => {
     fireEvent.click(screen.getByRole('link', { name: 'AI 일정 짜기' }))
 
     expect(screen.getByRole('heading', { name: 'AI 일정 챗봇' })).toBeInTheDocument()
+    expect(screen.getByTestId('chat-workspace')).toHaveClass('space-y-5')
+    expect(screen.getByTestId('chat-top-grid')).toHaveClass('items-stretch')
+    expect(screen.getByRole('complementary', { name: 'AI 일정 챗봇 요약' })).toHaveClass('h-full')
     expect(screen.getByRole('region', { name: '생성된 일정 상세' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '생성된 일정 상세' })).toBeInTheDocument()
     expect(screen.getByText('1일차 추천 일정')).toBeInTheDocument()

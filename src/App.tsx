@@ -501,21 +501,13 @@ function App() {
             </div>
           </div>
 
-          <aside className="rounded-[28px] border border-[#F3B489] bg-[#fffffa] p-6 shadow-[0_24px_70px_-42px_rgba(51,39,30,0.45)]">
+          <div className="flex items-center justify-center">
             <img
               src={suitcaseImage}
               alt="손을 흔드는 초록색 캐리어 캐릭터"
-              className="mx-auto h-[360px] w-full max-w-[280px] rounded-[24px] object-cover"
+              className="h-[520px] w-full max-w-[420px] object-contain max-sm:h-auto"
             />
-            <div className="mt-6 rounded-[18px] border border-[#F3B489] bg-[#FFF0E4] p-5">
-              <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#33271E]">
-                Next step
-              </p>
-              <p className="mt-2 break-keep text-base font-bold leading-7 text-[#33271E]">
-                회원가입 후 여행의 분위기를 고르고, AI 일정과 마이페이지 저장 흐름을 이어갑니다.
-              </p>
-            </div>
-          </aside>
+          </div>
         </section>
       ) : activeView === 'onboarding' ? (
         <section
@@ -759,7 +751,7 @@ function App() {
                   <img
                     src={suitcaseImage}
                     alt="손을 흔드는 초록색 캐리어 캐릭터"
-                    className="h-[531px] w-[375px] rounded-[17px] object-cover max-sm:h-auto max-sm:w-full"
+                    className="h-[531px] w-[430px] object-contain max-sm:h-auto max-sm:w-full"
                   />
                 </div>
               </section>

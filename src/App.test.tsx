@@ -31,6 +31,13 @@ describe('MVP main entry screen', () => {
     expect(screen.queryByText('MVP mock session')).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '여행의 분위기를 골라주세요' })).not.toBeInTheDocument()
     expect(screen.queryByRole('banner')).not.toBeInTheDocument()
+    expect(screen.queryByText('Next step')).not.toBeInTheDocument()
+    expect(screen.queryByText(/회원가입 후 여행의 분위기/)).not.toBeInTheDocument()
+
+    const characterImage = screen.getByRole('img', { name: '손을 흔드는 초록색 캐리어 캐릭터' })
+
+    expect(characterImage).toHaveClass('object-contain')
+    expect(characterImage).not.toHaveClass('rounded-[24px]')
 
     fireEvent.click(screen.getByRole('button', { name: 'Google 간편 로그인으로 시작하기' }))
 

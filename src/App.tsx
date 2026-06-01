@@ -468,50 +468,50 @@ function App() {
   }
 
   return (
-    <main className="lovv-warm-pattern min-h-dvh bg-[#fff8ee] text-[#10392d]">
+    <main className="lovv-warm-pattern min-h-dvh bg-[#fff8ee] text-[#33271E]">
       {activeView === 'auth' ? (
         <section
           aria-labelledby="auth-title"
           className="mx-auto grid min-h-dvh max-w-[1440px] grid-cols-[minmax(0,1fr)_420px] items-center gap-14 px-16 py-12 max-lg:grid-cols-1 max-lg:px-8 max-sm:px-5"
         >
           <div className="min-w-0">
-            <img src={logoImage} alt="Lovv" className="h-16 w-[116px] object-cover" />
-            <p className="mt-16 text-sm font-bold uppercase tracking-[0.18em] text-[#617566] max-sm:mt-10">
+            <img src={logoImage} alt="Lovv" className="h-16 w-[116px] object-contain" />
+            <p className="mt-16 text-sm font-bold uppercase tracking-[0.18em] text-[#33271E] max-sm:mt-10">
               Google simple signup
             </p>
             <h1
               id="auth-title"
               aria-label="서울/오사카 말고, 지금은 이곳"
-              className="mt-4 max-w-[720px] break-keep text-[58px] font-bold leading-[68px] text-[#10392d] max-sm:text-[36px] max-sm:leading-[44px]"
+              className="mt-4 max-w-[720px] break-keep text-[58px] font-bold leading-[68px] text-[#33271E] max-sm:text-[36px] max-sm:leading-[44px]"
             >
               <span className="block">서울/오사카 말고,</span>
               <span className="block">지금은 이곳</span>
             </h1>
-            <p className="mt-7 break-keep text-sm font-bold text-[#617566]">
+            <p className="mt-7 break-keep text-sm font-bold text-[#33271E]">
               회원가입하고 Lovv 시작하기
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={signInWithGoogle}
-                className="inline-flex min-h-[52px] items-center justify-center rounded-[18px] border border-[#c56b45] bg-[#cf744d] px-6 text-sm font-bold text-[#fffaf4] shadow-[0_12px_28px_-14px_rgba(33,46,33,0.1)] transition hover:-translate-y-0.5 hover:border-[#b95d38] hover:bg-[#de895d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#10392d] max-sm:w-full"
+                className="inline-flex min-h-[52px] items-center justify-center rounded-[18px] border border-[#A92B10] bg-[#F36B12] px-6 text-sm font-bold text-[#33271E] shadow-[0_12px_28px_-14px_rgba(33,46,33,0.1)] transition hover:-translate-y-0.5 hover:border-[#A92B10] hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] max-sm:w-full"
               >
                 Google 간편 로그인으로 시작하기
               </button>
             </div>
           </div>
 
-          <aside className="rounded-[28px] border border-[#d7d3a2] bg-[#fffffa] p-6 shadow-[0_24px_70px_-42px_rgba(16,57,45,0.45)]">
+          <aside className="rounded-[28px] border border-[#F3B489] bg-[#fffffa] p-6 shadow-[0_24px_70px_-42px_rgba(51,39,30,0.45)]">
             <img
               src={suitcaseImage}
               alt="손을 흔드는 초록색 캐리어 캐릭터"
               className="mx-auto h-[360px] w-full max-w-[280px] rounded-[24px] object-cover"
             />
-            <div className="mt-6 rounded-[18px] border border-[#bed0b1] bg-[#f0f6e9] p-5">
-              <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#617566]">
+            <div className="mt-6 rounded-[18px] border border-[#F3B489] bg-[#FFF0E4] p-5">
+              <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#33271E]">
                 Next step
               </p>
-              <p className="mt-2 break-keep text-base font-bold leading-7 text-[#10392d]">
+              <p className="mt-2 break-keep text-base font-bold leading-7 text-[#33271E]">
                 회원가입 후 여행의 분위기를 고르고, AI 일정과 마이페이지 저장 흐름을 이어갑니다.
               </p>
             </div>
@@ -530,21 +530,21 @@ function App() {
           >
             <div>
               <div className="flex items-center justify-between gap-4">
-                <img src={logoImage} alt="Lovv" className="h-16 w-[116px] object-cover" />
+                <img src={logoImage} alt="Lovv" className="h-16 w-[116px] object-contain" />
               </div>
 
               <div className="mt-10">
                 <div className="min-w-0">
-                  <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#617566]">
+                  <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#33271E]">
                     Lovv City Mood Journal
                   </p>
                   <h1
                     id="onboarding-title"
-                    className="mt-4 max-w-[820px] break-keep text-[56px] font-bold leading-[64px] text-[#0b3b2e] max-sm:text-[34px] max-sm:leading-[42px]"
+                    className="mt-4 max-w-[820px] break-keep text-[56px] font-bold leading-[64px] text-[#33271E] max-sm:text-[34px] max-sm:leading-[42px]"
                   >
                     여행의 분위기를 골라주세요
                   </h1>
-                  <p className="mt-5 max-w-[680px] break-keep text-base leading-7 text-[#0b3b2e] max-sm:text-[15px] max-sm:leading-6">
+                  <p className="mt-5 max-w-[680px] break-keep text-base leading-7 text-[#33271E] max-sm:text-[15px] max-sm:leading-6">
                     익숙한 대도시 감각을 Lovv가 한국과 일본 소도시 후보로 바꿔둘게요.
                   </p>
                 </div>
@@ -553,8 +553,8 @@ function App() {
               <section className="mt-9">
                 <div className="flex items-end justify-between gap-5 max-md:block">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-[#617566]">Choose your cover story</p>
-                    <h2 className="mt-2 break-keep text-[28px] font-bold leading-9 text-[#0b3b2e] max-sm:text-2xl max-sm:leading-8">
+                    <p className="text-sm font-semibold text-[#33271E]">Choose your cover story</p>
+                    <h2 className="mt-2 break-keep text-[28px] font-bold leading-9 text-[#33271E] max-sm:text-2xl max-sm:leading-8">
                       도시의 분위기로 고르는 여행 취향
                     </h2>
                   </div>
@@ -570,33 +570,31 @@ function App() {
                         type="button"
                         aria-pressed={isSelected}
                         onClick={() => selectPreference(preference)}
-                        className={`flex min-h-[176px] min-w-0 flex-col justify-between rounded-[22px] border p-5 text-left transition hover:-translate-y-0.5 hover:border-[#10392d] hover:bg-[#f0f6e9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b3b2e] ${
+                        className={`flex min-h-[176px] min-w-0 flex-col justify-between rounded-[22px] border p-5 text-left transition hover:-translate-y-0.5 hover:border-[#A92B10] hover:bg-[#FFF0E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
                           isSelected
-                            ? 'border-[#10392d] bg-[#e7f0df] shadow-[0_18px_40px_-28px_rgba(16,57,45,0.55)]'
-                            : 'border-[#d7d3a2] bg-[#fffffa]'
+                            ? 'border-[#A92B10] bg-[#FFF0E4] shadow-[0_18px_40px_-28px_rgba(51,39,30,0.55)]'
+                            : 'border-[#F3B489] bg-[#fffffa]'
                         }`}
                       >
                         <span className="flex items-center justify-between gap-3">
-                          <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#617566]">
+                          <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#33271E]">
                             {preference.issue}
                           </span>
                           <span
-                            className={`inline-flex h-[30px] shrink-0 items-center rounded-full border px-3 text-[12px] font-bold text-[#0b3b2e] ${
-                              isSelected ? 'border-[#d7d3a2] bg-[#ffe25a]' : 'border-[#bed0b1] bg-[#f0f6e9]'
-                            }`}
+                            className="inline-flex h-[30px] shrink-0 items-center rounded-full border border-[#F3B489] bg-[#FFF0E4] px-3 text-[12px] font-bold text-[#33271E]"
                           >
                             {preference.tag}
                           </span>
                         </span>
                         <span className="mt-5">
-                          <span className="block break-keep text-[23px] font-bold leading-8 text-[#0b3b2e] max-sm:text-xl max-sm:leading-7">
+                          <span className="block break-keep text-[23px] font-bold leading-8 text-[#33271E] max-sm:text-xl max-sm:leading-7">
                             {preference.cityPair}
                           </span>
-                          <span className="mt-2 block line-clamp-2 break-keep text-sm leading-6 text-[#617566]">
+                          <span className="mt-2 block line-clamp-2 break-keep text-sm leading-6 text-[#33271E]">
                             {preference.description}
                           </span>
                         </span>
-                        <span className="mt-5 block line-clamp-2 break-keep border-t border-[#d7d3a2] pt-3 text-[12px] font-semibold leading-5 text-[#0b3b2e]">
+                        <span className="mt-5 block line-clamp-2 break-keep border-t border-[#F3B489] pt-3 text-[12px] font-semibold leading-5 text-[#33271E]">
                           {preference.routeHint}
                         </span>
                       </button>
@@ -604,15 +602,13 @@ function App() {
                   })}
                 </div>
 
-                <div className="mt-6 grid grid-cols-[1fr_auto] items-center gap-5 rounded-[22px] border border-[#d7d3a2] bg-[#fffffa] px-5 py-4 shadow-[0_18px_50px_-34px_rgba(16,57,45,0.24)] max-md:grid-cols-1">
+                <div className="mt-6 grid grid-cols-[1fr_auto] items-center gap-5 rounded-[22px] border border-[#F3B489] bg-[#fffffa] px-5 py-4 shadow-[0_18px_50px_-34px_rgba(51,39,30,0.24)] max-md:grid-cols-1">
                   <div className="flex flex-wrap gap-2">
                     {[...selectedPreference.signals.slice(0, 3), selectedPreference.weakSignal].map(
-                      (signal, index) => (
+                      (signal) => (
                         <span
                           key={signal}
-                          className={`inline-flex h-auto min-h-[32px] max-w-full items-center justify-center rounded-full border px-4 py-1 text-center text-[12px] font-semibold leading-5 text-[#0b3b2e] ${
-                            index < 2 ? 'border-[#d7d3a2] bg-[#ffe25a]' : 'border-[#bed0b1] bg-[#f0f6e9]'
-                          }`}
+                          className="inline-flex h-auto min-h-[32px] max-w-full items-center justify-center rounded-full border border-[#F3B489] bg-[#FFF0E4] px-4 py-1 text-center text-[12px] font-semibold leading-5 text-[#33271E]"
                         >
                           {signal}
                         </span>
@@ -622,7 +618,7 @@ function App() {
                   <button
                     type="button"
                     onClick={enterMainWithPreference}
-                    className="inline-flex h-auto min-h-[48px] w-[220px] items-center justify-center rounded-full border border-[#d7d3a2] bg-[#ffe25a] px-5 text-center text-sm font-semibold leading-5 text-[#0b3b2e] shadow-[0_2px_3px_rgba(0,0,0,0.04)] transition hover:bg-[#ffe55f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0b3b2e] max-md:w-full"
+                    className="inline-flex h-auto min-h-[48px] w-[220px] items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-5 text-center text-sm font-semibold leading-5 text-[#33271E] shadow-[0_2px_3px_rgba(0,0,0,0.04)] transition hover:border-[#A92B10] hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] max-md:w-full"
                   >
                     이 취향으로 Lovv 시작하기
                   </button>
@@ -631,13 +627,13 @@ function App() {
             </div>
 
             {hasSelectedCover ? (
-              <aside className="sticky top-9 h-fit rounded-[28px] border border-[#d7d3a2] bg-[#fffffa] p-5 shadow-[0_24px_70px_-42px_rgba(16,57,45,0.45)] max-xl:static">
-                <div className="group relative overflow-hidden rounded-[24px] border border-[#e0d6a8] bg-[#f0f6e9]">
+              <aside className="sticky top-9 h-fit rounded-[28px] border border-[#F3B489] bg-[#fffffa] p-5 shadow-[0_24px_70px_-42px_rgba(51,39,30,0.45)] max-xl:static">
+                <div className="group relative overflow-hidden rounded-[24px] border border-[#F3B489] bg-[#FFF0E4]">
                   <div className="absolute left-5 right-5 top-5 z-10 flex items-center justify-between gap-3">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#617566]">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#33271E]">
                       Selected Cover
                     </span>
-                    <span className="rounded-full border border-[#d7d3a2] bg-[#ffe25a] px-3 py-1 text-[12px] font-bold text-[#0b3b2e]">
+                    <span className="rounded-full border border-[#F3B489] bg-[#FFF0E4] px-3 py-1 text-[12px] font-bold text-[#33271E]">
                       {selectedPreference.tag}
                     </span>
                   </div>
@@ -646,15 +642,15 @@ function App() {
                     alt={`${selectedCoverImage.city} 대표 이미지`}
                     className="h-[360px] w-full object-cover max-sm:h-[260px]"
                   />
-                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-gradient-to-t from-[#0b3b2e]/75 via-[#0b3b2e]/20 to-transparent p-5 max-sm:flex-col max-sm:items-start">
-                    <span className="rounded-full bg-[#fffffa]/95 px-4 py-2 text-[12px] font-bold text-[#0b3b2e] shadow-[0_10px_30px_-22px_rgba(0,0,0,0.5)]">
+                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-gradient-to-t from-[#33271E]/75 via-[#33271E]/20 to-transparent p-5 max-sm:flex-col max-sm:items-start">
+                    <span className="rounded-full bg-[#fffffa]/95 px-4 py-2 text-[12px] font-bold text-[#33271E] shadow-[0_10px_30px_-22px_rgba(0,0,0,0.5)]">
                       현재 표시: {selectedCoverImage.city}
                     </span>
                     <button
                       type="button"
                       aria-label="다음 도시 이미지 보기"
                       onClick={showNextCoverImage}
-                      className="inline-flex min-h-9 items-center rounded-full border border-[#d7d3a2] bg-[#ffe25a] px-4 py-1 text-[12px] font-bold text-[#0b3b2e] opacity-0 shadow-[0_10px_30px_-22px_rgba(0,0,0,0.5)] transition hover:bg-[#ffe55f] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fffffa] group-hover:opacity-100 max-sm:opacity-100"
+                      className="inline-flex min-h-9 items-center rounded-full border border-[#F3B489] bg-[#FFF0E4] px-4 py-1 text-[12px] font-bold text-[#33271E] opacity-0 shadow-[0_10px_30px_-22px_rgba(0,0,0,0.5)] transition hover:bg-[#FFE0CA] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fffffa] group-hover:opacity-100 max-sm:opacity-100"
                     >
                       다음
                     </button>
@@ -662,24 +658,24 @@ function App() {
                 </div>
 
                 <div className="px-2 pb-2 pt-5">
-                  <p className="text-sm font-semibold text-[#617566]">오늘의 취향 여정</p>
-                  <h2 className="mt-2 break-keep text-[34px] font-bold leading-10 text-[#0b3b2e] max-sm:text-3xl max-sm:leading-9">
+                  <p className="text-sm font-semibold text-[#33271E]">오늘의 취향 여정</p>
+                  <h2 className="mt-2 break-keep text-[34px] font-bold leading-10 text-[#33271E] max-sm:text-3xl max-sm:leading-9">
                     {selectedPreference.cityPair}
                   </h2>
-                  <p className="mt-4 line-clamp-3 break-keep text-sm leading-6 text-[#0b3b2e]">
+                  <p className="mt-4 line-clamp-3 break-keep text-sm leading-6 text-[#33271E]">
                     {selectedPreference.editorialNote}
                   </p>
 
-                  <div className="mt-5 rounded-[18px] border border-[#bed0b1] bg-[#fffced] p-4">
-                    <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#617566]">
+                  <div className="mt-5 rounded-[18px] border border-[#F3B489] bg-[#FFF0E4] p-4">
+                    <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#33271E]">
                       First route note
                     </p>
-                    <p className="mt-2 line-clamp-2 break-keep text-sm font-bold leading-6 text-[#0b3b2e]">
+                    <p className="mt-2 line-clamp-2 break-keep text-sm font-bold leading-6 text-[#33271E]">
                       {selectedPreference.routeHint}
                     </p>
                   </div>
 
-                  <p className="mt-5 line-clamp-3 break-keep text-[13px] leading-6 text-[#617566]">
+                  <p className="mt-5 line-clamp-3 break-keep text-[13px] leading-6 text-[#33271E]">
                     현재 MVP는 Google mock 세션과 여행 취향 힌트만 저장하고, 전체 채팅 로그는 저장하지 않습니다.
                   </p>
                 </div>
@@ -689,7 +685,7 @@ function App() {
         </section>
       ) : (
         <>
-          <header className="fixed inset-x-0 top-0 z-20 h-14 border-b border-[#d9e1c7] bg-white/95 shadow-[0_3px_10.5px_rgba(16,37,31,0.05)] backdrop-blur">
+          <header className="fixed inset-x-0 top-0 z-20 h-14 border-b border-[#F3B489] bg-white/95 shadow-[0_3px_10.5px_rgba(51,39,30,0.05)] backdrop-blur">
             <nav className="mx-auto flex h-full max-w-[1440px] items-center justify-between px-9 max-sm:px-5">
               <a
                 href="#home"
@@ -697,11 +693,11 @@ function App() {
                 onClick={goHome}
                 className="block h-14 w-[102px] overflow-hidden"
               >
-                <img src={logoImage} alt="Lovv" className="h-full w-full object-cover" />
+                <img src={logoImage} alt="Lovv" className="h-full w-full object-contain" />
               </a>
               <div className="flex min-w-0 items-center justify-end gap-2">
-                <span className="hidden min-w-0 items-center gap-2 rounded-full border border-[#d7d3a2] bg-[#fffced] px-3 py-1 text-[11px] font-bold text-[#10392d] sm:inline-flex">
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#f3b562]">
+                <span className="hidden min-w-0 items-center gap-2 rounded-full border border-[#F3B489] bg-[#FFF0E4] px-3 py-1 text-[11px] font-bold text-[#33271E] sm:inline-flex">
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#FFF0E4]">
                     {currentUser?.avatarInitial ?? 'L'}
                   </span>
                   <span className="max-w-[120px] truncate">{currentUser?.name ?? 'Lovv Tester'}</span>
@@ -709,14 +705,14 @@ function App() {
                 <a
                   href="#home"
                   onClick={goHome}
-                  className="inline-flex h-auto min-h-8 w-[132px] items-center justify-center rounded-[10.5px] border border-[#c56b45] bg-[#cf744d] px-3 text-center text-[10.5px] font-bold leading-4 text-[#fffaf4] shadow-[0_3px_10.5px_rgba(16,37,31,0.05)] transition hover:border-[#b95d38] hover:bg-[#de895d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#10392d] max-sm:w-auto max-sm:px-2"
+                  className="inline-flex h-auto min-h-8 w-[132px] items-center justify-center rounded-[10.5px] border border-[#A92B10] bg-[#F36B12] px-3 text-center text-[10.5px] font-bold leading-4 text-[#33271E] shadow-[0_3px_10.5px_rgba(51,39,30,0.05)] transition hover:border-[#A92B10] hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] max-sm:w-auto max-sm:px-2"
                 >
                   새 여정 만들기
                 </a>
                 <button
                   type="button"
                   onClick={signOut}
-                  className="inline-flex h-auto min-h-8 items-center justify-center rounded-[10.5px] border border-[#d7d3a2] bg-[#fffffa] px-3 text-center text-[10.5px] font-bold leading-4 text-[#10251f] transition hover:border-[#b95d38] hover:bg-[#fff2df] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#10392d]"
+                  className="inline-flex h-auto min-h-8 items-center justify-center rounded-[10.5px] border border-[#F3B489] bg-[#fffffa] px-3 text-center text-[10.5px] font-bold leading-4 text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
                 >
                   로그아웃
                 </button>
@@ -732,28 +728,28 @@ function App() {
                 className="mx-auto grid min-h-[732px] max-w-[1440px] grid-cols-[minmax(0,1fr)_430px] items-start gap-20 px-[77px] pt-[145px] max-lg:grid-cols-1 max-lg:px-8 max-lg:pt-28 max-sm:px-5"
               >
                 <div className="max-w-[620px]">
-                  <p className="break-keep text-base font-semibold leading-[22px] text-[#577861] max-sm:text-sm max-sm:leading-5">
+                  <p className="break-keep text-base font-semibold leading-[22px] text-[#33271E] max-sm:text-sm max-sm:leading-5">
                     한국과 일본 소도시 여행을 가장 쉽게 시작하는 방법
                   </p>
                   <h1
                     id="main-entry-title"
                     aria-label="나만 아는 여행 앱, Lovv"
-                    className="mt-3 break-keep text-[58px] font-bold leading-[68px] tracking-normal text-[#10392d] max-sm:text-[36px] max-sm:leading-[44px]"
+                    className="mt-3 break-keep text-[58px] font-bold leading-[68px] tracking-normal text-[#33271E] max-sm:text-[36px] max-sm:leading-[44px]"
                   >
                     <span className="block">나만 아는</span>
                     <span className="block">여행 앱, Lovv</span>
                   </h1>
-                  <p className="mt-7 inline-flex max-w-full min-h-[36px] items-center rounded-full border border-[#d7d3a2] bg-[#fffced] px-5 py-2 break-keep text-center text-sm font-semibold leading-5 text-[#10392d] max-sm:text-[13px]">
+                  <p className="mt-7 inline-flex max-w-full min-h-[36px] items-center rounded-full border border-[#F3B489] bg-[#FFF0E4] px-5 py-2 break-keep text-center text-sm font-semibold leading-5 text-[#33271E] max-sm:text-[13px]">
                     {selectedPreference.cityPair} 감성으로 시작합니다
                   </p>
-                  <p className="mt-8 max-w-[600px] break-keep text-lg leading-[31px] text-[#10392d] max-sm:mt-7 max-sm:text-base max-sm:leading-7">
+                  <p className="mt-8 max-w-[600px] break-keep text-lg leading-[31px] text-[#33271E] max-sm:mt-7 max-sm:text-base max-sm:leading-7">
                     여행 조건을 길게 입력하지 않아도 괜찮아요. <br />
                     한국과 일본의 작은 도시를 기준으로 취향에 맞는 여행 흐름을 먼저 제안합니다.
                   </p>
                   <a
                     href="#chat"
                     onClick={openChat}
-                    className="mt-7 inline-flex h-[52px] w-[178px] items-center justify-center rounded-[18px] border border-[#c56b45] bg-[#cf744d] px-5 text-center text-sm font-semibold leading-5 text-[#fffaf4] shadow-[0_12px_28px_-14px_rgba(33,46,33,0.1)] transition hover:-translate-y-0.5 hover:border-[#b95d38] hover:bg-[#de895d] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#10392d] max-sm:h-auto max-sm:min-h-[48px] max-sm:w-full max-sm:whitespace-normal"
+                    className="mt-7 inline-flex h-[52px] w-[178px] items-center justify-center rounded-[18px] border border-[#A92B10] bg-[#F36B12] px-5 text-center text-sm font-semibold leading-5 text-[#33271E] shadow-[0_12px_28px_-14px_rgba(33,46,33,0.1)] transition hover:-translate-y-0.5 hover:border-[#A92B10] hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] max-sm:h-auto max-sm:min-h-[48px] max-sm:w-full max-sm:whitespace-normal"
                   >
                     AI 일정 짜기
                   </a>
@@ -769,12 +765,12 @@ function App() {
               </section>
 
               <section className="mx-auto max-w-[1440px] px-[55px] pb-10 max-sm:px-5">
-                <div className="grid min-h-[126px] grid-cols-[1fr_auto] items-center gap-8 rounded-3xl border border-[#e0d6a8] bg-white/80 px-[31px] py-7 shadow-[0_12px_28px_-14px_rgba(33,46,33,0.1)] max-lg:grid-cols-1">
+                <div className="grid min-h-[126px] grid-cols-[1fr_auto] items-center gap-8 rounded-3xl border border-[#F3B489] bg-white/80 px-[31px] py-7 shadow-[0_12px_28px_-14px_rgba(33,46,33,0.1)] max-lg:grid-cols-1">
                   <div>
-                    <h2 className="break-keep text-[22px] font-semibold leading-7 text-[#10392d] max-sm:text-xl">
+                    <h2 className="break-keep text-[22px] font-semibold leading-7 text-[#33271E] max-sm:text-xl">
                       처음엔 작게, 추천은 정확하게
                     </h2>
-                    <p className="mt-2 break-keep text-sm leading-5 text-[#577861]">
+                    <p className="mt-2 break-keep text-sm leading-5 text-[#33271E]">
                       한국과 일본 소도시부터 검증하고, 사용자의 테마 선택으로 일정 추천 품질을 높입니다.
                     </p>
                   </div>
@@ -784,7 +780,7 @@ function App() {
                         <a
                           href={item === '소도시 보기' ? '#home' : '#chat'}
                           onClick={item === '소도시 보기' ? goHome : openChat}
-                          className={`inline-flex h-[34px] items-center justify-center rounded-full border border-[#c56b45] bg-[#cf744d] px-8 text-center text-xs leading-4 text-[#fffaf4] transition hover:border-[#b95d38] hover:bg-[#de895d] max-sm:h-auto max-sm:min-h-[34px] max-sm:px-4 max-sm:whitespace-normal ${
+                          className={`inline-flex h-[34px] items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-8 text-center text-xs leading-4 text-[#33271E] transition hover:border-[#A92B10] hover:bg-[#FF8A2A] max-sm:h-auto max-sm:min-h-[34px] max-sm:px-4 max-sm:whitespace-normal ${
                             index === 0 ? 'font-semibold' : 'font-medium'
                           }`}
                         >
@@ -803,22 +799,22 @@ function App() {
               className="mx-auto min-h-dvh max-w-[1440px] px-16 pb-16 pt-28 max-lg:px-8 max-sm:px-5"
             >
               <div className="grid min-h-[660px] grid-cols-[300px_minmax(0,1fr)] gap-6 max-lg:grid-cols-1">
-                <aside className="rounded-[18px] border border-[#d7d3a2] bg-[#fffffa] p-6 shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]">
-                  <p className="text-sm font-semibold text-[#617566]">Lovv AI Planner</p>
+                <aside className="rounded-[18px] border border-[#F3B489] bg-[#fffffa] p-6 shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]">
+                  <p className="text-sm font-semibold text-[#33271E]">Lovv AI Planner</p>
                   <h2
                     id="chat-title"
-                    className="mt-3 break-keep text-[30px] font-bold leading-9 text-[#10392d] max-sm:text-2xl max-sm:leading-8"
+                    className="mt-3 break-keep text-[30px] font-bold leading-9 text-[#33271E] max-sm:text-2xl max-sm:leading-8"
                   >
                     AI 일정 챗봇
                   </h2>
-                  <p className="mt-4 break-keep text-sm leading-6 text-[#577861]">
+                  <p className="mt-4 break-keep text-sm leading-6 text-[#33271E]">
                     {selectedPreference.cityPair} 감성을 기준으로 여행 조건을 대화로 정리합니다.
                   </p>
                   <div className="mt-8 space-y-3">
                     {['취향 반영 완료', '소도시 후보 탐색', '일정 초안 구성'].map((item) => (
                       <div
                         key={item}
-                        className="rounded-[14px] border border-[#bed0b1] bg-[#f0f6e9] px-4 py-3 text-sm font-semibold leading-5 text-[#10392d]"
+                        className="rounded-[14px] border border-[#F3B489] bg-[#FFF0E4] px-4 py-3 text-sm font-semibold leading-5 text-[#33271E]"
                       >
                         {item}
                       </div>
@@ -827,10 +823,10 @@ function App() {
                 </aside>
 
                 <div className="flex min-h-[660px] flex-col gap-5">
-                  <div className="flex min-h-[660px] flex-1 flex-col rounded-[18px] border border-[#d7d3a2] bg-[#fffffa] shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]">
-                    <div className="border-b border-[#e0d6a8] px-6 py-5">
-                      <p className="text-sm font-semibold text-[#617566]">AI 일정 짜기</p>
-                      <h3 className="mt-2 break-keep text-2xl font-bold leading-8 text-[#10392d] max-sm:text-xl max-sm:leading-7">
+                  <div className="flex min-h-[660px] flex-1 flex-col rounded-[18px] border border-[#F3B489] bg-[#fffffa] shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]">
+                    <div className="border-b border-[#F3B489] px-6 py-5">
+                      <p className="text-sm font-semibold text-[#33271E]">AI 일정 짜기</p>
+                      <h3 className="mt-2 break-keep text-2xl font-bold leading-8 text-[#33271E] max-sm:text-xl max-sm:leading-7">
                         여행 조건을 대화로 정리하기
                       </h3>
                     </div>
@@ -842,10 +838,10 @@ function App() {
                       {chatMessages.map((message) => (
                         <div
                           key={message.id}
-                          className={`max-w-[560px] break-keep rounded-[18px] border px-5 py-4 text-sm leading-6 text-[#10392d] max-sm:text-[13px] max-sm:leading-6 ${
+                          className={`max-w-[560px] break-keep rounded-[18px] border px-5 py-4 text-sm leading-6 text-[#33271E] max-sm:text-[13px] max-sm:leading-6 ${
                             message.role === 'assistant'
-                              ? 'border-[#bed0b1] bg-[#f0f6e9]'
-                              : 'ml-auto border-[#d7d3a2] bg-[#ffe25a] font-semibold'
+                              ? 'border-[#F3B489] bg-[#FFF0E4]'
+                              : 'ml-auto border-[#A92B10] bg-[#F36B12] font-semibold'
                           }`}
                         >
                           {message.content}
@@ -853,26 +849,26 @@ function App() {
                       ))}
 
                       {chatMessages.length > 2 ? (
-                        <div className="rounded-[18px] border border-[#d7d3a2] bg-[#fffced] p-5">
+                        <div className="rounded-[18px] border border-[#F3B489] bg-[#FFF0E4] p-5">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-[#bed0b1] bg-[#fffffa] px-3 py-1 text-[12px] font-bold text-[#10392d]">
+                            <span className="rounded-full border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-bold text-[#33271E]">
                               일정 초안
                             </span>
-                            <span className="rounded-full border border-[#d7d3a2] bg-[#ffe25a] px-3 py-1 text-[12px] font-bold text-[#10392d]">
+                            <span className="rounded-full border border-[#F3B489] bg-[#FFF0E4] px-3 py-1 text-[12px] font-bold text-[#33271E]">
                               {planDraft.durationLabel}
                             </span>
-                            <span className="rounded-full border border-[#bed0b1] bg-[#f0f6e9] px-3 py-1 text-[12px] font-bold text-[#10392d]">
+                            <span className="rounded-full border border-[#F3B489] bg-[#FFF0E4] px-3 py-1 text-[12px] font-bold text-[#33271E]">
                               {planDraft.intensityLabel} 반영
                             </span>
                           </div>
-                          <p className="mt-3 break-keep text-sm font-semibold leading-6 text-[#10392d] max-sm:text-[13px]">
+                          <p className="mt-3 break-keep text-sm font-semibold leading-6 text-[#33271E] max-sm:text-[13px]">
                             하단 일정 상세에 반영했어요. 시간대별 동선과 추천 이유를 이어서 확인해 주세요.
                           </p>
                         </div>
                       ) : null}
                     </div>
-                    <div className="border-t border-[#e0d6a8] p-5">
-                      <p className="mb-2 break-keep text-[12px] font-bold text-[#617566]">
+                    <div className="border-t border-[#F3B489] p-5">
+                      <p className="mb-2 break-keep text-[12px] font-bold text-[#33271E]">
                         축제 테마를 일정에 포함할까요?
                       </p>
                       <div className="mb-4 flex flex-wrap gap-2">
@@ -885,16 +881,14 @@ function App() {
                               type="button"
                               aria-pressed={isSelected}
                               onClick={() => submitChatMessage(prompt.label)}
-                              className={`inline-flex min-h-[34px] items-center rounded-full border px-4 py-1 text-[12px] font-bold leading-4 text-[#10392d] transition hover:border-[#ccb23d] hover:bg-[#ffe55f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#10392d] ${
-                                isSelected ? 'border-[#d7d3a2] bg-[#ffe25a]' : 'border-[#bed0b1] bg-[#f0f6e9]'
-                              }`}
+                              className="inline-flex min-h-[34px] items-center rounded-full border border-[#F3B489] bg-[#FFF0E4] px-4 py-1 text-[12px] font-bold leading-4 text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
                             >
                               {prompt.label}
                             </button>
                           )
                         })}
                       </div>
-                      <p className="mb-2 break-keep text-[12px] font-bold text-[#617566]">
+                      <p className="mb-2 break-keep text-[12px] font-bold text-[#33271E]">
                         일정 기간을 먼저 골라주세요
                       </p>
                       <div className="mb-3 flex flex-wrap gap-2">
@@ -903,7 +897,7 @@ function App() {
                             key={prompt}
                             type="button"
                             onClick={() => submitChatMessage(prompt)}
-                            className="inline-flex min-h-[34px] items-center rounded-full border border-[#bed0b1] bg-[#f0f6e9] px-4 py-1 text-[12px] font-bold leading-4 text-[#10392d] transition hover:border-[#ccb23d] hover:bg-[#ffe55f] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#10392d]"
+                            className="inline-flex min-h-[34px] items-center rounded-full border border-[#F3B489] bg-[#FFF0E4] px-4 py-1 text-[12px] font-bold leading-4 text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
                           >
                             {prompt}
                           </button>
@@ -915,13 +909,13 @@ function App() {
                           value={chatInput}
                           onChange={(event) => setChatInput(event.target.value)}
                           placeholder="동행, 관심사, 걷는 정도를 추가로 입력해 주세요"
-                          className="min-h-12 min-w-0 rounded-full border border-[#bed0b1] bg-[#f7f5df] px-5 py-2 break-keep text-sm leading-5 text-[#10392d] outline-none transition placeholder:text-[#617566] focus:border-[#10392d] focus:bg-[#fffffa] max-sm:text-[13px]"
+                          className="min-h-12 min-w-0 rounded-full border border-[#F3B489] bg-[#FFF0E4] px-5 py-2 break-keep text-sm leading-5 text-[#33271E] outline-none transition placeholder:text-[#33271E] focus:border-[#33271E] focus:bg-[#fffffa] max-sm:text-[13px]"
                         />
                         <button
                           type="submit"
                           aria-label="메시지 보내기"
                           disabled={!chatInput.trim()}
-                          className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#b8c9aa] bg-[#dbe8d3] px-6 text-sm font-bold text-[#10392d] transition hover:border-[#ccb23d] hover:bg-[#ffe55f] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-[#b8c9aa] disabled:hover:bg-[#dbe8d3] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#10392d]"
+                          className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-6 text-sm font-bold text-[#33271E] transition hover:border-[#A92B10] hover:bg-[#FF8A2A] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-[#A92B10] disabled:hover:bg-[#F36B12] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
                         >
                           보내기
                         </button>
@@ -931,23 +925,23 @@ function App() {
 
                   <section
                     aria-labelledby="generated-plan-title"
-                    className="overflow-hidden rounded-[18px] border border-[#d7d3a2] bg-[#fffffa] shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]"
+                    className="overflow-hidden rounded-[18px] border border-[#F3B489] bg-[#fffffa] shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]"
                   >
-                    <div className="border-b border-[#e0d6a8] bg-[#f7f5df] px-6 py-6">
+                    <div className="border-b border-[#F3B489] bg-[#FFF0E4] px-6 py-6">
                       <div className="grid grid-cols-[1fr_auto] items-start gap-5 max-md:grid-cols-1">
                         <div>
-                          <p className="text-sm font-semibold text-[#617566]">맞춤 일정 결과</p>
+                          <p className="text-sm font-semibold text-[#33271E]">맞춤 일정 결과</p>
                           <h3
                             id="generated-plan-title"
-                            className="mt-2 break-keep text-2xl font-bold leading-8 text-[#10392d] max-sm:text-xl max-sm:leading-7"
+                            className="mt-2 break-keep text-2xl font-bold leading-8 text-[#33271E] max-sm:text-xl max-sm:leading-7"
                           >
                             생성된 일정 상세
                           </h3>
-                          <p className="mt-2 line-clamp-2 break-keep text-sm leading-6 text-[#577861] max-sm:text-[13px]">
+                          <p className="mt-2 line-clamp-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
                             챗봇에서 정리된 조건을 바탕으로, 바로 아래에 일정 결과를 이어서 보여줍니다.
                           </p>
                         </div>
-                        <span className="inline-flex h-10 items-center justify-center rounded-full border border-[#d7d3a2] bg-[#ffe25a] px-5 text-[12px] font-bold text-[#10392d]">
+                        <span className="inline-flex h-10 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-5 text-[12px] font-bold text-[#33271E]">
                           1일차
                         </span>
                       </div>
@@ -963,7 +957,7 @@ function App() {
                         ].filter(Boolean).map((item) => (
                           <span
                             key={item}
-                            className="inline-flex min-h-11 min-w-0 items-center rounded-[14px] border border-[#bed0b1] bg-[#fffffa] px-4 py-2 break-keep text-sm font-bold leading-5 text-[#10392d] max-sm:text-[13px]"
+                            className="inline-flex min-h-11 min-w-0 items-center rounded-[14px] border border-[#F3B489] bg-[#fffffa] px-4 py-2 break-keep text-sm font-bold leading-5 text-[#33271E] max-sm:text-[13px]"
                           >
                             {item}
                           </span>
@@ -974,16 +968,16 @@ function App() {
                     <div className="px-6 py-6">
                       <div className="grid grid-cols-[1fr_auto] items-start gap-4 max-md:grid-cols-1">
                         <div>
-                          <p className="text-sm font-bold text-[#617566]">1일차 추천 일정</p>
-                          <h4 className="mt-2 break-keep text-xl font-bold leading-7 text-[#10392d] max-sm:text-lg max-sm:leading-6">
+                          <p className="text-sm font-bold text-[#33271E]">1일차 추천 일정</p>
+                          <h4 className="mt-2 break-keep text-xl font-bold leading-7 text-[#33271E] max-sm:text-lg max-sm:leading-6">
                             {selectedPreference.cityPair} 감성 {planDraft.durationLabel} 초안
                           </h4>
-                          <p className="mt-2 line-clamp-2 break-keep text-sm leading-6 text-[#577861] max-sm:text-[13px]">
+                          <p className="mt-2 line-clamp-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
                             장소를 확정하기 전, 취향에 맞는 하루 흐름과 이동 강도를 먼저 확인합니다.{' '}
                             {planDraft.summary}
                           </p>
                         </div>
-                        <span className="rounded-full border border-[#bed0b1] bg-[#f0f6e9] px-4 py-2 text-[12px] font-bold text-[#10392d]">
+                        <span className="rounded-full border border-[#F3B489] bg-[#FFF0E4] px-4 py-2 text-[12px] font-bold text-[#33271E]">
                           코스 3개
                         </span>
                       </div>
@@ -992,29 +986,29 @@ function App() {
                         {planDraft.stops.map((item, index) => (
                           <article key={item.time} className="grid grid-cols-[38px_minmax(0,1fr)] gap-4">
                             <div className="flex flex-col items-center">
-                              <span className="flex size-9 items-center justify-center rounded-full border border-[#10392d] bg-[#ffe25a] text-sm font-black text-[#10392d]">
+                              <span className="flex size-9 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] text-sm font-black text-[#33271E]">
                                 {index + 1}
                               </span>
-                              {index < 2 ? <span className="mt-2 h-full w-px bg-[#d7d3a2]" /> : null}
+                              {index < 2 ? <span className="mt-2 h-full w-px bg-[#F3B489]" /> : null}
                             </div>
-                            <div className="min-w-0 rounded-[18px] border border-[#bed0b1] bg-[#f0f6e9] p-5">
+                            <div className="min-w-0 rounded-[18px] border border-[#F3B489] bg-[#FFF0E4] p-5">
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-bold leading-4 text-[#10392d]">
+                                <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-bold leading-4 text-[#33271E]">
                                   {item.time}
                                 </span>
-                                <span className="rounded-full border border-[#d7d3a2] bg-[#fffffa] px-3 py-1 text-[12px] font-semibold leading-4 text-[#617566]">
+                                <span className="rounded-full border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-semibold leading-4 text-[#33271E]">
                                   다음 장소까지 {item.move}
                                 </span>
                               </div>
-                              <h5 className="mt-4 break-keep text-lg font-bold leading-7 text-[#10392d] max-sm:text-base max-sm:leading-6">
+                              <h5 className="mt-4 break-keep text-lg font-bold leading-7 text-[#33271E] max-sm:text-base max-sm:leading-6">
                                 {item.title}
                               </h5>
-                              <p className="mt-2 line-clamp-2 break-keep text-sm leading-6 text-[#577861] max-sm:text-[13px]">
+                              <p className="mt-2 line-clamp-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
                                 {item.body}
                               </p>
-                              <div className="mt-4 rounded-[14px] border border-[#d7d3a2] bg-[#fffffa] px-4 py-3">
-                                <p className="text-[12px] font-bold text-[#617566]">추천 이유</p>
-                                <p className="mt-1 line-clamp-2 break-keep text-sm leading-6 text-[#10392d] max-sm:text-[13px]">
+                              <div className="mt-4 rounded-[14px] border border-[#F3B489] bg-[#fffffa] px-4 py-3">
+                                <p className="text-[12px] font-bold text-[#33271E]">추천 이유</p>
+                                <p className="mt-1 line-clamp-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
                                   {item.reason}
                                 </p>
                               </div>

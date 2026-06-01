@@ -49,7 +49,7 @@ describe('MVP main entry screen', () => {
     expect(screen.getByText('처음엔 작게, 추천은 정확하게')).toBeInTheDocument()
   })
 
-  it('uses a warm orange button color with a deeper orange hover state', () => {
+  it('uses the logo orange palette across primary controls', () => {
     seedUser()
     seedPreference()
     render(<App />)
@@ -59,9 +59,10 @@ describe('MVP main entry screen', () => {
     buttonLabels.forEach((label) => {
       const button = screen.getByRole('link', { name: label })
 
-      expect(button).toHaveClass('bg-[#cf744d]')
-      expect(button).toHaveClass('border-[#c56b45]')
-      expect(button).toHaveClass('hover:bg-[#de895d]')
+      expect(button).toHaveClass('bg-[#F36B12]')
+      expect(button).toHaveClass('border-[#A92B10]')
+      expect(button).toHaveClass('text-[#33271E]')
+      expect(button).toHaveClass('hover:bg-[#FF8A2A]')
     })
   })
 
@@ -69,6 +70,7 @@ describe('MVP main entry screen', () => {
     render(<App />)
 
     expect(screen.getByRole('main')).toHaveClass('lovv-warm-pattern')
+    expect(screen.getByRole('main')).toHaveClass('text-[#33271E]')
   })
 
   it('keeps dense text responsive on narrow screens', () => {

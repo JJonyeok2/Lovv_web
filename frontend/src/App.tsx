@@ -62,16 +62,29 @@ type LovvUser = {
   name: string
   email: string
   avatarInitial: string
+  provider: AuthProvider
 }
+
+type AuthProvider = 'google' | 'kakao'
 
 const preferenceStorageKey = 'lovv.preference'
 const authStorageKey = 'lovv.auth.user'
 
-const mockGoogleUser: LovvUser = {
-  id: 'mock-google-user',
-  name: 'Lovv Tester',
-  email: 'tester@lovv.local',
-  avatarInitial: 'L',
+const mockAuthUsers: Record<AuthProvider, LovvUser> = {
+  google: {
+    id: 'mock-google-user',
+    name: 'Lovv Google User',
+    email: 'google@lovv.local',
+    avatarInitial: 'G',
+    provider: 'google',
+  },
+  kakao: {
+    id: 'mock-kakao-user',
+    name: 'Lovv Kakao User',
+    email: 'kakao@lovv.local',
+    avatarInitial: 'K',
+    provider: 'kakao',
+  },
 }
 
 const authServiceBullets = [
@@ -203,7 +216,7 @@ const preferences: Preference[] = [
   },
 ]
 
-type View = 'auth' | 'onboarding' | 'home' | 'chat'
+type View = 'auth' | 'onboarding' | 'home' | 'chat' | 'mypage'
 
 const durationGuidePrompts = ['당일치기', '1박 2일', '2박 3일', '3박 4일', '4박 5일']
 const festivalThemePrompts: { label: string; choice: FestivalThemeChoice }[] = [
@@ -233,7 +246,7 @@ const readStoredPreference = () => {
   }
 }
 
-const readStoredUser = () => {
+const readStoredUser = (): LovvUser | null => {
   try {
     const rawUser = localStorage.getItem(authStorageKey)
 
@@ -252,6 +265,7 @@ const readStoredUser = () => {
       name: parsedUser.name,
       email: parsedUser.email,
       avatarInitial: parsedUser.avatarInitial,
+      provider: parsedUser.provider === 'kakao' ? 'kakao' : 'google',
     }
   } catch {
     return null
@@ -427,7 +441,7 @@ const getThemeHashtags = (preference: Preference) => [
 
 function App() {
   const proofItems = ['AI 일정', '챗봇', '소도시 보기']
-  const [, setCurrentUser] = useState<LovvUser | null>(() => readStoredUser())
+  const [currentUser, setCurrentUser] = useState<LovvUser | null>(() => readStoredUser())
   const [selectedPreference, setSelectedPreference] = useState(() => readStoredPreference() ?? preferences[0])
   const [activeView, setActiveView] = useState<View>(() => {
     if (!readStoredUser()) {
@@ -473,9 +487,11 @@ function App() {
     setSavedPlanNotice('마이페이지 저장 준비 완료')
   }
 
-  const signInWithGoogle = () => {
-    localStorage.setItem(authStorageKey, JSON.stringify(mockGoogleUser))
-    setCurrentUser(mockGoogleUser)
+  const signInWithMockProvider = (provider: AuthProvider) => {
+    const mockUser = mockAuthUsers[provider]
+
+    localStorage.setItem(authStorageKey, JSON.stringify(mockUser))
+    setCurrentUser(mockUser)
     setActiveView(readStoredPreference() ? 'home' : 'onboarding')
   }
 
@@ -489,6 +505,17 @@ function App() {
     event?.preventDefault()
     setActiveView('home')
   }
+
+  const openMyPage = () => {
+    setActiveView('mypage')
+  }
+
+  const currentProviderLabel =
+    currentUser?.provider === 'kakao'
+      ? 'Kakao mock'
+      : currentUser?.provider === 'google'
+        ? 'Google mock'
+        : 'Mock session'
 
   const openChat = (event?: React.MouseEvent<HTMLAnchorElement>) => {
     event?.preventDefault()
@@ -748,7 +775,7 @@ function App() {
 
             <div className="my-16 min-w-0 max-lg:my-10">
               <p className="text-sm font-black uppercase tracking-[0.26em] text-[#33271E] max-sm:text-[12px]">
-                Google simple signup
+                Social mock signup
               </p>
               <h1
                 id="auth-title"
@@ -761,13 +788,26 @@ function App() {
               <p className="mt-6 break-keep text-sm font-bold text-[#33271E]">
                 회원가입하고 Lovv 시작하기
               </p>
-              <button
-                type="button"
-                onClick={signInWithGoogle}
-                className="mt-8 inline-flex min-h-[54px] w-full max-w-[340px] items-center justify-center rounded-[14px] border border-[#A92B10] bg-[#F36B12] px-6 text-sm font-black text-[#33271E] shadow-[0_14px_32px_-18px_rgba(51,39,30,0.45)] transition hover:-translate-y-0.5 hover:border-[#A92B10] hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
-              >
-                Google 간편 로그인으로 시작하기
-              </button>
+              <div className="mt-8 flex w-full max-w-[340px] flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => signInWithMockProvider('google')}
+                  className="inline-flex min-h-[54px] items-center justify-center rounded-[14px] border border-[#EAE3E1] bg-[#fffffa] px-6 text-sm font-black text-[#33271E] shadow-[0_14px_32px_-18px_rgba(51,39,30,0.22)] transition hover:-translate-y-0.5 hover:border-[#F36B12] hover:bg-[#FFF0E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                >
+                  Google 간편 로그인으로 시작하기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => signInWithMockProvider('kakao')}
+                  className="inline-flex min-h-[54px] items-center justify-center rounded-[14px] border border-[#A92B10] bg-[#F36B12] px-6 text-sm font-black text-[#33271E] shadow-[0_14px_32px_-18px_rgba(51,39,30,0.45)] transition hover:-translate-y-0.5 hover:border-[#A92B10] hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                >
+                  Kakao 간편 로그인으로 시작하기
+                </button>
+              </div>
+              <p className="mt-4 max-w-[340px] break-keep text-[12px] font-bold leading-5 text-[#33271E]/70">
+                현재는 OAuth API 없이 mock session만 저장합니다. 실제 연동 시 이 버튼의 로그인
+                함수만 교체하면 됩니다.
+              </p>
             </div>
 
             <div className="flex flex-wrap gap-x-4 gap-y-2 text-[12px] font-bold text-[#33271E]/80">
@@ -1025,13 +1065,13 @@ function App() {
                 <img src={logoImage} alt="Lovv" className="h-full w-full object-contain" />
               </a>
               <div className="flex min-w-0 items-center justify-end gap-2">
-                <a
-                  href="#home"
-                  onClick={goHome}
-                  className="inline-flex h-auto min-h-8 w-[132px] items-center justify-center rounded-[10.5px] border border-[#A92B10] bg-[#F36B12] px-3 text-center text-[10.5px] font-bold leading-4 text-[#33271E] shadow-[0_3px_10.5px_rgba(51,39,30,0.05)] transition hover:border-[#A92B10] hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] max-sm:w-auto max-sm:px-2"
+                <button
+                  type="button"
+                  onClick={openMyPage}
+                  className="inline-flex h-auto min-h-8 items-center justify-center rounded-[10.5px] border border-[#A92B10] bg-[#F36B12] px-3 text-center text-[10.5px] font-bold leading-4 text-[#33271E] shadow-[0_3px_10.5px_rgba(51,39,30,0.05)] transition hover:border-[#A92B10] hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
                 >
-                  새 여정 만들기
-                </a>
+                  마이페이지
+                </button>
                 <button
                   type="button"
                   onClick={signOut}
@@ -1235,6 +1275,112 @@ function App() {
                 </button>
               </div>
             </>
+          ) : activeView === 'mypage' ? (
+            <section
+              aria-labelledby="mypage-title"
+              className="mx-auto min-h-dvh max-w-[1440px] px-16 pb-16 pt-28 max-lg:px-8 max-sm:px-5"
+            >
+              <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(320px,0.55fr)] gap-6 max-lg:grid-cols-1">
+                <section className="rounded-[22px] border border-[#F3B489] bg-[#fffffa] p-7 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.28)]">
+                  <p className="text-sm font-black uppercase tracking-[0.18em] text-[#F36B12]">
+                    My Lovv
+                  </p>
+                  <h1
+                    id="mypage-title"
+                    className="mt-4 break-keep text-[42px] font-black leading-[52px] text-[#33271E] max-sm:text-[32px] max-sm:leading-10"
+                  >
+                    마이페이지
+                  </h1>
+                  <p className="mt-5 max-w-[680px] break-keep text-base font-semibold leading-8 text-[#33271E] max-sm:text-sm max-sm:leading-7">
+                    현재는 실제 회원 API 없이 mock session으로 로그인 상태만 확인합니다. 실제
+                    Kakao/Google 연동이 붙으면 이 페이지에서 저장 일정과 취향 데이터를 계정 기준으로
+                    매핑하면 됩니다.
+                  </p>
+
+                  <div className="mt-8 grid grid-cols-3 gap-4 max-md:grid-cols-1">
+                    {[
+                      { label: '로그인 방식', value: currentProviderLabel },
+                      { label: '선택 취향', value: selectedPreference.tag },
+                      { label: '저장 일정', value: savedPlanNotice ? '1개 준비됨' : '아직 없음' },
+                    ].map((item) => (
+                      <article
+                        key={item.label}
+                        className="rounded-[18px] border border-[#F3B489] bg-[#FFF0E4] p-5"
+                      >
+                        <p className="text-[12px] font-black uppercase tracking-[0.14em] text-[#A92B10]">
+                          {item.label}
+                        </p>
+                        <p className="mt-3 break-keep text-lg font-black leading-7 text-[#33271E]">
+                          {item.value}
+                        </p>
+                      </article>
+                    ))}
+                  </div>
+
+                  <div className="mt-8 rounded-[20px] border border-[#F3B489] bg-[#FFF0E4] p-6">
+                    <p className="text-sm font-black text-[#33271E]">선택한 여행 분위기</p>
+                    <h2 className="mt-3 break-keep text-[30px] font-black leading-9 text-[#33271E] max-sm:text-2xl max-sm:leading-8">
+                      {selectedPreference.cityPair}
+                    </h2>
+                    <p className="mt-3 break-keep text-sm font-semibold leading-6 text-[#33271E]">
+                      {selectedPreference.editorialNote}
+                    </p>
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      {selectedThemeHashtags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="inline-flex min-h-[34px] items-center rounded-full border border-[#F3B489] bg-[#fffffa] px-4 py-1 text-[12px] font-bold text-[#33271E]"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+
+                <aside className="rounded-[22px] border border-[#F3B489] bg-[#fffffa] p-7 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.28)]">
+                  <p className="text-sm font-black uppercase tracking-[0.18em] text-[#F36B12]">
+                    Mock account
+                  </p>
+                  <div className="mt-5 flex items-center gap-4">
+                    <span className="flex size-14 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] text-xl font-black text-[#33271E]">
+                      {currentUser?.avatarInitial ?? 'M'}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="break-keep text-lg font-black text-[#33271E]">
+                        {currentUser?.name ?? 'Mock User'}
+                      </p>
+                      <p className="mt-1 break-all text-sm font-semibold text-[#33271E]/70">
+                        {currentUser?.email ?? 'mock@lovv.local'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-7 rounded-[18px] border border-[#F3B489] bg-[#FFF0E4] p-5">
+                    <p className="text-sm font-black text-[#33271E]">연동 상태</p>
+                    <p className="mt-2 break-keep text-sm font-semibold leading-6 text-[#33271E]">
+                      API 호출 없이 더미 사용자만 저장 중입니다. 실제 OAuth 연동 시 mock auth
+                      adapter만 provider API 호출로 교체합니다.
+                    </p>
+                  </div>
+                  <div className="mt-7 grid gap-3">
+                    <button
+                      type="button"
+                      onClick={goHome}
+                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-5 text-sm font-black text-[#33271E] transition hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                    >
+                      메인으로 돌아가기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={signOut}
+                      className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-5 text-sm font-black text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                    >
+                      로그아웃
+                    </button>
+                  </div>
+                </aside>
+              </div>
+            </section>
           ) : (
             <section
               id="chat"

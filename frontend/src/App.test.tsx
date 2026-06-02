@@ -9,9 +9,10 @@ const seedUser = () => {
     authStorageKey,
     JSON.stringify({
       id: 'mock-google-user',
-      name: 'Lovv Tester',
-      email: 'tester@lovv.local',
-      avatarInitial: 'L',
+      name: 'Lovv Google User',
+      email: 'google@lovv.local',
+      avatarInitial: 'G',
+      provider: 'google',
     }),
   )
 }
@@ -21,13 +22,15 @@ const seedPreference = (cityPair = '아산/온양 · 벳푸') => {
 }
 
 describe('MVP main entry screen', () => {
-  it('shows Google signup before onboarding on first entry', () => {
+  it('shows social mock signup before onboarding on first entry', () => {
     render(<App />)
 
     expect(screen.getByRole('heading', { name: '서울/오사카 말고, 지금은 이곳' })).toBeInTheDocument()
     expect(screen.getByText('회원가입하고 Lovv 시작하기')).toBeInTheDocument()
     expect(screen.queryByText(/저장한 취향과 여행 일정/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Google 간편 로그인으로 시작하기' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Kakao 간편 로그인으로 시작하기' })).toBeInTheDocument()
+    expect(screen.getByText(/OAuth API 없이 mock session만 저장합니다/)).toBeInTheDocument()
     expect(screen.queryByText('MVP mock session')).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '여행의 분위기를 골라주세요' })).not.toBeInTheDocument()
     expect(screen.queryByRole('banner')).not.toBeInTheDocument()
@@ -50,7 +53,18 @@ describe('MVP main entry screen', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Google 간편 로그인으로 시작하기' }))
 
-    expect(localStorage.getItem(authStorageKey)).toContain('Lovv Tester')
+    expect(localStorage.getItem(authStorageKey)).toContain('Lovv Google User')
+    expect(localStorage.getItem(authStorageKey)).toContain('google')
+    expect(screen.getByRole('heading', { name: '여행의 분위기를 골라주세요' })).toBeInTheDocument()
+  })
+
+  it('starts onboarding through Kakao mock signup without an API call', () => {
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Kakao 간편 로그인으로 시작하기' }))
+
+    expect(localStorage.getItem(authStorageKey)).toContain('Lovv Kakao User')
+    expect(localStorage.getItem(authStorageKey)).toContain('kakao')
     expect(screen.getByRole('heading', { name: '여행의 분위기를 골라주세요' })).toBeInTheDocument()
   })
 
@@ -60,7 +74,10 @@ describe('MVP main entry screen', () => {
     render(<App />)
 
     expect(screen.getByRole('banner')).toBeInTheDocument()
-    expect(screen.queryByText('Lovv Tester')).not.toBeInTheDocument()
+    expect(screen.queryByText('Lovv Google User')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '새 여정 만들기' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '마이페이지' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '로그아웃' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /나만 아는 여행 앱, Lovv/i })).toBeInTheDocument()
     expect(screen.getByTestId('main-entry')).toHaveClass('lovv-hero-radial')
     expect(screen.getByText('Lovv', { selector: 'span' })).toHaveClass(
@@ -86,6 +103,23 @@ describe('MVP main entry screen', () => {
     expect(screen.getByText('처음엔 작게, 추천은 정확하게')).toBeInTheDocument()
   })
 
+  it('opens My Page from the header while keeping logout available', () => {
+    seedUser()
+    seedPreference('경주 · 교토')
+    render(<App />)
+
+    expect(screen.queryByRole('link', { name: '새 여정 만들기' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '마이페이지' }))
+
+    expect(screen.getByRole('heading', { name: '마이페이지' })).toBeInTheDocument()
+    expect(screen.getByText('Google mock')).toBeInTheDocument()
+    expect(screen.getByText('경주 · 교토')).toBeInTheDocument()
+    expect(screen.getByText(/API 호출 없이 더미 사용자만 저장 중입니다/)).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: '로그아웃' })).toHaveLength(2)
+    expect(screen.getByRole('button', { name: '메인으로 돌아가기' })).toBeInTheDocument()
+  })
+
   it('opens floating quick actions for chat and top navigation', () => {
     seedUser()
     seedPreference('부산 · 오키나와')
@@ -106,7 +140,9 @@ describe('MVP main entry screen', () => {
     seedPreference()
     render(<App />)
 
-    const buttonLabels = ['새 여정 만들기', 'AI 일정 짜기', 'AI 일정', '챗봇', '소도시 보기']
+    expect(screen.getByRole('button', { name: '마이페이지' })).toHaveClass('bg-[#F36B12]')
+
+    const buttonLabels = ['AI 일정 짜기', 'AI 일정', '챗봇', '소도시 보기']
 
     buttonLabels.forEach((label) => {
       const button = screen.getByRole('link', { name: label })

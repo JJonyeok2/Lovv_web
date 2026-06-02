@@ -53,6 +53,7 @@ describe('MVP main entry screen', () => {
     expect(screen.getByRole('banner')).toBeInTheDocument()
     expect(screen.queryByText('Lovv Tester')).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: /나만 아는 여행 앱, Lovv/i })).toBeInTheDocument()
+    expect(screen.getByTestId('main-entry')).toHaveClass('lovv-hero-radial')
     expect(screen.getByRole('link', { name: 'AI 일정 짜기' })).toHaveAttribute('href', '#chat')
     expect(screen.getByText('처음엔 작게, 추천은 정확하게')).toBeInTheDocument()
   })
@@ -78,6 +79,7 @@ describe('MVP main entry screen', () => {
     render(<App />)
 
     expect(screen.getByRole('main')).toHaveClass('lovv-warm-pattern')
+    expect(screen.getByRole('main')).toHaveClass('lovv-ambient-background')
     expect(screen.getByRole('main')).toHaveClass('text-[#33271E]')
   })
 

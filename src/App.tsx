@@ -468,7 +468,7 @@ function App() {
   }
 
   return (
-    <main className="lovv-warm-pattern min-h-dvh bg-[#fff8ee] text-[#33271E]">
+    <main className="lovv-warm-pattern lovv-ambient-background min-h-dvh bg-[#fff8ee] text-[#33271E]">
       {activeView === 'auth' ? (
         <section
           aria-labelledby="auth-title"
@@ -710,8 +710,9 @@ function App() {
             <>
               <section
                 id="home"
+                data-testid="main-entry"
                 aria-labelledby="main-entry-title"
-                className="mx-auto grid min-h-[732px] max-w-[1440px] grid-cols-[minmax(0,1fr)_430px] items-start gap-20 px-[77px] pt-[145px] max-lg:grid-cols-1 max-lg:px-8 max-lg:pt-28 max-sm:px-5"
+                className="lovv-hero-radial mx-auto grid min-h-[732px] max-w-[1440px] grid-cols-[minmax(0,1fr)_430px] items-start gap-20 px-[77px] pt-[145px] max-lg:grid-cols-1 max-lg:px-8 max-lg:pt-28 max-sm:px-5"
               >
                 <div className="max-w-[620px]">
                   <p className="break-keep text-base font-semibold leading-[22px] text-[#33271E] max-sm:text-sm max-sm:leading-5">

@@ -452,7 +452,7 @@ function App() {
     setActiveView('auth')
   }
 
-  const goHome = (event?: React.MouseEvent<HTMLAnchorElement>) => {
+  const goHome = (event?: React.MouseEvent<HTMLElement>) => {
     event?.preventDefault()
     setActiveView('home')
   }
@@ -1063,6 +1063,13 @@ function App() {
               className="mx-auto min-h-dvh max-w-[1440px] px-16 pb-16 pt-28 max-lg:px-8 max-sm:px-5"
             >
               <div data-testid="chat-workspace" className="space-y-5">
+                <button
+                  type="button"
+                  onClick={goHome}
+                  className="inline-flex min-h-10 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-5 text-sm font-bold text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                >
+                  ← 이전으로 돌아가기
+                </button>
                 <div
                   data-testid="chat-top-grid"
                   className="grid min-h-[660px] grid-cols-[300px_minmax(0,1fr)] items-stretch gap-6 max-lg:grid-cols-1"

@@ -253,6 +253,7 @@ describe('MVP main entry screen', () => {
     fireEvent.click(screen.getByRole('link', { name: 'AI 일정 짜기' }))
 
     expect(screen.getByRole('heading', { name: 'AI 일정 챗봇' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '← 이전으로 돌아가기' })).toBeInTheDocument()
     expect(screen.getByTestId('chat-workspace')).toHaveClass('space-y-5')
     expect(screen.getByTestId('chat-top-grid')).toHaveClass('items-stretch')
     expect(screen.getByRole('complementary', { name: 'AI 일정 챗봇 요약' })).toHaveClass('h-full')
@@ -271,6 +272,11 @@ describe('MVP main entry screen', () => {
     expect(
       screen.queryByRole('heading', { name: '여행의 분위기를 골라주세요' }),
     ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '← 이전으로 돌아가기' }))
+
+    expect(screen.getByRole('heading', { name: /나만 아는 여행 앱, Lovv/i })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'AI 일정 챗봇' })).not.toBeInTheDocument()
   })
 
   it('maps legacy Japan-first stored preference to the Korea-first display order', () => {

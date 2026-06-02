@@ -152,12 +152,25 @@ describe('MVP main entry screen', () => {
       'max-sm:text-xl',
       'max-sm:leading-7',
     )
-    expect(screen.getByRole('heading', { name: '제주 · 닛코 감성 1일 초안' })).toHaveClass(
+    expect(screen.getByRole('heading', { name: '아직 일정이 생성되지 않았어요' })).toHaveClass(
+      'break-keep',
+      'max-sm:text-xl',
+      'max-sm:leading-7',
+    )
+    expect(screen.getByText('축제 포함 여부와 여행 기간을 고르면 일정 초안이 여기에 표시됩니다.')).toHaveClass(
+      'break-keep',
+      'max-sm:text-[13px]',
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '축제 제외' }))
+    fireEvent.click(screen.getByRole('button', { name: '1박 2일' }))
+
+    expect(screen.getByRole('heading', { name: '제주 · 닛코 감성 1박 2일 초안' })).toHaveClass(
       'break-keep',
       'max-sm:text-lg',
       'max-sm:leading-6',
     )
-    expect(screen.getByText(/장소를 확정하기 전/)).toHaveClass('line-clamp-2', 'max-sm:text-[13px]')
+    expect(screen.getByText(/장소를 확정하기 전/)).toHaveClass('break-keep', 'max-sm:text-[13px]')
   })
 
   it('shows onboarding after signup before the main screen on first entry', () => {
@@ -254,19 +267,16 @@ describe('MVP main entry screen', () => {
 
     expect(screen.getByRole('heading', { name: 'AI 일정 챗봇' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '← 이전으로 돌아가기' })).toBeInTheDocument()
-    expect(screen.getByTestId('chat-workspace')).toHaveClass('space-y-5')
-    expect(screen.getByTestId('chat-top-grid')).toHaveClass('items-stretch')
-    expect(screen.getByRole('complementary', { name: 'AI 일정 챗봇 요약' })).toHaveClass('h-full')
-    expect(screen.getByRole('region', { name: '생성된 일정 상세' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '생성된 일정 상세' })).toBeInTheDocument()
-    expect(screen.getByText('1일차 추천 일정')).toBeInTheDocument()
-    expect(screen.getByText('제주 · 닛코 감성 1일 초안')).toBeInTheDocument()
-    expect(screen.getByText('동선이 느슨한 일정')).toBeInTheDocument()
-    expect(screen.getAllByText('추천 이유')).toHaveLength(3)
-    expect(screen.getAllByText(/다음 장소까지/)).toHaveLength(3)
-    expect(screen.getByText('오전')).toBeInTheDocument()
-    expect(screen.getByText('오후')).toBeInTheDocument()
-    expect(screen.getByText('저녁')).toBeInTheDocument()
+    expect(screen.getByTestId('chat-workspace')).toHaveClass('space-y-6')
+    expect(screen.getByTestId('chat-planner-summary')).toHaveClass('grid')
+    expect(screen.getByTestId('chat-top-grid')).toHaveClass('grid-cols-[minmax(0,0.92fr)_minmax(360px,0.82fr)]')
+    expect(screen.getByRole('region', { name: 'AI 일정 챗봇 요약' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'AI 일정 결과' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '생성된 일정 상세' })).not.toBeInTheDocument()
+    expect(screen.getByText('축제 포함 여부와 여행 기간을 고르면 일정 초안이 여기에 표시됩니다.')).toBeInTheDocument()
+    expect(screen.queryByText('제주 · 닛코 감성 1일 초안')).not.toBeInTheDocument()
+    expect(screen.queryByText('일정 다시짜기')).not.toBeInTheDocument()
+    expect(screen.queryByText('일정 저장하기')).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: '여행 지도' })).not.toBeInTheDocument()
     expect(screen.queryByText('제주 · 닛코 기반 지도')).not.toBeInTheDocument()
     expect(
@@ -318,8 +328,12 @@ describe('MVP main entry screen', () => {
 
     expect(within(chatLog).queryByText('일정 기간을 먼저 골라주세요')).not.toBeInTheDocument()
     expect(within(chatLog).queryByRole('button', { name: '1박 2일' })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: '생성된 일정 상세' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '전주 · 오사카 감성 1박 2일 초안' })).toBeInTheDocument()
     expect(screen.getByText('축제 포함 반영')).toBeInTheDocument()
     expect(screen.getByText(/지역 축제나 시즌 행사가 있으면 일정 후보에 함께 넣습니다/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '일정 다시짜기' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '일정 저장하기' })).toBeInTheDocument()
   })
 
   it('turns a chat message into an assistant response and updated itinerary detail', () => {
@@ -343,6 +357,10 @@ describe('MVP main entry screen', () => {
     expect(screen.getByText('2박 3일, 전시랑 편집숍 위주로 덜 걷고 싶어요')).toBeInTheDocument()
     expect(screen.getByText(/2박 3일 흐름은 반영했어요/)).toBeInTheDocument()
     expect(screen.getByText('축제 테마를 일정에 포함할까요?')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '강릉 · 가나자와 감성 2박 3일 초안' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '축제 제외' }))
+
     expect(screen.getByRole('heading', { name: '강릉 · 가나자와 감성 2박 3일 초안' })).toBeInTheDocument()
     expect(screen.getByText('덜 걷는 일정')).toBeInTheDocument()
     expect(screen.getByText(/전시와 편집숍 사이 이동을 줄이는 쪽/)).toBeInTheDocument()
@@ -372,6 +390,7 @@ describe('MVP main entry screen', () => {
     render(<App />)
 
     fireEvent.click(screen.getByRole('link', { name: 'AI 일정 짜기' }))
+    fireEvent.click(screen.getByRole('button', { name: '축제 제외' }))
 
     const input = screen.getByRole('textbox', { name: '여행 조건 입력' })
     const sendButton = screen.getByRole('button', { name: '메시지 보내기' })
@@ -387,6 +406,7 @@ describe('MVP main entry screen', () => {
     fireEvent.change(input, { target: { value: '4박 5일까지 가능하고 카페도 넣어줘' } })
     fireEvent.click(sendButton)
     expect(screen.getByRole('heading', { name: '경주 · 교토 감성 4박 5일 초안' })).toBeInTheDocument()
+    expect(screen.getByText('5일 구성')).toBeInTheDocument()
     const chatLog = screen.getByRole('log', { name: 'AI 일정 대화' })
 
     expect(within(chatLog).queryByText('일정 기간을 먼저 골라주세요')).not.toBeInTheDocument()
@@ -394,6 +414,28 @@ describe('MVP main entry screen', () => {
       expect(within(chatLog).queryByRole('button', { name: duration })).not.toBeInTheDocument()
     })
     expect(screen.getByPlaceholderText('동행, 관심사, 걷는 정도를 추가로 입력해 주세요')).toBeInTheDocument()
+  })
+
+  it('resets or saves a generated itinerary from the itinerary panel actions', () => {
+    seedUser()
+    seedPreference('아산/온양 · 벳푸')
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('link', { name: 'AI 일정 짜기' }))
+    fireEvent.click(screen.getByRole('button', { name: '축제 포함' }))
+    fireEvent.click(screen.getByRole('button', { name: '2박 3일' }))
+
+    expect(screen.getByRole('heading', { name: '아산/온양 · 벳푸 감성 2박 3일 초안' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '일정 저장하기' }))
+
+    expect(screen.getByText('마이페이지 저장 준비 완료')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '일정 다시짜기' }))
+
+    expect(screen.queryByRole('heading', { name: '아산/온양 · 벳푸 감성 2박 3일 초안' })).not.toBeInTheDocument()
+    expect(screen.getByText('축제 포함 여부와 여행 기간을 고르면 일정 초안이 여기에 표시됩니다.')).toBeInTheDocument()
+    expect(screen.getByText('축제 테마를 일정에 포함할까요?')).toBeInTheDocument()
   })
 
   it('logs out to the signup gate without removing the selected preference', () => {

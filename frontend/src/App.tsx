@@ -50,6 +50,7 @@ type PlanStop = {
 
 type PlanDraft = {
   durationLabel: string
+  dayCount: number
   intensityLabel: string
   festivalThemeLabel: string
   summary: string
@@ -298,6 +299,16 @@ const getDurationLabel = (message: string) => {
   return getExplicitDurationLabel(message) ?? '1일'
 }
 
+const getDurationDayCount = (durationLabel: string) => {
+  if (durationLabel === '당일치기') {
+    return 1
+  }
+
+  const dayMatch = durationLabel.match(/(\d+)일/)
+
+  return dayMatch ? Number(dayMatch[1]) : 1
+}
+
 const wantsLessWalking = (message: string) => /덜\s*걷|적게\s*걷|동선|천천|여유|혼자/.test(message)
 
 const resolveFestivalThemeChoice = (
@@ -345,6 +356,7 @@ const createPlanDraft = (
   festivalThemeChoice: FestivalThemeChoice = 'undecided',
 ): PlanDraft => {
   const durationLabel = getDurationLabel(message)
+  const dayCount = getDurationDayCount(durationLabel)
   const isLessWalking = wantsLessWalking(message)
   const isArtFocused = preference.tag === '예술' || /전시|편집숍|쇼핑|예술/.test(message)
   const intensityLabel = isLessWalking ? '덜 걷는 일정' : '동선이 느슨한 일정'
@@ -355,6 +367,7 @@ const createPlanDraft = (
 
   return {
     durationLabel,
+    dayCount,
     intensityLabel,
     festivalThemeLabel: getFestivalThemeLabel(festivalThemeChoice),
     summary: `${baseSummary} ${festivalThemeSummary}`,
@@ -429,6 +442,8 @@ function App() {
   const [selectedDurationLabel, setSelectedDurationLabel] = useState<string | null>(null)
   const [chatInput, setChatInput] = useState('')
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false)
+  const [savedPlanNotice, setSavedPlanNotice] = useState<string | null>(null)
+  const [plannerContextText, setPlannerContextText] = useState('')
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() =>
     createInitialChatMessages(selectedPreference),
   )
@@ -439,6 +454,24 @@ function App() {
   const shouldShowFestivalPrompt = festivalThemeChoice === 'undecided'
   const shouldShowDurationPrompt = !shouldShowFestivalPrompt && selectedDurationLabel === null
   const isPlannerReady = festivalThemeChoice !== 'undecided' && selectedDurationLabel !== null
+
+  const resetPlannerFlow = () => {
+    setChatInput('')
+    setFestivalThemeChoice('undecided')
+    setSelectedDurationLabel(null)
+    setPlannerContextText('')
+    setChatMessages(createInitialChatMessages(selectedPreference))
+    setPlanDraft(createPlanDraft(selectedPreference))
+    setSavedPlanNotice(null)
+  }
+
+  const saveGeneratedPlan = () => {
+    if (!isPlannerReady) {
+      return
+    }
+
+    setSavedPlanNotice('마이페이지 저장 준비 완료')
+  }
 
   const signInWithGoogle = () => {
     localStorage.setItem(authStorageKey, JSON.stringify(mockGoogleUser))
@@ -459,11 +492,7 @@ function App() {
 
   const openChat = (event?: React.MouseEvent<HTMLAnchorElement>) => {
     event?.preventDefault()
-    setChatInput('')
-    setFestivalThemeChoice('undecided')
-    setSelectedDurationLabel(null)
-    setChatMessages(createInitialChatMessages(selectedPreference))
-    setPlanDraft(createPlanDraft(selectedPreference))
+    resetPlannerFlow()
     setActiveView('chat')
   }
 
@@ -512,11 +541,12 @@ function App() {
     const nextFestivalThemeChoice = resolveFestivalThemeChoice(trimmedMessage, festivalThemeChoice)
     const explicitDurationLabel = getExplicitDurationLabel(trimmedMessage)
     const nextSelectedDurationLabel = explicitDurationLabel ?? selectedDurationLabel
+    const nextPlannerContextText = `${plannerContextText} ${trimmedMessage}`.trim()
     const draftMessage = explicitDurationLabel
-      ? trimmedMessage
+      ? `${explicitDurationLabel} ${nextPlannerContextText}`
       : nextSelectedDurationLabel
-        ? `${nextSelectedDurationLabel} ${trimmedMessage}`
-        : trimmedMessage
+        ? `${nextSelectedDurationLabel} ${nextPlannerContextText}`
+        : nextPlannerContextText
     const nextDraft = createPlanDraft(selectedPreference, draftMessage, nextFestivalThemeChoice)
     const didChooseFestivalTheme = nextFestivalThemeChoice !== festivalThemeChoice
     const assistantContent =
@@ -543,13 +573,162 @@ function App() {
     ])
     setFestivalThemeChoice(nextFestivalThemeChoice)
     setSelectedDurationLabel(nextSelectedDurationLabel)
+    setPlannerContextText(nextPlannerContextText)
     setPlanDraft(nextDraft)
+    setSavedPlanNotice(null)
     setChatInput('')
   }
 
   const submitChatForm = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     submitChatMessage(chatInput)
+  }
+
+  const renderItineraryPanel = () => {
+    if (!isPlannerReady) {
+      return (
+        <section
+          aria-label="AI 일정 결과"
+          className="flex min-h-[660px] flex-col justify-between rounded-[18px] border border-[#F3B489] bg-[#fffffa] p-6 shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]"
+        >
+          <div>
+            <p className="text-sm font-semibold text-[#33271E]">맞춤 일정 결과</p>
+            <h3 className="mt-2 break-keep text-2xl font-bold leading-8 text-[#33271E] max-sm:text-xl max-sm:leading-7">
+              아직 일정이 생성되지 않았어요
+            </h3>
+            <p className="mt-4 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
+              축제 포함 여부와 여행 기간을 고르면 일정 초안이 여기에 표시됩니다.
+            </p>
+          </div>
+          <div className="mt-8 rounded-[18px] border border-[#F3B489] bg-[#FFF0E4] p-5">
+            <p className="text-[12px] font-bold text-[#33271E]">다음 입력</p>
+            <p className="mt-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
+              {shouldShowFestivalPrompt
+                ? '축제 테마를 포함할지 먼저 골라주세요.'
+                : '당일치기부터 4박 5일까지 여행 기간을 선택해 주세요.'}
+            </p>
+          </div>
+        </section>
+      )
+    }
+
+    return (
+      <section
+        aria-labelledby="generated-plan-title"
+        className="min-h-[660px] overflow-hidden rounded-[18px] border border-[#F3B489] bg-[#fffffa] shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]"
+      >
+        <div className="border-b border-[#F3B489] bg-[#FFF0E4] px-6 py-6">
+          <div className="grid grid-cols-[1fr_auto] items-start gap-5 max-md:grid-cols-1">
+            <div>
+              <p className="text-sm font-semibold text-[#33271E]">맞춤 일정 결과</p>
+              <h3
+                id="generated-plan-title"
+                className="mt-2 break-keep text-2xl font-bold leading-8 text-[#33271E] max-sm:text-xl max-sm:leading-7"
+              >
+                생성된 일정 상세
+              </h3>
+              <p className="mt-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
+                챗봇에서 정리된 조건을 바탕으로, 오른쪽 일정 패널에 결과를 보여줍니다.
+              </p>
+            </div>
+            <span className="inline-flex h-10 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-5 text-[12px] font-bold text-[#33271E]">
+              {planDraft.dayCount}일 구성
+            </span>
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-3 max-md:grid-cols-1">
+            {[
+              planDraft.intensityLabel,
+              `${selectedPreference.tag} 중심`,
+              `${planDraft.festivalThemeLabel} 반영`,
+              selectedPreference.weakSignal,
+            ].map((item) => (
+              <span
+                key={item}
+                className="inline-flex min-h-11 min-w-0 items-center rounded-[14px] border border-[#F3B489] bg-[#fffffa] px-4 py-2 break-keep text-sm font-bold leading-5 text-[#33271E] max-sm:text-[13px]"
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="px-6 py-6">
+          <div className="grid grid-cols-[1fr_auto] items-start gap-4 max-md:grid-cols-1">
+            <div>
+              <p className="text-sm font-bold text-[#33271E]">1일차 추천 일정</p>
+              <h4 className="mt-2 break-keep text-xl font-bold leading-7 text-[#33271E] max-sm:text-lg max-sm:leading-6">
+                {selectedPreference.cityPair} 감성 {planDraft.durationLabel} 초안
+              </h4>
+              <p className="mt-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
+                장소를 확정하기 전, 취향에 맞는 첫날 흐름과 이동 강도를 먼저 확인합니다.{' '}
+                {planDraft.summary}
+              </p>
+            </div>
+            <span className="rounded-full border border-[#F3B489] bg-[#FFF0E4] px-4 py-2 text-[12px] font-bold text-[#33271E]">
+              코스 3개
+            </span>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            {planDraft.stops.map((item, index) => (
+              <article key={item.time} className="grid grid-cols-[38px_minmax(0,1fr)] gap-4">
+                <div className="flex flex-col items-center">
+                  <span className="flex size-9 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] text-sm font-black text-[#33271E]">
+                    {index + 1}
+                  </span>
+                  {index < 2 ? <span className="mt-2 h-full w-px bg-[#F3B489]" /> : null}
+                </div>
+                <div className="min-w-0 rounded-[18px] border border-[#F3B489] bg-[#FFF0E4] p-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-bold leading-4 text-[#33271E]">
+                      {item.time}
+                    </span>
+                    <span className="rounded-full border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-semibold leading-4 text-[#33271E]">
+                      다음 장소까지 {item.move}
+                    </span>
+                  </div>
+                  <h5 className="mt-4 break-keep text-lg font-bold leading-7 text-[#33271E] max-sm:text-base max-sm:leading-6">
+                    {item.title}
+                  </h5>
+                  <p className="mt-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
+                    {item.body}
+                  </p>
+                  <div className="mt-4 rounded-[14px] border border-[#F3B489] bg-[#fffffa] px-4 py-3">
+                    <p className="text-[12px] font-bold text-[#33271E]">추천 이유</p>
+                    <p className="mt-1 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
+                      {item.reason}
+                    </p>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-6 grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+            <button
+              type="button"
+              onClick={resetPlannerFlow}
+              className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-5 text-sm font-bold text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+            >
+              일정 다시짜기
+            </button>
+            <button
+              type="button"
+              onClick={saveGeneratedPlan}
+              className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-5 text-sm font-bold text-[#33271E] transition hover:border-[#A92B10] hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+            >
+              일정 저장하기
+            </button>
+          </div>
+          {savedPlanNotice ? (
+            <p aria-live="polite" className="mt-4 break-keep text-sm font-bold leading-6 text-[#33271E]">
+              {savedPlanNotice}
+            </p>
+          ) : null}
+        </div>
+      </section>
+    )
   }
 
   return (
@@ -1062,7 +1241,7 @@ function App() {
               aria-labelledby="chat-title"
               className="mx-auto min-h-dvh max-w-[1440px] px-16 pb-16 pt-28 max-lg:px-8 max-sm:px-5"
             >
-              <div data-testid="chat-workspace" className="space-y-5">
+              <div data-testid="chat-workspace" className="space-y-6">
                 <button
                   type="button"
                   onClick={goHome}
@@ -1070,14 +1249,12 @@ function App() {
                 >
                   ← 이전으로 돌아가기
                 </button>
-                <div
-                  data-testid="chat-top-grid"
-                  className="grid min-h-[660px] grid-cols-[300px_minmax(0,1fr)] items-stretch gap-6 max-lg:grid-cols-1"
+                <section
+                  aria-label="AI 일정 챗봇 요약"
+                  data-testid="chat-planner-summary"
+                  className="grid grid-cols-[minmax(0,1fr)_minmax(360px,0.72fr)] gap-5 rounded-[18px] border border-[#F3B489] bg-[#fffffa] p-6 shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)] max-lg:grid-cols-1"
                 >
-                  <aside
-                    aria-label="AI 일정 챗봇 요약"
-                    className="h-full rounded-[18px] border border-[#F3B489] bg-[#fffffa] p-6 shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]"
-                  >
+                  <div className="min-w-0">
                     <p className="text-sm font-semibold text-[#33271E]">Lovv AI Planner</p>
                     <h2
                       id="chat-title"
@@ -1086,20 +1263,24 @@ function App() {
                       AI 일정 챗봇
                     </h2>
                     <p className="mt-4 break-keep text-sm leading-6 text-[#33271E]">
-                      {selectedPreference.cityPair} 감성을 기준으로 여행 조건을 대화로 정리합니다.
+                      {selectedPreference.cityPair} 감성을 기준으로 축제 포함 여부와 여행 기간을 먼저 정리합니다.
                     </p>
-                    <div className="mt-8 space-y-3">
-                      {['취향 반영 완료', '소도시 후보 탐색', '일정 초안 구성'].map((item) => (
-                        <div
-                          key={item}
-                          className="rounded-[14px] border border-[#F3B489] bg-[#FFF0E4] px-4 py-3 text-sm font-semibold leading-5 text-[#33271E]"
-                        >
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-                  </aside>
-
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 max-sm:grid-cols-1">
+                    {['취향 반영 완료', '소도시 후보 탐색', '일정 초안 구성'].map((item) => (
+                      <div
+                        key={item}
+                        className="rounded-[14px] border border-[#F3B489] bg-[#FFF0E4] px-4 py-3 text-sm font-semibold leading-5 text-[#33271E]"
+                      >
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+                <div
+                  data-testid="chat-top-grid"
+                  className="grid min-h-[660px] grid-cols-[minmax(0,0.92fr)_minmax(360px,0.82fr)] items-start gap-6 max-lg:grid-cols-1"
+                >
                   <div className="flex min-h-[660px] flex-col rounded-[18px] border border-[#F3B489] bg-[#fffffa] shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]">
                     <div className="border-b border-[#F3B489] px-6 py-5">
                       <p className="text-sm font-semibold text-[#33271E]">AI 일정 짜기</p>
@@ -1213,103 +1394,8 @@ function App() {
                       </form>
                     </div>
                   </div>
+                  {renderItineraryPanel()}
                 </div>
-
-                <section
-                  aria-labelledby="generated-plan-title"
-                  className="overflow-hidden rounded-[18px] border border-[#F3B489] bg-[#fffffa] shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]"
-                >
-                  <div className="border-b border-[#F3B489] bg-[#FFF0E4] px-6 py-6">
-                    <div className="grid grid-cols-[1fr_auto] items-start gap-5 max-md:grid-cols-1">
-                      <div>
-                        <p className="text-sm font-semibold text-[#33271E]">맞춤 일정 결과</p>
-                        <h3
-                          id="generated-plan-title"
-                          className="mt-2 break-keep text-2xl font-bold leading-8 text-[#33271E] max-sm:text-xl max-sm:leading-7"
-                        >
-                          생성된 일정 상세
-                        </h3>
-                        <p className="mt-2 line-clamp-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
-                          챗봇에서 정리된 조건을 바탕으로, 바로 아래에 일정 결과를 이어서 보여줍니다.
-                        </p>
-                      </div>
-                      <span className="inline-flex h-10 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-5 text-[12px] font-bold text-[#33271E]">
-                        1일차
-                      </span>
-                    </div>
-
-                    <div className="mt-5 grid grid-cols-3 gap-3 max-md:grid-cols-1">
-                      {[
-                        planDraft.intensityLabel,
-                        `${selectedPreference.tag} 중심`,
-                        planDraft.festivalThemeLabel !== '축제 미정'
-                          ? `${planDraft.festivalThemeLabel} 반영`
-                          : null,
-                        selectedPreference.weakSignal,
-                      ].filter(Boolean).map((item) => (
-                        <span
-                          key={item}
-                          className="inline-flex min-h-11 min-w-0 items-center rounded-[14px] border border-[#F3B489] bg-[#fffffa] px-4 py-2 break-keep text-sm font-bold leading-5 text-[#33271E] max-sm:text-[13px]"
-                        >
-                          {item}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="px-6 py-6">
-                    <div className="grid grid-cols-[1fr_auto] items-start gap-4 max-md:grid-cols-1">
-                      <div>
-                        <p className="text-sm font-bold text-[#33271E]">1일차 추천 일정</p>
-                        <h4 className="mt-2 break-keep text-xl font-bold leading-7 text-[#33271E] max-sm:text-lg max-sm:leading-6">
-                          {selectedPreference.cityPair} 감성 {planDraft.durationLabel} 초안
-                        </h4>
-                        <p className="mt-2 line-clamp-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
-                          장소를 확정하기 전, 취향에 맞는 하루 흐름과 이동 강도를 먼저 확인합니다.{' '}
-                          {planDraft.summary}
-                        </p>
-                      </div>
-                      <span className="rounded-full border border-[#F3B489] bg-[#FFF0E4] px-4 py-2 text-[12px] font-bold text-[#33271E]">
-                        코스 3개
-                      </span>
-                    </div>
-
-                    <div className="mt-6 space-y-4">
-                      {planDraft.stops.map((item, index) => (
-                        <article key={item.time} className="grid grid-cols-[38px_minmax(0,1fr)] gap-4">
-                          <div className="flex flex-col items-center">
-                            <span className="flex size-9 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] text-sm font-black text-[#33271E]">
-                              {index + 1}
-                            </span>
-                            {index < 2 ? <span className="mt-2 h-full w-px bg-[#F3B489]" /> : null}
-                          </div>
-                          <div className="min-w-0 rounded-[18px] border border-[#F3B489] bg-[#FFF0E4] p-5">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-bold leading-4 text-[#33271E]">
-                                {item.time}
-                              </span>
-                              <span className="rounded-full border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-semibold leading-4 text-[#33271E]">
-                                다음 장소까지 {item.move}
-                              </span>
-                            </div>
-                            <h5 className="mt-4 break-keep text-lg font-bold leading-7 text-[#33271E] max-sm:text-base max-sm:leading-6">
-                              {item.title}
-                            </h5>
-                            <p className="mt-2 line-clamp-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
-                              {item.body}
-                            </p>
-                            <div className="mt-4 rounded-[14px] border border-[#F3B489] bg-[#fffffa] px-4 py-3">
-                              <p className="text-[12px] font-bold text-[#33271E]">추천 이유</p>
-                              <p className="mt-1 line-clamp-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
-                                {item.reason}
-                              </p>
-                            </div>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  </div>
-                </section>
               </div>
             </section>
           )}

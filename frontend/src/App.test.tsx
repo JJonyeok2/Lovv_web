@@ -387,7 +387,7 @@ describe('MVP main entry screen', () => {
     expect(screen.getByText('축제 포함 여부와 여행 기간을 고르면 일정 초안이 여기에 표시됩니다.')).toBeInTheDocument()
     expect(screen.queryByText('제주 · 닛코 감성 1일 초안')).not.toBeInTheDocument()
     expect(screen.queryByText('일정 다시짜기')).not.toBeInTheDocument()
-    expect(screen.queryByText('일정 저장하기')).not.toBeInTheDocument()
+    expect(screen.queryByText('마이페이지에 저장')).not.toBeInTheDocument()
     expect(screen.queryByRole('region', { name: '여행 지도' })).not.toBeInTheDocument()
     expect(screen.queryByText('제주 · 닛코 기반 지도')).not.toBeInTheDocument()
     expect(
@@ -444,7 +444,7 @@ describe('MVP main entry screen', () => {
     expect(screen.getByText('축제 포함 반영')).toBeInTheDocument()
     expect(screen.getByText(/지역 축제나 시즌 행사가 있으면 일정 후보에 함께 넣습니다/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '일정 다시짜기' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '일정 저장하기' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '마이페이지에 저장' })).toBeInTheDocument()
   })
 
   it('turns a chat message into an assistant response and updated itinerary detail', () => {
@@ -527,7 +527,7 @@ describe('MVP main entry screen', () => {
     expect(screen.getByPlaceholderText('동행, 관심사, 걷는 정도를 추가로 입력해 주세요')).toBeInTheDocument()
   })
 
-  it('resets or saves a generated itinerary from the itinerary panel actions', () => {
+  it('saves and likes a generated itinerary without duplicate mock storage records', () => {
     seedUser()
     seedPreference('아산/온양 · 벳푸')
     render(<App />)
@@ -537,16 +537,56 @@ describe('MVP main entry screen', () => {
     fireEvent.click(screen.getByRole('button', { name: '2박 3일' }))
 
     expect(screen.getByRole('heading', { name: '아산/온양 · 벳푸 감성 2박 3일 초안' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '세부 일정 보기' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '일정 저장하기' }))
+    fireEvent.click(screen.getByRole('button', { name: '좋아요' }))
 
-    expect(screen.getByText('마이페이지 저장 준비 완료')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '좋아요 취소' })).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem('lovv.likedPlanIds') ?? '[]')).toHaveLength(1)
 
-    fireEvent.click(screen.getByRole('button', { name: '일정 다시짜기' }))
+    fireEvent.click(screen.getByRole('button', { name: '마이페이지에 저장' }))
+
+    expect(screen.getByRole('button', { name: '마이페이지에 저장됨' })).toBeInTheDocument()
+    expect(screen.getByText('마이페이지에서 다시 확인할 수 있어요.')).toBeInTheDocument()
+
+    const savedPlans = JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')
+
+    expect(savedPlans).toHaveLength(1)
+    expect(savedPlans[0]).toMatchObject({
+      ownerId: 'mock-google-user',
+      title: '아산/온양 · 벳푸 감성 2박 3일 초안',
+      cityPair: '아산/온양 · 벳푸',
+      durationLabel: '2박 3일',
+      festivalThemeLabel: '축제 포함',
+      themeTag: '온천·휴양',
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '마이페이지에 저장됨' }))
+
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')).toHaveLength(1)
+
+    fireEvent.click(screen.getByRole('button', { name: '새로운 추천받기' }))
 
     expect(screen.queryByRole('heading', { name: '아산/온양 · 벳푸 감성 2박 3일 초안' })).not.toBeInTheDocument()
     expect(screen.getByText('축제 포함 여부와 여행 기간을 고르면 일정 초안이 여기에 표시됩니다.')).toBeInTheDocument()
     expect(screen.getByText('축제 테마를 일정에 포함할까요?')).toBeInTheDocument()
+  })
+
+  it('ignores invalid saved and liked plan storage when using generated plan actions', () => {
+    seedUser()
+    seedPreference('제주 · 닛코')
+    localStorage.setItem('lovv.savedPlans', '{broken')
+    localStorage.setItem('lovv.likedPlanIds', '{"bad":true}')
+    render(<App />)
+
+    fireEvent.click(screen.getByRole('link', { name: 'AI 일정 짜기' }))
+    fireEvent.click(screen.getByRole('button', { name: '축제 제외' }))
+    fireEvent.click(screen.getByRole('button', { name: '당일치기' }))
+    fireEvent.click(screen.getByRole('button', { name: '좋아요' }))
+    fireEvent.click(screen.getByRole('button', { name: '마이페이지에 저장' }))
+
+    expect(JSON.parse(localStorage.getItem('lovv.likedPlanIds') ?? '[]')).toHaveLength(1)
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')).toHaveLength(1)
   })
 
   it('logs out to the signup gate without removing the selected preference', () => {

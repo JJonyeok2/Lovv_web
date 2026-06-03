@@ -57,6 +57,21 @@ type PlanDraft = {
   stops: PlanStop[]
 }
 
+type SavedPlan = {
+  id: string
+  ownerId: string
+  title: string
+  cityPair: string
+  themeTag: string
+  durationLabel: string
+  festivalThemeLabel: string
+  intensityLabel: string
+  summary: string
+  stops: PlanStop[]
+  createdAt: string
+  savedAt: string
+}
+
 type LovvUser = {
   id: string
   name: string
@@ -69,6 +84,8 @@ type AuthProvider = 'google' | 'kakao'
 
 const preferenceStorageKey = 'lovv.preference'
 const authStorageKey = 'lovv.auth.user'
+const savedPlansStorageKey = 'lovv.savedPlans'
+const likedPlanIdsStorageKey = 'lovv.likedPlanIds'
 
 const mockAuthUsers: Record<AuthProvider, LovvUser> = {
   google: {
@@ -272,6 +289,52 @@ const readStoredUser = (): LovvUser | null => {
   }
 }
 
+const readStoredSavedPlans = (): SavedPlan[] => {
+  try {
+    const rawPlans = localStorage.getItem(savedPlansStorageKey)
+
+    if (!rawPlans) {
+      return []
+    }
+
+    const parsedPlans = JSON.parse(rawPlans)
+
+    if (!Array.isArray(parsedPlans)) {
+      return []
+    }
+
+    return parsedPlans.filter(
+      (plan): plan is SavedPlan =>
+        typeof plan?.id === 'string' &&
+        typeof plan?.ownerId === 'string' &&
+        typeof plan?.title === 'string' &&
+        typeof plan?.cityPair === 'string' &&
+        typeof plan?.durationLabel === 'string' &&
+        Array.isArray(plan?.stops),
+    )
+  } catch {
+    return []
+  }
+}
+
+const readStoredLikedPlanIds = (): string[] => {
+  try {
+    const rawPlanIds = localStorage.getItem(likedPlanIdsStorageKey)
+
+    if (!rawPlanIds) {
+      return []
+    }
+
+    const parsedPlanIds = JSON.parse(rawPlanIds)
+
+    return Array.isArray(parsedPlanIds)
+      ? parsedPlanIds.filter((planId): planId is string => typeof planId === 'string')
+      : []
+  } catch {
+    return []
+  }
+}
+
 const createMessageId = (role: ChatMessage['role'], index: number) => `${role}-${index}`
 
 const getExplicitDurationLabel = (message: string) => {
@@ -429,6 +492,16 @@ const createInitialChatMessages = (preference: Preference): ChatMessage[] => [
 const createAssistantReply = (preference: Preference, draft: PlanDraft) =>
   `${preference.cityPair} 감성으로 ${draft.durationLabel} 흐름을 잡아볼게요. ${draft.intensityLabel}으로 ${preference.tag} 취향이 가장 잘 보이는 시간대를 먼저 배치했습니다.`
 
+const createPlanId = (preference: Preference, draft: PlanDraft, festivalThemeChoice: FestivalThemeChoice) =>
+  [
+    preference.cityPair,
+    draft.durationLabel,
+    getFestivalThemeLabel(festivalThemeChoice),
+    draft.intensityLabel,
+  ]
+    .join('-')
+    .replace(/\s+/g, '-')
+
 const mapMarkerPositions = [
   { left: '32%', top: '58%' },
   { left: '67%', top: '38%' },
@@ -459,6 +532,8 @@ function App() {
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false)
   const [savedPlanNotice, setSavedPlanNotice] = useState<string | null>(null)
   const [preferenceNotice, setPreferenceNotice] = useState<string | null>(null)
+  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => readStoredSavedPlans())
+  const [likedPlanIds, setLikedPlanIds] = useState<string[]>(() => readStoredLikedPlanIds())
   const [plannerContextText, setPlannerContextText] = useState('')
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(() =>
     createInitialChatMessages(selectedPreference),
@@ -472,6 +547,10 @@ function App() {
   const shouldShowFestivalPrompt = festivalThemeChoice === 'undecided'
   const shouldShowDurationPrompt = !shouldShowFestivalPrompt && selectedDurationLabel === null
   const isPlannerReady = festivalThemeChoice !== 'undecided' && selectedDurationLabel !== null
+  const currentPlanId = createPlanId(selectedPreference, planDraft, festivalThemeChoice)
+  const currentPlanTitle = `${selectedPreference.cityPair} 감성 ${planDraft.durationLabel} 초안`
+  const isCurrentPlanSaved = savedPlans.some((plan) => plan.id === currentPlanId)
+  const isCurrentPlanLiked = likedPlanIds.includes(currentPlanId)
   const plannerSummaryCards = [
     {
       title: '취향 반영 완료',
@@ -507,7 +586,57 @@ function App() {
       return
     }
 
-    setSavedPlanNotice('마이페이지 저장 준비 완료')
+    const savedAt = new Date().toISOString()
+    const nextPlan: SavedPlan = {
+      id: currentPlanId,
+      ownerId: currentUser?.id ?? 'mock-user',
+      title: currentPlanTitle,
+      cityPair: selectedPreference.cityPair,
+      themeTag: selectedPreference.tag,
+      durationLabel: planDraft.durationLabel,
+      festivalThemeLabel: planDraft.festivalThemeLabel,
+      intensityLabel: planDraft.intensityLabel,
+      summary: planDraft.summary,
+      stops: planDraft.stops,
+      createdAt: savedAt,
+      savedAt,
+    }
+
+    setSavedPlans((currentPlans) => {
+      const existingPlan = currentPlans.find((plan) => plan.id === currentPlanId)
+      const updatedPlan = existingPlan
+        ? {
+            ...nextPlan,
+            createdAt: existingPlan.createdAt,
+          }
+        : nextPlan
+      const nextPlans = [updatedPlan, ...currentPlans.filter((plan) => plan.id !== currentPlanId)]
+
+      localStorage.setItem(savedPlansStorageKey, JSON.stringify(nextPlans))
+
+      return nextPlans
+    })
+    setSavedPlanNotice('마이페이지에서 다시 확인할 수 있어요.')
+  }
+
+  const toggleGeneratedPlanLike = () => {
+    if (!isPlannerReady) {
+      return
+    }
+
+    setLikedPlanIds((currentPlanIds) => {
+      const nextPlanIds = currentPlanIds.includes(currentPlanId)
+        ? currentPlanIds.filter((planId) => planId !== currentPlanId)
+        : [...currentPlanIds, currentPlanId]
+
+      localStorage.setItem(likedPlanIdsStorageKey, JSON.stringify(nextPlanIds))
+
+      return nextPlanIds
+    })
+  }
+
+  const openPlanDetailPlaceholder = () => {
+    setSavedPlanNotice('세부 일정 화면은 다음 단계에서 연결합니다.')
   }
 
   const signInWithMockProvider = (provider: AuthProvider) => {
@@ -738,7 +867,7 @@ function App() {
             <div>
               <p className="text-sm font-bold text-[#33271E]">1일차 추천 일정</p>
               <h4 className="mt-2 break-keep text-xl font-bold leading-7 text-[#33271E] max-sm:text-lg max-sm:leading-6">
-                {selectedPreference.cityPair} 감성 {planDraft.durationLabel} 초안
+                {currentPlanTitle}
               </h4>
               <p className="mt-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
                 장소를 확정하기 전, 취향에 맞는 첫날 흐름과 이동 강도를 먼저 확인합니다.{' '}
@@ -785,7 +914,26 @@ function App() {
             ))}
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+          <div className="mt-6 grid grid-cols-3 gap-3 max-md:grid-cols-1">
+            <button
+              type="button"
+              onClick={openPlanDetailPlaceholder}
+              className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-5 text-sm font-bold text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+            >
+              세부 일정 보기
+            </button>
+            <button
+              type="button"
+              aria-pressed={isCurrentPlanLiked}
+              onClick={toggleGeneratedPlanLike}
+              className={`inline-flex min-h-12 items-center justify-center rounded-full border px-5 text-sm font-bold text-[#33271E] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
+                isCurrentPlanLiked
+                  ? 'border-[#A92B10] bg-[#F36B12] hover:bg-[#FF8A2A]'
+                  : 'border-[#F3B489] bg-[#fffffa] hover:border-[#F36B12] hover:bg-[#FFE0CA]'
+              }`}
+            >
+              {isCurrentPlanLiked ? '좋아요 취소' : '좋아요'}
+            </button>
             <button
               type="button"
               onClick={() => resetPlannerFlow()}
@@ -793,14 +941,49 @@ function App() {
             >
               일정 다시짜기
             </button>
+          </div>
+
+          <section
+            aria-labelledby="save-plan-cta-title"
+            className="mt-6 rounded-[20px] border border-[#F3B489] bg-[#FFF0E4] p-5"
+          >
+            <p className="text-center text-2xl font-black leading-8 text-[#F36B12]" aria-hidden="true">
+              ♥
+            </p>
+            <h5
+              id="save-plan-cta-title"
+              className="mt-2 break-keep text-center text-xl font-black leading-7 text-[#33271E] max-sm:text-lg"
+            >
+              추천 일정이 마음에 드세요?
+            </h5>
+            <p className="mt-2 break-keep text-center text-sm font-semibold leading-6 text-[#33271E] max-sm:text-[13px]">
+              담은 일정은 마이페이지에서 다시 확인하고 리뷰를 남길 수 있어요.
+            </p>
             <button
               type="button"
               onClick={saveGeneratedPlan}
-              className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-5 text-sm font-bold text-[#33271E] transition hover:border-[#A92B10] hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+              disabled={isCurrentPlanSaved}
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-5 text-sm font-black text-[#33271E] transition hover:border-[#A92B10] hover:bg-[#FF8A2A] disabled:cursor-default disabled:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
             >
-              일정 저장하기
+              {isCurrentPlanSaved ? '마이페이지에 저장됨' : '마이페이지에 저장'}
             </button>
-          </div>
+            <div className="mt-3 grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+              <button
+                type="button"
+                onClick={() => resetPlannerFlow()}
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-4 text-sm font-bold text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+              >
+                새로운 추천받기
+              </button>
+              <button
+                type="button"
+                onClick={goHome}
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-4 text-sm font-bold text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+              >
+                다시하기
+              </button>
+            </div>
+          </section>
           {savedPlanNotice ? (
             <p aria-live="polite" className="mt-4 break-keep text-sm font-bold leading-6 text-[#33271E]">
               {savedPlanNotice}

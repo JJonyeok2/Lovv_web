@@ -1086,7 +1086,8 @@ function App() {
   const [activeMonthlyRecommendation, setActiveMonthlyRecommendation] = useState(monthlyRecommendations[0])
   const [activeView, setActiveView] = useState<View>(() => getAccessibleView())
   const [pendingPreferenceProfile, setPendingPreferenceProfile] = useState(() => selectedPreferenceProfile)
-  const [coverImageIndex, setCoverImageIndex] = useState(0)
+  const [selectedPreviewImageKey, setSelectedPreviewImageKey] = useState<string | null>(null)
+  const [isPreviewTrayOpen, setIsPreviewTrayOpen] = useState(false)
   const [hasSelectedCover, setHasSelectedCover] = useState(false)
   const [festivalThemeChoice, setFestivalThemeChoice] = useState<FestivalThemeChoice>('undecided')
   const [selectedDurationLabel, setSelectedDurationLabel] = useState<string | null>(null)
@@ -1135,11 +1136,40 @@ function App() {
   const activeThemeLabels = getThemeLabels(activeThemeIds)
   const activeThemePreferences = activeThemeIds.map(getPreferenceByThemeId)
   const hasValidThemeSelection = activeThemeIds.length > 0 && activeThemeIds.length <= 3
-  const preferenceSelection = isPreferenceEditView
+  const fallbackPreferenceSelection = isPreferenceEditView
     ? pendingPreferences[0] ?? preferences[0]
     : selectedPreference
-  const selectedCoverImage =
-    preferenceSelection.coverImages[coverImageIndex] ?? preferenceSelection.coverImages[0]
+  const selectedPreviewImages = (
+    activeThemePreferences.length > 0 ? activeThemePreferences : [fallbackPreferenceSelection]
+  ).flatMap((preference, preferenceIndex) =>
+    preference.coverImages.map((coverImage, coverImageIndex) => ({
+      ...coverImage,
+      key: `${preference.themeId}-${coverImageIndex}-${coverImage.city}`,
+      tag: preference.tag,
+      themeIndex: preferenceIndex,
+    })),
+  )
+  const selectedPreviewPrimaryImage =
+    selectedPreviewImages.find((previewImage) => previewImage.key === selectedPreviewImageKey) ??
+    selectedPreviewImages[0] ??
+    {
+      ...fallbackPreferenceSelection.coverImages[0],
+      key: `${fallbackPreferenceSelection.themeId}-0-fallback`,
+      tag: fallbackPreferenceSelection.tag,
+      themeIndex: 0,
+    }
+  const selectedPreviewPreference =
+    activeThemePreferences[selectedPreviewPrimaryImage.themeIndex] ?? activeThemePreferences[0] ?? fallbackPreferenceSelection
+  const selectedPreviewImageIndex = Math.max(
+    selectedPreviewImages.findIndex((previewImage) => previewImage.key === selectedPreviewPrimaryImage.key),
+    0,
+  )
+  const selectedPreviewThumbnails = selectedPreviewImages.filter(
+    (previewImage) => previewImage.key !== selectedPreviewPrimaryImage.key,
+  )
+  const selectedPreviewTrayCover = selectedPreviewThumbnails[0]
+  const selectedPreviewThemePosition =
+    selectedPreviewImages.length > 0 ? `${selectedPreviewImageIndex + 1} / ${selectedPreviewImages.length}` : '1 / 1'
   const selectedPreferenceEditorialNotes = selectedPreferences
     .map((preference) => preference.editorialNote)
     .slice(0, 3)
@@ -1434,7 +1464,8 @@ function App() {
 
   const openPreferenceEdit = () => {
     setPendingPreferenceProfile(selectedPreferenceProfile)
-    setCoverImageIndex(0)
+    setSelectedPreviewImageKey(null)
+    setIsPreviewTrayOpen(false)
     setHasSelectedCover(true)
     setPreferenceNotice(null)
     setThemeSelectionNotice(null)
@@ -1443,7 +1474,8 @@ function App() {
 
   const cancelPreferenceEdit = () => {
     setPendingPreferenceProfile(selectedPreferenceProfile)
-    setCoverImageIndex(0)
+    setSelectedPreviewImageKey(null)
+    setIsPreviewTrayOpen(false)
     setHasSelectedCover(false)
     setThemeSelectionNotice(null)
     navigateToView('mypage', { replace: true })
@@ -1569,7 +1601,8 @@ function App() {
     storePreferenceProfile(pendingPreferenceProfile)
     setSelectedPreferenceProfile(pendingPreferenceProfile)
     resetPlannerFlow(getPrimaryPreference(pendingPreferenceProfile), null, pendingPreferenceProfile)
-    setCoverImageIndex(0)
+    setSelectedPreviewImageKey(null)
+    setIsPreviewTrayOpen(false)
     setHasSelectedCover(false)
     setThemeSelectionNotice(null)
     setPreferenceNotice('취향이 변경됐어요. 다음 AI 일정부터 반영됩니다.')
@@ -1599,7 +1632,8 @@ function App() {
       setSelectedPreferenceProfile(nextProfile)
     }
 
-    setCoverImageIndex(0)
+    setSelectedPreviewImageKey(null)
+    setIsPreviewTrayOpen(false)
     setHasSelectedCover(nextThemeIds.length > 0)
     setThemeSelectionNotice(
       nextThemeIds.length > 0
@@ -1608,8 +1642,9 @@ function App() {
     )
   }
 
-  const showNextCoverImage = () => {
-    setCoverImageIndex((currentIndex) => (currentIndex + 1) % preferenceSelection.coverImages.length)
+  const selectPreviewImage = (imageKey: string) => {
+    setSelectedPreviewImageKey(imageKey)
+    setIsPreviewTrayOpen(false)
   }
 
   const submitChatMessage = (message: string) => {
@@ -3279,29 +3314,65 @@ function App() {
                 <div className="group relative overflow-hidden rounded-[24px] border border-transparent bg-[#FFF0E4]">
                   <div className="absolute left-5 right-5 top-5 z-10 flex items-center justify-between gap-3">
                     <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#33271E]">
-                      Selected Cover
+                      Selected Theme
                     </span>
                     <span className="rounded-full bg-[#FFF0E4] px-3 py-1 text-[12px] font-bold text-[#33271E] shadow-[0_10px_24px_-22px_rgba(51,39,30,0.28)]">
-                      {preferenceSelection.tag}
+                      {selectedPreviewThemePosition} · {selectedPreviewPreference.tag}
                     </span>
                   </div>
                   <img
-                    src={selectedCoverImage.image}
-                    alt={`${selectedCoverImage.city} 대표 이미지`}
+                    src={selectedPreviewPrimaryImage.image}
+                    alt={`${selectedPreviewPrimaryImage.city} 대표 이미지`}
                     className="h-[360px] w-full object-cover max-sm:h-[260px]"
                   />
-                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-gradient-to-t from-[#33271E]/75 via-[#33271E]/20 to-transparent p-5 max-sm:flex-col max-sm:items-start">
-                    <span className="rounded-full bg-[#fffffa]/95 px-4 py-2 text-[12px] font-bold text-[#33271E] shadow-[0_10px_30px_-22px_rgba(0,0,0,0.5)]">
-                      현재 표시: {selectedCoverImage.city}
+                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-gradient-to-t from-[#33271E]/80 via-[#33271E]/24 to-transparent p-5">
+                    <span className="min-w-0 rounded-full bg-[#fffffa]/95 px-4 py-2 text-[12px] font-bold text-[#33271E] shadow-[0_10px_30px_-22px_rgba(0,0,0,0.5)]">
+                      현재 표시: {selectedPreviewPrimaryImage.city}
                     </span>
-                    <button
-                      type="button"
-                      aria-label="다음 도시 이미지 보기"
-                      onClick={showNextCoverImage}
-                      className="inline-flex min-h-9 items-center rounded-full border border-transparent bg-[#FFF0E4] px-4 py-1 text-[12px] font-bold text-[#33271E] opacity-0 shadow-[0_10px_30px_-22px_rgba(0,0,0,0.5)] transition hover:bg-[#FFE0CA] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fffffa] group-hover:opacity-100 max-sm:opacity-100"
-                    >
-                      다음
-                    </button>
+                    {selectedPreviewTrayCover && !isPreviewTrayOpen ? (
+                      <button
+                        type="button"
+                        aria-label={`${selectedPreviewTrayCover.city} +${selectedPreviewThumbnails.length} 이미지 목록 펼치기`}
+                        aria-expanded={false}
+                        onClick={() => setIsPreviewTrayOpen(true)}
+                        className="w-[98px] shrink-0 overflow-hidden rounded-[14px] bg-[#fffffa]/95 p-1 text-[#33271E] shadow-[0_18px_36px_-24px_rgba(0,0,0,0.5)] transition hover:-translate-y-0.5 hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fffffa] max-sm:w-[86px]"
+                      >
+                        <img
+                          src={selectedPreviewTrayCover.image}
+                          alt={`${selectedPreviewTrayCover.city} 썸네일 이미지`}
+                          className="h-[58px] w-full rounded-[10px] object-cover max-sm:h-[52px]"
+                        />
+                        <span className="block truncate px-1 pb-0.5 pt-1 text-center text-[10px] font-black leading-4">
+                          {selectedPreviewTrayCover.city} +{selectedPreviewThumbnails.length}
+                        </span>
+                      </button>
+                    ) : null}
+                    {selectedPreviewThumbnails.length > 0 && isPreviewTrayOpen ? (
+                      <div
+                        role="group"
+                        aria-label="선택한 테마 이미지 목록"
+                        className="grid max-w-[194px] shrink-0 grid-cols-2 gap-2 rounded-[16px] bg-[#fffffa]/92 p-2 shadow-[0_18px_36px_-24px_rgba(0,0,0,0.5)] max-sm:max-w-[calc(100%-8rem)] max-sm:auto-cols-[76px] max-sm:grid-flow-col max-sm:grid-cols-none max-sm:overflow-x-auto"
+                      >
+                        {selectedPreviewThumbnails.map((previewImage) => (
+                          <button
+                            key={previewImage.key}
+                            type="button"
+                            aria-label={`${previewImage.city} 이미지로 크게 보기`}
+                            onClick={() => selectPreviewImage(previewImage.key)}
+                            className="w-[86px] overflow-hidden rounded-[12px] bg-[#FFF0E4] p-1 text-[#33271E] transition hover:-translate-y-0.5 hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fffffa] max-sm:w-[76px]"
+                          >
+                            <img
+                              src={previewImage.image}
+                              alt={`${previewImage.city} 썸네일 이미지`}
+                              className="h-[52px] w-full rounded-[8px] object-cover max-sm:h-[48px]"
+                            />
+                            <span className="block truncate px-1 pb-0.5 pt-1 text-center text-[10px] font-black leading-4">
+                              {previewImage.city}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 

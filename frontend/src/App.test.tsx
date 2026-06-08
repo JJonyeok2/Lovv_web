@@ -785,11 +785,11 @@ describe('MVP main entry screen', () => {
     })
   })
 
-  it('shows and cycles the selected cover only after a preference card is clicked', () => {
+  it('shows every selected theme image in the preview tray', () => {
     seedUser()
     render(<App />)
 
-    expect(screen.queryByText('Selected Cover')).not.toBeInTheDocument()
+    expect(screen.queryByText('Selected Theme')).not.toBeInTheDocument()
     expect(screen.queryByRole('img', { name: '아산/온양 대표 이미지' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /온천·휴양/ })).toHaveAttribute('aria-pressed', 'false')
 
@@ -802,23 +802,50 @@ describe('MVP main entry screen', () => {
       'max-xl:static',
     )
     expect(screen.getByRole('img', { name: '아산/온양 대표 이미지' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: '벳푸 썸네일 이미지' })).toBeInTheDocument()
     expect(screen.getByText('현재 표시: 아산/온양')).toBeInTheDocument()
+    expect(screen.getByText('1 / 2 · 온천·휴양')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '벳푸 +1 이미지 목록 펼치기' })).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: '선택한 테마 이미지 목록' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '다음 선택 테마 보기' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '다음 도시 이미지 보기' }))
+    fireEvent.click(screen.getByRole('button', { name: '벳푸 +1 이미지 목록 펼치기' }))
+    expect(screen.getByRole('group', { name: '선택한 테마 이미지 목록' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '벳푸 이미지로 크게 보기' }))
 
     expect(screen.getByRole('img', { name: '벳푸 대표 이미지' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: '아산/온양 썸네일 이미지' })).toBeInTheDocument()
     expect(screen.getByText('현재 표시: 벳푸')).toBeInTheDocument()
+    expect(screen.getByText('2 / 2 · 온천·휴양')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '아산/온양 +1 이미지 목록 펼치기' })).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: '선택한 테마 이미지 목록' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /온천·휴양/ }))
     fireEvent.click(screen.getByRole('button', { name: /미식·노포/ }))
 
-    expect(screen.getByRole('img', { name: '전주 대표 이미지' })).toBeInTheDocument()
-    expect(screen.getByText('현재 표시: 전주')).toBeInTheDocument()
+    expect(screen.getByText('1 / 4 · 온천·휴양')).toBeInTheDocument()
+    expect(screen.getByText('현재 표시: 아산/온양')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '벳푸 +3 이미지 목록 펼치기' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '다음 선택 테마 보기' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '다음 도시 이미지 보기' }))
+    fireEvent.click(screen.getByRole('button', { name: /자연·트레킹/ }))
 
-    expect(screen.getByRole('img', { name: '오사카 대표 이미지' })).toBeInTheDocument()
-    expect(screen.getByText('현재 표시: 오사카')).toBeInTheDocument()
+    expect(screen.getByText('1 / 6 · 온천·휴양')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '벳푸 +5 이미지 목록 펼치기' })).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: '제주 썸네일 이미지' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '벳푸 +5 이미지 목록 펼치기' }))
+
+    expect(screen.getAllByRole('button', { name: /이미지로 크게 보기/ })).toHaveLength(5)
+    expect(screen.getByRole('img', { name: '제주 썸네일 이미지' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: '닛코 썸네일 이미지' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '닛코 이미지로 크게 보기' }))
+
+    expect(screen.getByRole('img', { name: '닛코 대표 이미지' })).toBeInTheDocument()
+    expect(screen.getByText('6 / 6 · 자연·트레킹')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '아산/온양 +5 이미지 목록 펼치기' })).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: '선택한 테마 이미지 목록' })).not.toBeInTheDocument()
+    expect(screen.getByText('오늘의 취향 여정')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '온천·휴양 · 미식·노포 · 자연·트레킹' })).toBeInTheDocument()
   })
 
   it('skips onboarding for returning users and opens the chat workspace without a map', () => {

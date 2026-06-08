@@ -401,17 +401,20 @@ describe('MVP main entry screen', () => {
     expect(localStorage.getItem('lovv.preference')).toBe(storedPreferenceBefore)
     expect(screen.getByRole('heading', { name: 'AI 일정 챗봇' })).toBeInTheDocument()
     expect(screen.getByTestId('chat-planner-summary')).toHaveTextContent('경주 상세 정보를 기준으로')
+    expect(screen.getByTestId('chat-planner-summary')).toHaveTextContent('여행 기간만 먼저 정리합니다')
     expect(screen.getByRole('log', { name: 'AI 일정 대화' })).toHaveTextContent('경주로 세부 일정을 짜고 싶어요.')
+    expect(screen.queryByRole('button', { name: '축제 포함' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '축제 제외' })).not.toBeInTheDocument()
+    expect(screen.getByText('일정 기간을 먼저 골라주세요')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('여행 기간을 먼저 선택해 주세요')).toBeInTheDocument()
 
-    completeGuidedPlanner({
-      festival: '축제 포함',
-      duration: '1박 2일',
-      query: '바다와 자연을 보면서 덜 걷고 싶어요',
-    })
+    fireEvent.click(screen.getByRole('button', { name: '1박 2일' }))
 
     expect(screen.getByText(/경주 중심으로 1박 2일 흐름을 잡아볼게요/)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '생성된 일정 상세' })).toBeInTheDocument()
     expect(screen.getByText(/경주 · 경북 1박 2일 초안/)).toBeInTheDocument()
+    expect(screen.getByLabelText('조건 해석 결과')).toHaveTextContent('역사·전통')
+    expect(screen.getByPlaceholderText('추가로 원하는 조건을 입력해 주세요')).toBeInTheDocument()
   })
 
   it('rotates the main hero theme every 10 seconds with theme-specific slogan styling', () => {
@@ -976,7 +979,7 @@ describe('MVP main entry screen', () => {
     ;['당일치기', '1박 2일', '2박 3일', '3박 4일', '4박 5일'].forEach((duration) => {
       expect(within(chatLog).queryByRole('button', { name: duration })).not.toBeInTheDocument()
     })
-    expect(screen.getByPlaceholderText('동행, 관심사, 걷는 정도를 추가로 입력해 주세요')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('추가로 원하는 조건을 입력해 주세요')).toBeInTheDocument()
   })
 
   it('saves and likes a generated itinerary without duplicate mock storage records', () => {

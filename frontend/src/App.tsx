@@ -761,6 +761,37 @@ const themeExtractionPatterns: Record<ThemeId, RegExp> = {
   art_emotion: /예술|감성|공예|전시|편집숍|갤러리|정원|카페|사진/,
 }
 
+const cityThemeToThemeId: Partial<Record<SmallCityTheme, ThemeId>> = {
+  온천: 'hot_spring_rest',
+  바다: 'sea_coast',
+  미식: 'food_local',
+  전통: 'history_tradition',
+  자연: 'nature_trekking',
+  예술: 'art_emotion',
+}
+
+const getPlannerBaselineThemeIds = (
+  profile: PreferenceProfile,
+  cityContext: PlannerCityContext | null,
+) => {
+  if (!cityContext) {
+    return profile.selectedThemeIds
+  }
+
+  const cityThemeIds = Array.from(
+    new Set(
+      cityContext.themes
+        .map((theme) => cityThemeToThemeId[theme])
+        .filter((themeId): themeId is ThemeId => Boolean(themeId)),
+    ),
+  )
+
+  return cityThemeIds.length > 0 ? cityThemeIds.slice(0, 3) : profile.selectedThemeIds
+}
+
+const hasCityFestivalContent = (cityContext: PlannerCityContext | null) =>
+  Boolean(cityContext?.themes.includes('축제'))
+
 const detectExcludedThemes = (query: string) =>
   themeDefinitions
     .filter((theme) => {
@@ -913,12 +944,15 @@ const createPlanDraft = (
 const createInitialChatMessages = (
   basisLabel: string,
   cityContext: PlannerCityContext | null = null,
+  shouldAskFestival = true,
 ): ChatMessage[] => [
   {
     id: createMessageId('assistant', 0),
     role: 'assistant',
     content: cityContext
-      ? `${cityContext.cityName}(${cityContext.countryLabel} ${cityContext.region})를 기준으로 시작할게요. 먼저 축제를 일정 테마에 포함할까요?`
+      ? shouldAskFestival
+        ? `${cityContext.cityName}(${cityContext.countryLabel} ${cityContext.region})를 기준으로 시작할게요. 먼저 축제를 일정 테마에 포함할까요?`
+        : `${cityContext.cityName}(${cityContext.countryLabel} ${cityContext.region})를 기준으로 시작할게요. 이 소도시 안에서 구성할 여행 기간을 먼저 골라주세요.`
       : `${basisLabel} 기준 테마로 시작할게요. 먼저 축제를 일정 테마에 포함할까요?`,
   },
   {
@@ -1083,7 +1117,8 @@ function App() {
   const selectedThemeHashtags = getThemeHashtags(selectedPreferenceProfile)
   const recommendationBasisHashtags = getRecommendationBasisHashtags(selectedPreferenceProfile)
   const currentHeroTheme = heroThemes[currentHeroThemeIndex]
-  const shouldShowFestivalPrompt = festivalThemeChoice === 'undecided'
+  const shouldAskFestivalTheme = !plannerCityContext || hasCityFestivalContent(plannerCityContext)
+  const shouldShowFestivalPrompt = shouldAskFestivalTheme && festivalThemeChoice === 'undecided'
   const shouldShowDurationPrompt = !shouldShowFestivalPrompt && selectedDurationLabel === null
   const hasGuidedPlannerChoices = festivalThemeChoice !== 'undecided' && selectedDurationLabel !== null
   const isPlannerReady = hasGuidedPlannerChoices && plannerConditionExtraction !== null
@@ -1251,16 +1286,18 @@ function App() {
   ) => {
     const nextPlannerContextText = getPlannerCitySeedText(cityContext)
     const nextPlannerLabel = getPreferenceProfileLabel(profile)
+    const shouldAskFestival = !cityContext || hasCityFestivalContent(cityContext)
+    const nextFestivalThemeChoice: FestivalThemeChoice = shouldAskFestival ? 'undecided' : 'exclude'
 
     setChatInput('')
-    setFestivalThemeChoice('undecided')
+    setFestivalThemeChoice(nextFestivalThemeChoice)
     setSelectedDurationLabel(null)
     setPlannerPreferenceProfile(profile)
     setPlannerConditionExtraction(null)
     setPlannerCityContext(cityContext)
     setPlannerContextText(nextPlannerContextText)
-    setChatMessages(createInitialChatMessages(nextPlannerLabel, cityContext))
-    setPlanDraft(createPlanDraft(preference, nextPlannerContextText, 'undecided', cityContext))
+    setChatMessages(createInitialChatMessages(nextPlannerLabel, cityContext, shouldAskFestival))
+    setPlanDraft(createPlanDraft(preference, nextPlannerContextText, nextFestivalThemeChoice, cityContext))
     setSavedPlanNotice(null)
   }
 
@@ -1589,6 +1626,15 @@ function App() {
         festivalThemeChoice,
         plannerCityContext,
       )
+      const nextExtraction = plannerCityContext
+        ? createMockConditionExtraction(
+            '',
+            getPlannerBaselineThemeIds(plannerPreferenceProfile, plannerCityContext),
+          )
+        : null
+      const assistantContent = nextExtraction
+        ? createAssistantReply(plannerBasisLabel, nextDraft, nextExtraction, plannerCityContext)
+        : `${nextSelectedDurationLabel}로 잡아둘게요. 이제 동행, 관심사, 걷는 정도를 한 문장으로 알려주세요.`
 
       setChatMessages((currentMessages) => [
         ...currentMessages,
@@ -1600,10 +1646,11 @@ function App() {
         {
           id: createMessageId('assistant', currentMessages.length + 1),
           role: 'assistant',
-          content: `${nextSelectedDurationLabel}로 잡아둘게요. 이제 동행, 관심사, 걷는 정도를 한 문장으로 알려주세요.`,
+          content: assistantContent,
         },
       ])
       setSelectedDurationLabel(nextSelectedDurationLabel)
+      setPlannerConditionExtraction(nextExtraction)
       setPlanDraft(nextDraft)
       setSavedPlanNotice(null)
       setChatInput('')
@@ -1614,7 +1661,7 @@ function App() {
     const nextPlannerContextText = `${plannerContextText} ${trimmedMessage}`.trim()
     const nextExtraction = createMockConditionExtraction(
       trimmedMessage,
-      plannerPreferenceProfile.selectedThemeIds,
+      getPlannerBaselineThemeIds(plannerPreferenceProfile, plannerCityContext),
     )
     const nextDraft = createPlanDraft(
       plannerPreference,
@@ -1671,7 +1718,9 @@ function App() {
           </h2>
           <p className="mt-4 break-keep text-sm leading-6 text-[#33271E]">
             {plannerCityContext
-              ? `${plannerCityContext.cityName} 상세 정보를 기준으로 축제 포함 여부와 여행 기간을 먼저 정리합니다.`
+              ? shouldAskFestivalTheme
+                ? `${plannerCityContext.cityName} 상세 정보를 기준으로 축제 포함 여부와 여행 기간을 먼저 정리합니다.`
+                : `${plannerCityContext.cityName} 상세 정보를 기준으로 여행 기간만 먼저 정리합니다.`
               : `${plannerPreferenceLabel} 기준 테마로 축제 포함 여부와 여행 기간을 먼저 정리합니다.`}
           </p>
         </div>
@@ -1719,7 +1768,9 @@ function App() {
           <p className="text-[12px] font-black uppercase tracking-[0.12em] text-[#A92B10]">AI Tip</p>
           <p className="mt-3 break-keep text-sm font-semibold leading-6 text-[#33271E]">
             {plannerCityContext
-              ? `${plannerCityContext.cityName}의 첫 동선 단서를 유지한 채 기간과 축제 조건만 좁힙니다.`
+              ? shouldAskFestivalTheme
+                ? `${plannerCityContext.cityName}의 첫 동선 단서를 유지한 채 기간과 축제 조건만 좁힙니다.`
+                : `${plannerCityContext.cityName}의 첫 동선 단서를 유지한 채 여행 기간만 좁힙니다.`
               : '취향, 기간, 축제 포함 여부를 먼저 정리하면 일정 초안의 이동 강도와 추천 이유가 더 분명해집니다.'}
           </p>
         </div>
@@ -1906,8 +1957,12 @@ function App() {
             disabled={!hasGuidedPlannerChoices}
             placeholder={
               hasGuidedPlannerChoices
-                ? '동행, 관심사, 걷는 정도를 추가로 입력해 주세요'
-                : '축제 포함 여부와 여행 기간을 먼저 선택해 주세요'
+                ? isPlannerReady
+                  ? '추가로 원하는 조건을 입력해 주세요'
+                  : '동행, 관심사, 걷는 정도를 추가로 입력해 주세요'
+                : shouldAskFestivalTheme
+                  ? '축제 포함 여부와 여행 기간을 먼저 선택해 주세요'
+                  : '여행 기간을 먼저 선택해 주세요'
             }
             className="min-h-11 min-w-0 rounded-full border-0 bg-transparent px-4 py-2 break-keep text-sm leading-5 text-[#33271E] outline-none placeholder:text-[#8A7467] disabled:cursor-not-allowed disabled:opacity-65 focus:bg-[#FFF8F6] max-sm:text-[13px]"
           />

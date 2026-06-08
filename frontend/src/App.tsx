@@ -1060,14 +1060,14 @@ const getPreferenceProfileLabel = (profile: PreferenceProfile) =>
 
 const getPlannerStepClassName = (status: PlannerStepStatus) => {
   if (status === 'completed') {
-    return 'border-[#A92B10] bg-[#F36B12] text-[#33271E]'
+    return 'border-transparent bg-[#F36B12] text-[#33271E] shadow-[0_12px_26px_-22px_rgba(51,39,30,0.5)]'
   }
 
   if (status === 'active') {
-    return 'border-[#F36B12] bg-[#FFF0E4] text-[#33271E]'
+    return 'border-transparent bg-[#FFF0E4] text-[#33271E]'
   }
 
-  return 'border-[#E9D2C2] bg-[#fffffa] text-[#897163]'
+  return 'border-transparent bg-[#fffffa]/78 text-[#897163]'
 }
 
 function App() {
@@ -1738,7 +1738,7 @@ function App() {
     <section
       aria-label="Planner State"
       data-testid="chat-planner-summary"
-      className="min-w-0 rounded-[18px] border border-[#F3B489] bg-[#fffffa] p-6 shadow-[0_18px_42px_-28px_rgba(51,39,30,0.22)]"
+      className="min-w-0 rounded-[18px] border border-transparent bg-[#fffffa]/92 p-6 shadow-[0_18px_42px_-28px_rgba(51,39,30,0.22)]"
     >
       <div className="grid grid-cols-[minmax(220px,0.8fr)_minmax(0,1.45fr)_minmax(220px,0.7fr)] items-start gap-5 max-xl:grid-cols-1">
         <div>
@@ -1766,7 +1766,7 @@ function App() {
             >
               <div className="flex items-start gap-3">
                 <span
-                  className="flex size-8 shrink-0 items-center justify-center rounded-full border border-current bg-white/50 text-[12px] font-black"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/55 text-[12px] font-black"
                   aria-hidden="true"
                 >
                   {index + 1}
@@ -1774,7 +1774,7 @@ function App() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="break-keep text-sm font-black leading-5">{step.label}</h3>
-                    <span className="rounded-[5px] border border-current bg-white/45 px-2 py-0.5 text-[11px] font-black leading-4">
+                    <span className="rounded-[5px] bg-white/45 px-2 py-0.5 text-[11px] font-black leading-4">
                       {step.statusLabel}
                     </span>
                   </div>
@@ -1785,7 +1785,7 @@ function App() {
                     {step.chips.slice(0, 2).map((chip) => (
                       <span
                         key={`${step.id}-${chip}`}
-                        className="inline-flex min-h-7 items-center rounded-[5px] border border-current bg-white/50 px-2.5 py-0.5 text-[11px] font-black leading-4"
+                        className="inline-flex min-h-7 items-center rounded-[5px] bg-white/52 px-2.5 py-0.5 text-[11px] font-black leading-4"
                       >
                         {chip}
                       </span>
@@ -1797,7 +1797,7 @@ function App() {
           ))}
         </ol>
 
-        <div className="rounded-[14px] border border-[#F3B489] bg-[#FFF8F6] p-5">
+        <div className="rounded-[14px] border border-transparent bg-[#FFF8F6] p-5 shadow-[0_14px_30px_-28px_rgba(51,39,30,0.28)]">
           <p className="text-[12px] font-black uppercase tracking-[0.12em] text-[#A92B10]">AI Tip</p>
           <p className="mt-3 break-keep text-sm font-semibold leading-6 text-[#33271E]">
             {plannerCityContext
@@ -1822,7 +1822,7 @@ function App() {
   ) => (
     <div className="flex max-w-[720px] items-start gap-3">
       <span
-        className="mt-6 flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#F3B489] bg-[#FFF0E4]"
+        className="mt-6 flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#FFF0E4] shadow-[0_8px_20px_-16px_rgba(51,39,30,0.5)]"
         aria-hidden="true"
       >
         <img src={foxFaceImage} alt="" className="h-full w-full object-cover" />
@@ -1831,7 +1831,7 @@ function App() {
         <p className="mb-1 text-[11px] font-black uppercase tracking-[0.12em] text-[#315B3E]">
           Lovv AI
         </p>
-        <div className="inline-flex max-w-full rounded-[18px] border border-[#F3B489] bg-white px-5 py-4 text-sm font-bold leading-6 text-[#33271E] shadow-[0_12px_24px_-20px_rgba(51,39,30,0.28)] max-sm:text-[13px] max-sm:leading-6">
+        <div className="inline-flex max-w-full rounded-[18px] border border-transparent bg-white px-5 py-4 text-sm font-bold leading-6 text-[#33271E] shadow-[0_12px_24px_-20px_rgba(51,39,30,0.28)] max-sm:text-[13px] max-sm:leading-6">
           {promptText}
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -1844,7 +1844,7 @@ function App() {
               className={`inline-flex min-h-[38px] items-center rounded-full border px-4 py-1 text-[12px] font-bold leading-4 text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
                 option.selected
                   ? 'border-[#A92B10] bg-[#F36B12]'
-                  : 'border-[#F3B489] bg-[#FFF8F6]'
+                  : 'border-transparent bg-[#FFF8F6]'
               }`}
             >
               {option.label}
@@ -1859,9 +1859,9 @@ function App() {
     <section
       aria-labelledby="chat-title"
       data-testid="chat-conversation-panel"
-      className="flex min-h-[660px] min-w-0 flex-col overflow-hidden rounded-[18px] border border-[#F3B489] bg-[#fffffa] shadow-[0_18px_42px_-28px_rgba(51,39,30,0.22)]"
+      className="flex min-h-[660px] min-w-0 flex-col overflow-hidden rounded-[18px] border border-transparent bg-[#fffffa] shadow-[0_18px_42px_-28px_rgba(51,39,30,0.22)]"
     >
-      <header className="border-b border-[#F3B489] bg-[#FFF8F6] px-6 py-5">
+      <header className="bg-[#FFF8F6] px-6 py-5">
         <div className="flex items-start justify-between gap-5">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#A92B10]">
@@ -1872,7 +1872,7 @@ function App() {
             </h3>
           </div>
           <span
-            className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#A92B10] bg-[#FFF0E4]"
+            className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#FFF0E4] shadow-[0_8px_20px_-16px_rgba(51,39,30,0.55)]"
             aria-hidden="true"
           >
             <img src={foxFaceImage} alt="" className="h-full w-full object-cover" />
@@ -1890,7 +1890,7 @@ function App() {
             >
               {isAssistant ? (
                 <span
-                  className="mt-6 flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#F3B489] bg-[#FFF0E4]"
+                  className="mt-6 flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#FFF0E4] shadow-[0_8px_20px_-16px_rgba(51,39,30,0.5)]"
                   aria-hidden="true"
                 >
                   <img src={foxFaceImage} alt="" className="h-full w-full object-cover" />
@@ -1907,8 +1907,8 @@ function App() {
                 <div
                   className={`break-keep rounded-[18px] border px-5 py-4 text-sm leading-6 text-[#33271E] shadow-[0_12px_24px_-20px_rgba(51,39,30,0.25)] max-sm:text-[13px] max-sm:leading-6 ${
                     isAssistant
-                      ? 'border-[#F3B489] bg-white'
-                      : 'ml-auto border-[#A92B10] bg-[#F36B12] font-semibold'
+                      ? 'border-transparent bg-white'
+                      : 'ml-auto border-transparent bg-[#F36B12] font-semibold'
                   }`}
                 >
                   {message.content}
@@ -1942,21 +1942,21 @@ function App() {
           : null}
 
         {isPlannerReady ? (
-          <div aria-label="조건 해석 결과" className="rounded-[18px] border border-[#F3B489] bg-[#FFF8F6] p-5">
+          <div aria-label="조건 해석 결과" className="rounded-[18px] border border-transparent bg-[#FFF8F6] p-5">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-[5px] border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-bold text-[#33271E]">
+              <span className="rounded-[5px] bg-[#fffffa] px-3 py-1 text-[12px] font-bold text-[#33271E]">
                 일정 초안
               </span>
-              <span className="rounded-[5px] border border-[#F3B489] bg-[#FFF0E4] px-3 py-1 text-[12px] font-bold text-[#33271E]">
+              <span className="rounded-[5px] bg-[#FFF0E4] px-3 py-1 text-[12px] font-bold text-[#33271E]">
                 {planDraft.durationLabel}
               </span>
-              <span className="rounded-[5px] border border-[#F3B489] bg-[#FFF0E4] px-3 py-1 text-[12px] font-bold text-[#33271E]">
+              <span className="rounded-[5px] bg-[#FFF0E4] px-3 py-1 text-[12px] font-bold text-[#33271E]">
                 {planDraft.intensityLabel} 반영
               </span>
               {plannerConditionExtraction?.activeRequiredThemes.map((themeId) => (
                 <span
                   key={`active-theme-${themeId}`}
-                  className="rounded-[5px] border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-bold text-[#33271E]"
+                  className="rounded-[5px] bg-[#fffffa] px-3 py-1 text-[12px] font-bold text-[#33271E]"
                 >
                   {getThemeDefinition(themeId).label}
                 </span>
@@ -1978,10 +1978,10 @@ function App() {
           </div>
         ) : null}
       </div>
-      <div className="border-t border-[#F3B489] bg-[#FFF8F6] p-5">
+      <div className="bg-[#FFF8F6] p-5">
         <form
           onSubmit={submitChatForm}
-          className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-full border border-[#F3B489] bg-[#fffffa] p-2 shadow-[0_16px_32px_-26px_rgba(51,39,30,0.35)] max-sm:grid-cols-1 max-sm:rounded-[22px]"
+          className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-full border border-[#F3B489]/70 bg-[#fffffa] p-2 shadow-[0_16px_32px_-26px_rgba(51,39,30,0.35)] max-sm:grid-cols-1 max-sm:rounded-[22px]"
         >
           <input
             aria-label="여행 조건 입력"
@@ -2017,7 +2017,7 @@ function App() {
       return (
         <section
           aria-label="AI 일정 결과"
-          className="flex min-h-[660px] flex-col justify-between rounded-[18px] border border-[#F3B489] bg-[#fffffa] p-6 shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]"
+          className="flex min-h-[660px] flex-col justify-between rounded-[18px] border border-transparent bg-[#fffffa] p-6 shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]"
         >
           <div>
             <p className="text-sm font-semibold text-[#33271E]">맞춤 일정 결과</p>
@@ -2030,7 +2030,7 @@ function App() {
                 : '여행 기간을 고른 뒤 해당 소도시의 동선 단서를 기준으로 일정 초안이 여기에 표시됩니다.'}
             </p>
           </div>
-          <div className="mt-8 rounded-[18px] border border-[#F3B489] bg-[#FFF0E4] p-5">
+          <div className="mt-8 rounded-[18px] border border-transparent bg-[#FFF0E4] p-5">
             <p className="text-[12px] font-bold text-[#33271E]">다음 입력</p>
             <p className="mt-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
               {shouldShowFestivalPrompt
@@ -2047,9 +2047,9 @@ function App() {
     return (
       <section
         aria-labelledby="generated-plan-title"
-        className="min-h-[660px] overflow-hidden rounded-[18px] border border-[#F3B489] bg-[#fffffa] shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]"
+        className="min-h-[660px] overflow-hidden rounded-[18px] border border-transparent bg-[#fffffa] shadow-[0_12px_28px_-14px_rgba(33,46,33,0.14)]"
       >
-        <div className="border-b border-[#F3B489] bg-[#FFF0E4] px-6 py-6">
+        <div className="bg-[#FFF0E4] px-6 py-6">
           <div className="grid grid-cols-[1fr_auto] items-start gap-5 max-md:grid-cols-1">
             <div>
               <p className="text-sm font-semibold text-[#33271E]">맞춤 일정 결과</p>
@@ -2079,7 +2079,7 @@ function App() {
             ].filter((item): item is string => Boolean(item)).map((item) => (
               <span
                 key={item}
-                className="inline-flex min-h-11 min-w-0 items-center rounded-[14px] border border-[#F3B489] bg-[#fffffa] px-4 py-2 break-keep text-sm font-bold leading-5 text-[#33271E] max-sm:text-[13px]"
+                className="inline-flex min-h-11 min-w-0 items-center rounded-[14px] bg-[#fffffa] px-4 py-2 break-keep text-sm font-bold leading-5 text-[#33271E] max-sm:text-[13px]"
               >
                 {item}
               </span>
@@ -2099,7 +2099,7 @@ function App() {
                 {planDraft.summary}
               </p>
             </div>
-            <span className="rounded-full border border-[#F3B489] bg-[#FFF0E4] px-4 py-2 text-[12px] font-bold text-[#33271E]">
+            <span className="rounded-full bg-[#FFF0E4] px-4 py-2 text-[12px] font-bold text-[#33271E]">
               코스 3개
             </span>
           </div>
@@ -2108,17 +2108,17 @@ function App() {
             {planDraft.stops.map((item, index) => (
               <article key={item.time} className="grid grid-cols-[38px_minmax(0,1fr)] gap-4">
                 <div className="flex flex-col items-center">
-                  <span className="flex size-9 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] text-sm font-black text-[#33271E]">
+                    <span className="flex size-9 items-center justify-center rounded-full bg-[#F36B12] text-sm font-black text-[#33271E] shadow-[0_8px_18px_-14px_rgba(51,39,30,0.5)]">
                     {index + 1}
                   </span>
-                  {index < 2 ? <span className="mt-2 h-full w-px bg-[#F3B489]" /> : null}
+                  {index < 2 ? <span className="mt-2 h-full w-px bg-[#F3B489]/45" /> : null}
                 </div>
-                <div className="min-w-0 rounded-[18px] border border-[#F3B489] bg-[#FFF0E4] p-5">
+                <div className="min-w-0 rounded-[18px] border border-transparent bg-[#FFF0E4] p-5">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-bold leading-4 text-[#33271E]">
                       {item.time}
                     </span>
-                    <span className="rounded-full border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-semibold leading-4 text-[#33271E]">
+                    <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-semibold leading-4 text-[#33271E]">
                       다음 장소까지 {item.move}
                     </span>
                   </div>
@@ -2128,7 +2128,7 @@ function App() {
                   <p className="mt-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
                     {item.body}
                   </p>
-                  <div className="mt-4 rounded-[14px] border border-[#F3B489] bg-[#fffffa] px-4 py-3">
+                  <div className="mt-4 rounded-[14px] border border-transparent bg-[#fffffa] px-4 py-3">
                     <p className="text-[12px] font-bold text-[#33271E]">추천 이유</p>
                     <p className="mt-1 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
                       {item.reason}
@@ -2170,7 +2170,7 @@ function App() {
 
           <section
             aria-labelledby="save-plan-cta-title"
-            className="mt-6 rounded-[20px] border border-[#F3B489] bg-[#FFF0E4] p-5"
+            className="mt-6 rounded-[20px] border border-transparent bg-[#FFF0E4] p-5"
           >
             <p className="text-center text-2xl font-black leading-8 text-[#F36B12]" aria-hidden="true">
               ♥
@@ -2257,9 +2257,9 @@ function App() {
         aria-labelledby="city-map-discovery-title"
         className="mx-auto max-w-[1440px] px-[55px] pb-14 max-sm:px-5"
       >
-        <div className="rounded-[24px] border border-[#F3B489] bg-white/82 shadow-[0_18px_48px_-34px_rgba(51,39,30,0.28)]">
+        <div className="rounded-[24px] border border-transparent bg-white/84 shadow-[0_18px_48px_-34px_rgba(51,39,30,0.28)]">
           <div className="grid grid-cols-[minmax(0,1fr)_minmax(360px,0.38fr)] gap-0 max-xl:grid-cols-1">
-            <div className="min-w-0 border-r border-[#F3B489] p-8 max-xl:border-r-0 max-xl:border-b max-sm:p-5">
+            <div className="min-w-0 p-8 max-sm:p-5">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-6 max-lg:grid-cols-1">
                 <div className="min-w-0">
                   <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#F36B12]">
@@ -2279,7 +2279,7 @@ function App() {
                 <div
                   role="group"
                   aria-label="국가 선택"
-                  className="inline-grid min-w-[236px] grid-cols-2 rounded-[8px] border border-[#F3B489] bg-[#FFF8F6] p-1 max-sm:min-w-0"
+                  className="inline-grid min-w-[236px] grid-cols-2 rounded-[8px] border border-transparent bg-[#FFF8F6] p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.72)] max-sm:min-w-0"
                 >
                   {smallCityCountryOptions.map((option) => {
                     const isSelected = option.country === cityMapCountry
@@ -2292,7 +2292,7 @@ function App() {
                         onClick={() => selectCityMapCountry(option.country)}
                         className={`min-h-11 rounded-[5px] px-4 text-sm font-black text-[#33271E] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
                           isSelected
-                            ? 'border border-[#A92B10] bg-[#F36B12]'
+                            ? 'border border-transparent bg-[#F36B12]'
                             : 'border border-transparent bg-transparent hover:bg-[#FFE0CA]'
                         }`}
                       >
@@ -2318,7 +2318,7 @@ function App() {
                   type="button"
                   onClick={clearSmallCityFilters}
                   disabled={!hasActiveFilters || !canUseSmallCityCatalog}
-                  className="inline-flex min-h-12 items-center justify-center rounded-[8px] border border-[#F3B489] bg-[#fffffa] px-5 text-sm font-black text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] disabled:cursor-default disabled:opacity-45 disabled:hover:border-[#F3B489] disabled:hover:bg-[#fffffa] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                  className="inline-flex min-h-12 items-center justify-center rounded-[8px] border border-transparent bg-[#fffffa] px-5 text-sm font-black text-[#33271E] shadow-[0_12px_24px_-22px_rgba(51,39,30,0.28)] transition hover:bg-[#FFE0CA] disabled:cursor-default disabled:opacity-45 disabled:hover:bg-[#fffffa] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
                 >
                   필터 초기화
                 </button>
@@ -2338,7 +2338,7 @@ function App() {
                       className={`inline-flex min-h-9 items-center rounded-[5px] border px-3 py-1 text-[12px] font-black leading-4 text-[#33271E] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
                         isSelected
                           ? 'border-[#A92B10] bg-[#F36B12]'
-                          : 'border-[#F3B489] bg-[#FFF8F6] hover:border-[#F36B12] hover:bg-[#FFE0CA] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[#F3B489] disabled:hover:bg-[#FFF8F6]'
+                          : 'border-transparent bg-[#FFF8F6] hover:bg-[#FFE0CA] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#FFF8F6]'
                       }`}
                     >
                       #{theme}
@@ -2354,14 +2354,14 @@ function App() {
                       {selectedCountryOption.label} {filteredSmallCities.length}곳 / 전체{' '}
                       {activeCountryTotalCount}곳
                     </p>
-                    <span className="rounded-[5px] border border-[#F3B489] bg-[#FFF8F6] px-3 py-1 text-[12px] font-black text-[#33271E]">
+                    <span className="rounded-[5px] bg-[#FFF8F6] px-3 py-1 text-[12px] font-black text-[#33271E]">
                       도시명 마커 {visibleSmallCityMapMarkers.length}개
                     </span>
                   </div>
 
                   <div
                     data-testid="city-map-marker-layer"
-                    className="lovv-city-map-surface relative min-h-[500px] overflow-hidden rounded-[18px] border border-[#F3B489] bg-[#FFF8F6] max-sm:min-h-[380px]"
+                    className="lovv-city-map-surface relative min-h-[500px] overflow-hidden rounded-[18px] border border-transparent bg-[#FFF8F6] shadow-[0_14px_34px_-30px_rgba(51,39,30,0.32)] max-sm:min-h-[380px]"
                     role="region"
                     aria-label={`${selectedCountryOption.label} 소도시 지도. 현재 조건에 맞는 도시명 마커 ${visibleSmallCityMapMarkers.length}개.`}
                   >
@@ -2372,12 +2372,12 @@ function App() {
                       selectedMarkerCityId={selectedSmallCity?.id ?? null}
                       onSelectMarker={selectSmallCityMapMarker}
                     />
-                    <div className="absolute left-5 top-5 z-10 rounded-[5px] border border-[#F3B489] bg-white/88 px-3 py-2 text-[12px] font-black text-[#33271E] backdrop-blur">
+                    <div className="absolute left-5 top-5 z-10 rounded-[5px] bg-white/88 px-3 py-2 text-[12px] font-black text-[#33271E] shadow-[0_12px_24px_-22px_rgba(51,39,30,0.35)] backdrop-blur">
                       {selectedCountryOption.description}
                     </div>
                     {cityCatalogStatusMessage ? (
                       <div className="absolute inset-0 z-10 grid place-items-center px-6 text-center">
-                        <div className="rounded-[12px] border border-[#F3B489] bg-white/90 px-5 py-4 shadow-[0_12px_28px_-20px_rgba(51,39,30,0.28)]">
+                        <div className="rounded-[12px] border border-transparent bg-white/90 px-5 py-4 shadow-[0_12px_28px_-20px_rgba(51,39,30,0.28)]">
                           <p className="break-keep text-sm font-black text-[#33271E]">
                             {cityCatalogStatusMessage.title}
                           </p>
@@ -2388,7 +2388,7 @@ function App() {
                       </div>
                     ) : filteredSmallCities.length === 0 ? (
                       <div className="absolute inset-0 z-10 grid place-items-center px-6 text-center">
-                        <div className="rounded-[12px] border border-[#F3B489] bg-white/90 px-5 py-4 shadow-[0_12px_28px_-20px_rgba(51,39,30,0.28)]">
+                        <div className="rounded-[12px] border border-transparent bg-white/90 px-5 py-4 shadow-[0_12px_28px_-20px_rgba(51,39,30,0.28)]">
                           <p className="break-keep text-sm font-black text-[#33271E]">
                             조건에 맞는 소도시가 없습니다.
                           </p>
@@ -2403,7 +2403,7 @@ function App() {
 
               </div>
 
-              <div className="mt-5 rounded-[18px] border border-[#F3B489] bg-[#FFF8F6] p-5">
+              <div className="mt-5 rounded-[18px] border border-transparent bg-[#FFF8F6] p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p
@@ -2416,7 +2416,7 @@ function App() {
                       목록에서 고른 도시는 옆의 상세 패널에 바로 반영됩니다.
                     </p>
                   </div>
-                  <span className="rounded-[5px] border border-[#F3B489] bg-white px-3 py-1 text-[12px] font-black text-[#33271E]">
+                  <span className="rounded-[5px] bg-white px-3 py-1 text-[12px] font-black text-[#33271E]">
                     {filteredSmallCities.length} / {activeCountryTotalCount}
                   </span>
                 </div>
@@ -2440,7 +2440,7 @@ function App() {
                               className={`min-h-[74px] w-full rounded-[8px] border px-4 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
                                 isSelected
                                   ? 'border-[#A92B10] bg-[#FFE0CA]'
-                                  : 'border-[#F3B489] bg-white hover:border-[#F36B12] hover:bg-[#fffffa]'
+                                  : 'border-transparent bg-white hover:bg-[#fffffa] hover:shadow-[0_10px_22px_-20px_rgba(51,39,30,0.38)]'
                               }`}
                             >
                               <span className="block break-keep text-sm font-black leading-5 text-[#33271E]">
@@ -2461,7 +2461,7 @@ function App() {
                       data-testid="city-map-list-detail-panel"
                       aria-labelledby="city-map-list-detail-title"
                       aria-live="polite"
-                      className="min-w-0 rounded-[12px] border border-[#F3B489] bg-white p-4 shadow-[0_14px_32px_-28px_rgba(51,39,30,0.35)]"
+                      className="min-w-0 rounded-[12px] border border-transparent bg-white p-4 shadow-[0_14px_32px_-28px_rgba(51,39,30,0.35)]"
                     >
                       {selectedSmallCity ? (
                         <>
@@ -2482,7 +2482,7 @@ function App() {
                             {selectedSmallCityVisibleThemes.map((theme) => (
                               <span
                                 key={`list-${selectedSmallCity.id}-${theme}`}
-                                className="rounded-[5px] border border-[#F3B489] bg-[#FFF8F6] px-2.5 py-1 text-[11px] font-black text-[#33271E]"
+                                className="rounded-[5px] bg-[#FFF8F6] px-2.5 py-1 text-[11px] font-black text-[#33271E]"
                               >
                                 #{theme}
                               </span>
@@ -2491,7 +2491,7 @@ function App() {
                           <p className="mt-4 break-keep text-[13px] font-semibold leading-6 text-[#33271E]">
                             {selectedSmallCity.summary}
                           </p>
-                          <div className="mt-4 rounded-[8px] border border-[#F3B489] bg-[#FFF8F6] p-3">
+                          <div className="mt-4 rounded-[8px] border border-transparent bg-[#FFF8F6] p-3">
                             <p className="text-[11px] font-black uppercase tracking-[0.12em] text-[#A92B10]">
                               First route note
                             </p>
@@ -2499,7 +2499,7 @@ function App() {
                               {selectedSmallCity.routeSeed.slice(0, 3).join(' · ')}
                             </p>
                           </div>
-                          <div className="mt-3 rounded-[8px] border border-[#F3B489] bg-[#FFF8F6] p-3">
+                          <div className="mt-3 rounded-[8px] border border-transparent bg-[#FFF8F6] p-3">
                             <p className="text-[11px] font-black uppercase tracking-[0.12em] text-[#A92B10]">
                               추천 근거
                             </p>
@@ -2530,7 +2530,7 @@ function App() {
                     </div>
                   </div>
                 ) : (
-                  <p className="mt-4 break-keep rounded-[8px] border border-[#F3B489] bg-white px-4 py-4 text-sm font-bold text-[#33271E]">
+                  <p className="mt-4 break-keep rounded-[8px] border border-transparent bg-white px-4 py-4 text-sm font-bold text-[#33271E]">
                     표시할 결과가 없습니다.
                   </p>
                 )}
@@ -2569,7 +2569,7 @@ function App() {
                       {selectedSmallCityVisibleThemes.map((theme) => (
                         <span
                           key={`${selectedSmallCity.id}-${theme}`}
-                          className="rounded-[5px] border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-black text-[#33271E]"
+                          className="rounded-[5px] bg-[#fffffa] px-3 py-1 text-[12px] font-black text-[#33271E]"
                         >
                           #{theme}
                         </span>
@@ -2581,7 +2581,7 @@ function App() {
                     <p className="mt-3 break-keep text-sm leading-6 text-[#33271E]">
                       {selectedSmallCity.detail}
                     </p>
-                    <div className="mt-5 rounded-[12px] border border-[#F3B489] bg-[#fffffa] p-4">
+                    <div className="mt-5 rounded-[12px] border border-transparent bg-[#fffffa] p-4">
                       <p className="text-[12px] font-black uppercase tracking-[0.14em] text-[#A92B10]">
                         추천 근거
                       </p>
@@ -2591,7 +2591,7 @@ function App() {
                           : `${selectedCityFallbackThemeText}가 뚜렷해서 새로운 후보로 비교하기 좋습니다.`}
                       </p>
                     </div>
-                    <div className="mt-5 rounded-[12px] border border-[#F3B489] bg-[#fffffa] p-4">
+                    <div className="mt-5 rounded-[12px] border border-transparent bg-[#fffffa] p-4">
                       <p className="text-[12px] font-black uppercase tracking-[0.14em] text-[#A92B10]">
                         First route note
                       </p>
@@ -2605,7 +2605,7 @@ function App() {
                         {selectedSmallCity.highlights.slice(0, 4).map((highlight) => (
                           <li
                             key={`${selectedSmallCity.id}-${highlight}`}
-                            className="break-keep rounded-[5px] border border-[#F3B489] bg-white px-3 py-2 text-[12px] font-bold leading-5 text-[#33271E]"
+                            className="break-keep rounded-[5px] bg-white px-3 py-2 text-[12px] font-bold leading-5 text-[#33271E]"
                           >
                             {highlight}
                           </li>
@@ -2675,7 +2675,7 @@ function App() {
           ← 추천 카드로 돌아가기
         </button>
 
-        <div className="mt-5 overflow-hidden rounded-[24px] border border-[#F3B489] bg-[#fffffa] shadow-[0_18px_48px_-32px_rgba(51,39,30,0.35)]">
+        <div className="mt-5 overflow-hidden rounded-[24px] border border-transparent bg-[#fffffa] shadow-[0_18px_48px_-32px_rgba(51,39,30,0.35)]">
           <div className="grid min-h-[460px] grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] max-lg:grid-cols-1">
             <div className="relative min-h-[460px] overflow-hidden bg-[#33271E] max-sm:min-h-[320px]">
               <img
@@ -2689,10 +2689,10 @@ function App() {
               <div className="absolute inset-0 bg-gradient-to-t from-[#1F1A17]/86 via-[#1F1A17]/18 to-transparent" />
               <div className="relative z-10 flex h-full min-h-[inherit] flex-col justify-between p-8 text-white max-sm:p-5">
                 <div className="flex flex-wrap gap-2">
-                  <span className="rounded-[5px] border border-white/70 bg-white/90 px-3 py-1 text-[12px] font-black text-[#33271E]">
+                  <span className="rounded-[5px] bg-white/90 px-3 py-1 text-[12px] font-black text-[#33271E]">
                     {recommendation.badge}
                   </span>
-                  <span className="rounded-[5px] border border-white/50 bg-white/18 px-3 py-1 text-[12px] font-bold text-white backdrop-blur">
+                  <span className="rounded-[5px] bg-white/18 px-3 py-1 text-[12px] font-bold text-white backdrop-blur">
                     {preference.cityPair}
                   </span>
                 </div>
@@ -2730,7 +2730,7 @@ function App() {
                 {detailFacts.map((fact) => (
                   <article
                     key={fact.label}
-                    className="rounded-[8px] border border-[#F3B489] bg-[#FFF0E4] p-5"
+                    className="rounded-[8px] border border-transparent bg-[#FFF0E4] p-5"
                   >
                     <p className="text-[12px] font-black uppercase tracking-[0.14em] text-[#A92B10]">
                       {fact.label}
@@ -2772,7 +2772,7 @@ function App() {
     if (!isPlannerReady) {
       return (
         <section className="mx-auto min-h-dvh max-w-[1120px] px-16 pb-16 pt-28 max-lg:px-8 max-sm:px-5">
-          <div className="rounded-[22px] border border-[#F3B489] bg-[#fffffa] p-8 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.28)]">
+          <div className="rounded-[22px] border border-transparent bg-[#fffffa] p-8 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.28)]">
             <p className="text-sm font-black uppercase tracking-[0.18em] text-[#F36B12]">
               Plan detail
             </p>
@@ -2804,9 +2804,9 @@ function App() {
         <div
           role="region"
           aria-labelledby="plan-detail-title"
-          className="overflow-hidden rounded-[24px] border border-[#F3B489] bg-[#fffffa] shadow-[0_18px_48px_-32px_rgba(51,39,30,0.35)]"
+          className="overflow-hidden rounded-[24px] border border-transparent bg-[#fffffa] shadow-[0_18px_48px_-32px_rgba(51,39,30,0.35)]"
         >
-          <div className="border-b border-[#F3B489] bg-[#FFF0E4] px-8 py-7 max-sm:px-5">
+          <div className="bg-[#FFF0E4] px-8 py-7 max-sm:px-5">
             <div className="grid grid-cols-[1fr_auto] items-start gap-5 max-md:grid-cols-1">
               <div className="min-w-0">
                 <p className="text-sm font-black uppercase tracking-[0.18em] text-[#F36B12]">
@@ -2834,7 +2834,7 @@ function App() {
                 ].filter((item): item is string => Boolean(item)).map((item) => (
                   <span
                     key={item}
-                    className="inline-flex min-h-9 items-center rounded-full border border-[#F3B489] bg-[#fffffa] px-4 py-1 text-[12px] font-black leading-4 text-[#33271E]"
+                    className="inline-flex min-h-9 items-center rounded-full bg-[#fffffa] px-4 py-1 text-[12px] font-black leading-4 text-[#33271E]"
                   >
                     {item}
                   </span>
@@ -2864,19 +2864,19 @@ function App() {
                     className="grid grid-cols-[42px_minmax(0,1fr)] gap-4"
                   >
                     <div className="flex flex-col items-center">
-                      <span className="flex size-10 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] text-sm font-black text-[#33271E]">
+                      <span className="flex size-10 items-center justify-center rounded-full bg-[#F36B12] text-sm font-black text-[#33271E] shadow-[0_8px_18px_-14px_rgba(51,39,30,0.5)]">
                         {index + 1}
                       </span>
                       {index < planDraft.stops.length - 1 ? (
-                        <span className="mt-2 h-full min-h-8 w-px bg-[#F3B489]" />
+                        <span className="mt-2 h-full min-h-8 w-px bg-[#F3B489]/45" />
                       ) : null}
                     </div>
-                    <div className="min-w-0 rounded-[20px] border border-[#F3B489] bg-[#FFF0E4] p-5">
+                    <div className="min-w-0 rounded-[20px] border border-transparent bg-[#FFF0E4] p-5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-black leading-4 text-[#33271E]">
+                        <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-black leading-4 text-[#33271E]">
                           {item.time}
                         </span>
-                        <span className="rounded-full border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-bold leading-4 text-[#33271E]">
+                        <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-bold leading-4 text-[#33271E]">
                           다음 장소까지 {item.move}
                         </span>
                       </div>
@@ -2886,7 +2886,7 @@ function App() {
                       <p className="mt-2 break-keep text-sm font-semibold leading-7 text-[#33271E]">
                         {item.body}
                       </p>
-                      <div className="mt-4 rounded-[16px] border border-[#F3B489] bg-[#fffffa] px-4 py-3">
+                      <div className="mt-4 rounded-[16px] border border-transparent bg-[#fffffa] px-4 py-3">
                         <p className="text-[12px] font-black text-[#A92B10]">추천 이유</p>
                         <p className="mt-1 break-keep text-sm font-semibold leading-6 text-[#33271E]">
                           {item.reason}
@@ -2898,7 +2898,7 @@ function App() {
               </div>
             </div>
 
-            <aside className="rounded-[20px] border border-[#F3B489] bg-[#FFF0E4] p-5">
+            <aside className="rounded-[20px] border border-transparent bg-[#FFF0E4] p-5">
               <p className="text-sm font-black text-[#33271E]">일정 액션</p>
               <p className="mt-2 break-keep text-sm font-semibold leading-6 text-[#33271E]/80">
                 마음에 드는 일정은 좋아요로 표시하거나 마이페이지에 저장해 다시 확인할 수 있습니다.
@@ -2953,7 +2953,7 @@ function App() {
 
   const renderFooter = () => (
     <footer className="mx-auto max-w-[1440px] px-16 pb-10 pt-4 max-lg:px-8 max-sm:px-5" role="contentinfo">
-      <div className="grid gap-6 rounded-[24px] border border-[#F3B489] bg-[#fffffa]/90 px-7 py-6 shadow-[0_16px_42px_-30px_rgba(51,39,30,0.32)] md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+      <div className="grid gap-6 rounded-[24px] border border-transparent bg-[#fffffa]/90 px-7 py-6 shadow-[0_16px_42px_-30px_rgba(51,39,30,0.32)] md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
             <p className="text-xl font-black leading-6 text-[#33271E]">Lovv</p>
@@ -3000,7 +3000,7 @@ function App() {
         >
           <div
             data-testid="auth-fixed-panel"
-            className="lovv-auth-left-panel flex min-h-dvh min-w-0 flex-col justify-between border-r border-[#A92B10]/70 px-16 py-16 max-lg:min-h-0 max-lg:border-b max-lg:border-r-0 max-lg:px-8 max-lg:py-10 max-sm:px-5"
+            className="lovv-auth-left-panel flex min-h-dvh min-w-0 flex-col justify-between border-r border-[#A92B10]/25 px-16 py-16 max-lg:min-h-0 max-lg:border-b max-lg:border-r-0 max-lg:px-8 max-lg:py-10 max-sm:px-5"
           >
             <div>
               <img src={logoImage} alt="Lovv" className="h-16 w-[116px] object-contain" />
@@ -3098,9 +3098,9 @@ function App() {
                 {authServiceCards.map((card) => (
                   <article
                     key={card.title}
-                    className="min-h-[150px] rounded-[20px] border border-[#F3B489] bg-[#FFE4D4] p-6 shadow-[0_18px_40px_-32px_rgba(51,39,30,0.32)]"
+                    className="min-h-[150px] rounded-[20px] border border-transparent bg-[#FFE4D4] p-6 shadow-[0_18px_40px_-32px_rgba(51,39,30,0.32)]"
                   >
-                    <div className="size-8 rounded-full border border-[#A92B10] bg-[#FFF8EE]" />
+                    <div className="size-8 rounded-full bg-[#FFF8EE] shadow-[0_8px_18px_-14px_rgba(51,39,30,0.45)]" />
                     <h3 className="mt-4 text-base font-black text-[#33271E]">{card.title}</h3>
                     <p className="mt-2 break-keep text-sm font-semibold leading-6 text-[#33271E]">
                       {card.body}
@@ -3192,12 +3192,12 @@ function App() {
                         aria-pressed={isSelected}
                         aria-disabled={isMaxed}
                         onClick={() => togglePreferenceTheme(theme.id)}
-                        className={`flex h-full min-w-0 flex-col overflow-hidden rounded-[22px] border p-5 text-left transition hover:-translate-y-0.5 hover:border-[#A92B10] hover:bg-[#FFF0E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] max-md:min-h-[212px] ${
+                        className={`flex h-full min-w-0 flex-col overflow-hidden rounded-[22px] border p-5 text-left transition hover:-translate-y-0.5 hover:bg-[#FFF0E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] max-md:min-h-[212px] ${
                           isSelected
                             ? 'border-[#A92B10] bg-[#FFF0E4] shadow-[0_18px_40px_-28px_rgba(51,39,30,0.55)]'
                             : isMaxed
-                              ? 'border-[#F3B489] bg-[#fffffa] opacity-55'
-                              : 'border-[#F3B489] bg-[#fffffa]'
+                              ? 'border-transparent bg-[#fffffa] opacity-55'
+                              : 'border-transparent bg-[#fffffa] shadow-[0_10px_28px_-26px_rgba(51,39,30,0.24)]'
                         }`}
                       >
                         <span className="flex shrink-0 items-center justify-between gap-3">
@@ -3205,7 +3205,7 @@ function App() {
                             NO. {String(index + 1).padStart(2, '0')}
                           </span>
                           <span
-                            className="inline-flex h-[30px] shrink-0 items-center rounded-full border border-[#F3B489] bg-[#FFF0E4] px-3 text-[12px] font-bold text-[#33271E]"
+                            className="inline-flex h-[30px] shrink-0 items-center rounded-full bg-[#FFF0E4] px-3 text-[12px] font-bold text-[#33271E]"
                           >
                             {theme.shortLabel}
                           </span>
@@ -3218,7 +3218,7 @@ function App() {
                             {theme.description}
                           </span>
                         </span>
-                        <span className="mt-auto block w-full shrink-0 line-clamp-2 break-keep border-t border-[#F3B489] pt-3 text-[12px] font-semibold leading-5 text-[#33271E]">
+                        <span className="mt-auto block w-full shrink-0 rounded-[12px] bg-[#FFF8F6] px-3 py-2 line-clamp-2 break-keep text-[12px] font-semibold leading-5 text-[#33271E]">
                           {samplePreference.routeHint}
                         </span>
                       </button>
@@ -3226,19 +3226,19 @@ function App() {
                   })}
                 </div>
 
-                <div className="mt-6 grid grid-cols-[1fr_auto] items-center gap-5 rounded-[22px] border border-[#F3B489] bg-[#fffffa] px-5 py-4 shadow-[0_18px_50px_-34px_rgba(51,39,30,0.24)] max-md:grid-cols-1">
+                <div className="mt-6 grid grid-cols-[1fr_auto] items-center gap-5 rounded-[22px] border border-transparent bg-[#fffffa] px-5 py-4 shadow-[0_18px_50px_-34px_rgba(51,39,30,0.24)] max-md:grid-cols-1">
                   <div className="flex flex-wrap gap-2">
                     {activeThemeLabels.length > 0 ? (
                       activeThemeLabels.map((themeLabel) => (
                         <span
                           key={themeLabel}
-                          className="inline-flex h-auto min-h-[32px] max-w-full items-center justify-center rounded-full border border-[#F3B489] bg-[#FFF0E4] px-4 py-1 text-center text-[12px] font-semibold leading-5 text-[#33271E]"
+                          className="inline-flex h-auto min-h-[32px] max-w-full items-center justify-center rounded-full bg-[#FFF0E4] px-4 py-1 text-center text-[12px] font-semibold leading-5 text-[#33271E]"
                         >
                           #{themeLabel}
                         </span>
                       ))
                     ) : (
-                      <span className="inline-flex h-auto min-h-[32px] max-w-full items-center justify-center rounded-full border border-[#F3B489] bg-[#FFF8F6] px-4 py-1 text-center text-[12px] font-semibold leading-5 text-[#33271E]">
+                      <span className="inline-flex h-auto min-h-[32px] max-w-full items-center justify-center rounded-full bg-[#FFF8F6] px-4 py-1 text-center text-[12px] font-semibold leading-5 text-[#33271E]">
                         원하는 테마를 1개 이상 선택해 주세요
                       </span>
                     )}
@@ -3274,14 +3274,14 @@ function App() {
             {hasSelectedCover ? (
               <aside
                 data-testid="preference-preview-card"
-                className="sticky top-[220px] h-fit rounded-[28px] border border-[#F3B489] bg-[#fffffa] p-5 shadow-[0_24px_70px_-42px_rgba(51,39,30,0.45)] max-xl:static"
+                className="sticky top-[220px] h-fit rounded-[28px] border border-transparent bg-[#fffffa] p-5 shadow-[0_24px_70px_-42px_rgba(51,39,30,0.45)] max-xl:static"
               >
-                <div className="group relative overflow-hidden rounded-[24px] border border-[#F3B489] bg-[#FFF0E4]">
+                <div className="group relative overflow-hidden rounded-[24px] border border-transparent bg-[#FFF0E4]">
                   <div className="absolute left-5 right-5 top-5 z-10 flex items-center justify-between gap-3">
                     <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#33271E]">
                       Selected Cover
                     </span>
-                    <span className="rounded-full border border-[#F3B489] bg-[#FFF0E4] px-3 py-1 text-[12px] font-bold text-[#33271E]">
+                    <span className="rounded-full bg-[#FFF0E4] px-3 py-1 text-[12px] font-bold text-[#33271E] shadow-[0_10px_24px_-22px_rgba(51,39,30,0.28)]">
                       {preferenceSelection.tag}
                     </span>
                   </div>
@@ -3298,7 +3298,7 @@ function App() {
                       type="button"
                       aria-label="다음 도시 이미지 보기"
                       onClick={showNextCoverImage}
-                      className="inline-flex min-h-9 items-center rounded-full border border-[#F3B489] bg-[#FFF0E4] px-4 py-1 text-[12px] font-bold text-[#33271E] opacity-0 shadow-[0_10px_30px_-22px_rgba(0,0,0,0.5)] transition hover:bg-[#FFE0CA] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fffffa] group-hover:opacity-100 max-sm:opacity-100"
+                      className="inline-flex min-h-9 items-center rounded-full border border-transparent bg-[#FFF0E4] px-4 py-1 text-[12px] font-bold text-[#33271E] opacity-0 shadow-[0_10px_30px_-22px_rgba(0,0,0,0.5)] transition hover:bg-[#FFE0CA] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#fffffa] group-hover:opacity-100 max-sm:opacity-100"
                     >
                       다음
                     </button>
@@ -3317,7 +3317,7 @@ function App() {
                       .join(' ')}
                   </p>
 
-                  <div className="mt-5 rounded-[18px] border border-[#F3B489] bg-[#FFF0E4] p-4">
+                  <div className="mt-5 rounded-[18px] border border-transparent bg-[#FFF0E4] p-4">
                     <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#33271E]">
                       First route note
                     </p>
@@ -3342,7 +3342,7 @@ function App() {
         </section>
       ) : (
         <>
-          <header className="fixed inset-x-0 top-0 z-20 border-b border-[#F3B489] bg-white/95 shadow-[0_3px_10.5px_rgba(51,39,30,0.05)] backdrop-blur">
+          <header className="fixed inset-x-0 top-0 z-20 border-b border-[#F3B489]/35 bg-white/95 shadow-[0_3px_10.5px_rgba(51,39,30,0.05)] backdrop-blur">
             <div className="mx-auto flex min-h-[72px] max-w-[1440px] flex-wrap items-center gap-3 px-9 py-2 max-lg:px-8 max-sm:px-5">
               <a
                 href="#home"
@@ -3371,7 +3371,7 @@ function App() {
                     <div
                       role="menu"
                       aria-label="세션 메뉴"
-                      className="absolute right-0 top-[calc(100%+10px)] z-30 grid min-w-[168px] gap-2 rounded-[18px] border border-[#F3B489] bg-white/95 p-2 shadow-[0_18px_42px_-24px_rgba(51,39,30,0.42)] backdrop-blur"
+                      className="absolute right-0 top-[calc(100%+10px)] z-30 grid min-w-[168px] gap-2 rounded-[18px] border border-transparent bg-white/95 p-2 shadow-[0_18px_42px_-24px_rgba(51,39,30,0.42)] backdrop-blur"
                     >
                       <button
                         type="button"
@@ -3434,7 +3434,7 @@ function App() {
                 <div className={`lovv-hero-theme-glow ${currentHeroTheme.glowClassName}`} aria-hidden="true" />
 
                 <div className="relative z-10 mx-auto flex min-h-[600px] max-w-[880px] flex-col items-center justify-center text-center max-lg:min-h-[560px] max-sm:min-h-[510px]">
-                  <div className="inline-flex min-h-[58px] items-center gap-3 rounded-full border border-white/80 bg-white/90 px-5 py-2 text-sm font-bold text-[#A92B10] shadow-[0_20px_46px_-30px_rgba(51,39,30,0.55)] backdrop-blur max-sm:min-h-[52px] max-sm:text-[12px]">
+                  <div className="inline-flex min-h-[58px] items-center gap-3 rounded-full border border-transparent bg-white/90 px-5 py-2 text-sm font-bold text-[#A92B10] shadow-[0_20px_46px_-30px_rgba(51,39,30,0.55)] backdrop-blur max-sm:min-h-[52px] max-sm:text-[12px]">
                     <span className="grid size-10 place-items-center overflow-hidden rounded-full bg-[#FFF0E4]">
                       <img
                         src={foxFaceImage}
@@ -3467,7 +3467,7 @@ function App() {
                     {selectedThemeHashtags.map((tag) => (
                       <span
                         key={tag}
-                        className="inline-flex min-h-[34px] items-center rounded-full border border-white/80 bg-white/80 px-4 py-1 break-keep text-sm font-bold leading-5 text-[#33271E] shadow-[0_10px_24px_-18px_rgba(51,39,30,0.28)] backdrop-blur max-sm:text-[13px]"
+                        className="inline-flex min-h-[34px] items-center rounded-full border border-transparent bg-white/80 px-4 py-1 break-keep text-sm font-bold leading-5 text-[#33271E] shadow-[0_10px_24px_-18px_rgba(51,39,30,0.28)] backdrop-blur max-sm:text-[13px]"
                       >
                         {tag}
                       </span>
@@ -3511,7 +3511,7 @@ function App() {
               <section className="mx-auto max-w-[1440px] px-[55px] pb-8 max-sm:px-5">
                 <div
                   data-testid="proof-summary-panel"
-                  className="grid min-h-[126px] grid-cols-[1fr_auto] items-center gap-8 rounded-3xl border border-[#F3B489] bg-white/80 px-[31px] py-7 shadow-[0_12px_28px_-14px_rgba(33,46,33,0.1)] max-lg:grid-cols-1"
+                  className="grid min-h-[126px] grid-cols-[1fr_auto] items-center gap-8 rounded-3xl border border-transparent bg-white/82 px-[31px] py-7 shadow-[0_12px_28px_-14px_rgba(33,46,33,0.1)] max-lg:grid-cols-1"
                 >
                   <div>
                     <h2 className="break-keep text-[22px] font-semibold leading-7 text-[#33271E] max-sm:text-xl">
@@ -3531,7 +3531,7 @@ function App() {
                           className={`inline-flex min-h-[34px] items-center rounded-[5px] border px-3 py-1 text-[12px] font-bold leading-4 text-[#33271E] ${
                             index === 0
                               ? 'border-[#A92B10] bg-[#F36B12]'
-                              : 'border-[#F3B489] bg-[#FFF0E4]'
+                              : 'border-transparent bg-[#FFF0E4]'
                           }`}
                         >
                           {tag}
@@ -3562,7 +3562,7 @@ function App() {
                       계절감과 선택 테마가 잘 맞는 한국과 일본의 소도시 후보를 먼저 골랐습니다.
                     </p>
                   </div>
-                  <p className="rounded-[5px] border border-[#F3B489] bg-white/80 px-4 py-2 text-[12px] font-bold leading-5 text-[#33271E]">
+                  <p className="rounded-[5px] bg-white/80 px-4 py-2 text-[12px] font-bold leading-5 text-[#33271E] shadow-[0_10px_24px_-22px_rgba(51,39,30,0.24)]">
                     카드를 선택하면 테마 상세 정보를 먼저 확인할 수 있습니다.
                   </p>
                 </div>
@@ -3583,7 +3583,7 @@ function App() {
                         aria-current={isCurrentRecommendation ? 'true' : undefined}
                         aria-label={`${recommendation.preference.cityPair} 이달 추천 상세 보기`}
                         onClick={() => openMonthlyRecommendationDetail(recommendation)}
-                        className={`group relative min-w-0 overflow-hidden rounded-[8px] border border-[#F3B489] bg-[#33271E] text-left shadow-[0_18px_50px_-34px_rgba(51,39,30,0.45)] transition hover:-translate-y-1 hover:border-[#A92B10] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#33271E] ${
+                        className={`group relative min-w-0 overflow-hidden rounded-[8px] border border-transparent bg-[#33271E] text-left shadow-[0_18px_50px_-34px_rgba(51,39,30,0.45)] transition hover:-translate-y-1 hover:border-[#A92B10] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#33271E] ${
                           isFeatured
                             ? 'col-span-2 row-span-2 min-h-[612px] max-lg:col-span-2 max-sm:col-span-1 max-sm:row-span-1 max-sm:min-h-[410px]'
                             : 'min-h-[296px] max-sm:min-h-[350px]'
@@ -3600,11 +3600,11 @@ function App() {
                         <div className="absolute inset-0 bg-gradient-to-t from-[#1F1A17]/88 via-[#1F1A17]/28 to-transparent" />
                         <div className="relative z-10 flex h-full min-h-[inherit] flex-col justify-between gap-5 p-7 text-white max-sm:p-5">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-[5px] border border-white/70 bg-white/90 px-3 py-1 text-[12px] font-black text-[#33271E]">
+                            <span className="rounded-[5px] bg-white/90 px-3 py-1 text-[12px] font-black text-[#33271E]">
                               {recommendation.badge}
                             </span>
                             {isCurrentRecommendation ? (
-                              <span className="rounded-[5px] border border-[#F36B12] bg-[#F36B12] px-3 py-1 text-[12px] font-black text-[#33271E]">
+                              <span className="rounded-[5px] bg-[#F36B12] px-3 py-1 text-[12px] font-black text-[#33271E]">
                                 현재 기준
                               </span>
                             ) : null}
@@ -3630,7 +3630,7 @@ function App() {
                               {recommendation.themes.map((theme) => (
                                 <span
                                   key={`${recommendation.id}-${theme}`}
-                                  className="rounded-[5px] border border-white/60 bg-white/18 px-3 py-1 text-[12px] font-bold text-white backdrop-blur"
+                                  className="rounded-[5px] bg-white/18 px-3 py-1 text-[12px] font-bold text-white backdrop-blur"
                                 >
                                   #{theme}
                                 </span>
@@ -3688,7 +3688,7 @@ function App() {
               className="mx-auto min-h-dvh max-w-[1440px] px-16 pb-16 pt-28 max-lg:px-8 max-sm:px-5"
             >
               <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(320px,0.55fr)] gap-6 max-lg:grid-cols-1">
-                <section className="rounded-[22px] border border-[#F3B489] bg-[#fffffa] p-7 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.28)]">
+                <section className="rounded-[22px] border border-transparent bg-[#fffffa] p-7 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.28)]">
                   <p className="text-sm font-black uppercase tracking-[0.18em] text-[#F36B12]">
                     My Lovv
                   </p>
@@ -3706,7 +3706,7 @@ function App() {
                   {preferenceNotice ? (
                     <p
                       role="status"
-                      className="mt-5 rounded-[16px] border border-[#F3B489] bg-[#FFF0E4] px-5 py-3 text-sm font-black leading-6 text-[#33271E]"
+                      className="mt-5 rounded-[16px] border border-transparent bg-[#FFF0E4] px-5 py-3 text-sm font-black leading-6 text-[#33271E]"
                     >
                       {preferenceNotice}
                     </p>
@@ -3720,7 +3720,7 @@ function App() {
                     ].map((item) => (
                       <article
                         key={item.label}
-                        className="rounded-[18px] border border-[#F3B489] bg-[#FFF0E4] p-5"
+                        className="rounded-[18px] border border-transparent bg-[#FFF0E4] p-5"
                       >
                         <p className="text-[12px] font-black uppercase tracking-[0.14em] text-[#A92B10]">
                           {item.label}
@@ -3732,7 +3732,7 @@ function App() {
                     ))}
                   </div>
 
-                  <div className="mt-8 rounded-[20px] border border-[#F3B489] bg-[#FFF0E4] p-6">
+                  <div className="mt-8 rounded-[20px] border border-transparent bg-[#FFF0E4] p-6">
                     <p className="text-sm font-black text-[#33271E]">선택한 여행 분위기</p>
                     <h2 className="mt-3 break-keep text-[30px] font-black leading-9 text-[#33271E] max-sm:text-2xl max-sm:leading-8">
                       {selectedPreferenceLabel}
@@ -3744,7 +3744,7 @@ function App() {
                       {selectedThemeHashtags.map((tag) => (
                         <span
                           key={tag}
-                          className="inline-flex min-h-[34px] items-center rounded-full border border-[#F3B489] bg-[#fffffa] px-4 py-1 text-[12px] font-bold text-[#33271E]"
+                          className="inline-flex min-h-[34px] items-center rounded-full bg-[#fffffa] px-4 py-1 text-[12px] font-bold text-[#33271E]"
                         >
                           {tag}
                         </span>
@@ -3760,12 +3760,12 @@ function App() {
                   </div>
                 </section>
 
-                <aside className="rounded-[22px] border border-[#F3B489] bg-[#fffffa] p-7 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.28)]">
+                <aside className="rounded-[22px] border border-transparent bg-[#fffffa] p-7 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.28)]">
                   <p className="text-sm font-black uppercase tracking-[0.18em] text-[#F36B12]">
                     Mock account
                   </p>
                   <div className="mt-5 flex items-center gap-4">
-                    <span className="flex size-14 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] text-xl font-black text-[#33271E]">
+                    <span className="flex size-14 items-center justify-center rounded-full bg-[#F36B12] text-xl font-black text-[#33271E] shadow-[0_10px_22px_-16px_rgba(51,39,30,0.5)]">
                       {currentUser?.avatarInitial ?? 'M'}
                     </span>
                     <div className="min-w-0">
@@ -3777,7 +3777,7 @@ function App() {
                       </p>
                     </div>
                   </div>
-                  <div className="mt-7 rounded-[18px] border border-[#F3B489] bg-[#FFF0E4] p-5">
+                  <div className="mt-7 rounded-[18px] border border-transparent bg-[#FFF0E4] p-5">
                     <p className="text-sm font-black text-[#33271E]">연동 상태</p>
                     <p className="mt-2 break-keep text-sm font-semibold leading-6 text-[#33271E]">
                       API 호출 없이 더미 사용자만 저장 중입니다. 실제 OAuth 연동 시 mock auth

@@ -175,7 +175,7 @@ describe('MVP main entry screen', () => {
     const monthlyHeading = screen.getByRole('heading', { name: '이번 달 추천 소도시' })
 
     expect(proofSummaryPanel).toHaveClass('border')
-    expect(proofSummaryPanel).toHaveClass('border-[#F3B489]')
+    expect(proofSummaryPanel).toHaveClass('border-transparent')
     expect(screen.getByText(/선택한 기준 테마를 먼저 보고/)).toBeInTheDocument()
     expect(within(recommendationBasis).getAllByRole('listitem')).toHaveLength(2)
     ;['#바다', '#해안'].forEach((tag) => {
@@ -661,7 +661,7 @@ describe('MVP main entry screen', () => {
     expect(within(recommendationBasis).getByText('#휴양')).toHaveClass(
       'rounded-[5px]',
       'bg-[#FFF0E4]',
-      'border-[#F3B489]',
+      'border-transparent',
     )
     expect(within(recommendationBasis).getByText('#휴양')).not.toHaveClass('rounded-full')
   })
@@ -760,7 +760,7 @@ describe('MVP main entry screen', () => {
     expect(screen.getByText('온양온천 · 스파 휴양 · 지옥 순례')).toHaveClass(
       'mt-auto',
       'w-full',
-      'border-t',
+      'rounded-[12px]',
       'shrink-0',
     )
 

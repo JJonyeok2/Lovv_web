@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
-import type { LovvUser, PlanReactionType, SavedPlan } from '../../shared/types/app'
-import { PlanReactionControls } from '../saved-plans/PlanReactionControls'
+import type { LovvUser, SavedPlanLike, SavedPlan } from '../../shared/types/app'
+import { SavedPlanLikeControls } from '../saved-plans/SavedPlanLikeControls'
 
 type MyPageViewProps = {
   goHome: (event?: MouseEvent<HTMLElement>) => void
@@ -12,11 +12,12 @@ type MyPageViewProps = {
   selectedThemeHashtags: string[]
   currentUser: LovvUser | null
   savedPlans: SavedPlan[]
-  getPlanReaction: (planId: string) => PlanReactionType
-  onSelectPlanReaction: (planId: string, reaction: Exclude<PlanReactionType, null>) => void
-  getPlanReactionError: (planId: string) => string | null
-  isPlanReactionPending: (planId: string) => boolean
+  getSavedPlanLike: (planId: string) => SavedPlanLike
+  onSelectSavedPlanLike: (planId: string, like: Exclude<SavedPlanLike, null>) => void
+  getSavedPlanLikeError: (planId: string) => string | null
+  isSavedPlanLikePending: (planId: string) => boolean
   openSavedPlanDetail: (planId: string) => void
+  onDeleteSavedPlan: (planId: string) => void
   openPreferenceEdit: () => void
   signOut: () => void
 }
@@ -31,11 +32,12 @@ export function MyPageView({
   selectedThemeHashtags,
   currentUser,
   savedPlans,
-  getPlanReaction,
-  onSelectPlanReaction,
-  getPlanReactionError,
-  isPlanReactionPending,
+  getSavedPlanLike,
+  onSelectSavedPlanLike,
+  getSavedPlanLikeError,
+  isSavedPlanLikePending,
   openSavedPlanDetail,
+  onDeleteSavedPlan,
   openPreferenceEdit,
   signOut,
 }: MyPageViewProps) {
@@ -122,7 +124,7 @@ export function MyPageView({
                         {savedPlans.length > 0 ? (
                           <ol className="mt-5 grid gap-3" aria-label="저장 일정 목록">
                             {savedPlans.map((plan) => {
-                              const reactionTitleId = `saved-plan-reaction-${plan.id}`
+                              const likeTitleId = `saved-plan-like-${plan.id}`
 
                               return (
                                 <li
@@ -141,29 +143,39 @@ export function MyPageView({
                                         {plan.cityPair} · {plan.durationLabel} · {plan.themeTag}
                                       </p>
                                     </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => openSavedPlanDetail(plan.id)}
-                                      className="inline-flex min-h-10 items-center justify-center rounded-[8px] border border-[#F3B489] bg-[#FFF8F6] px-4 text-sm font-black text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
-                                    >
-                                      상세 보기
-                                    </button>
+                                    <div className="flex flex-wrap justify-end gap-2 max-md:justify-start">
+                                      <button
+                                        type="button"
+                                        onClick={() => openSavedPlanDetail(plan.id)}
+                                        className="inline-flex min-h-10 items-center justify-center rounded-[8px] border border-[#F3B489] bg-[#FFF8F6] px-4 text-sm font-black text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                                      >
+                                        상세 보기
+                                      </button>
+                                      <button
+                                        type="button"
+                                        aria-label={`${plan.title} 삭제`}
+                                        onClick={() => onDeleteSavedPlan(plan.id)}
+                                        className="inline-flex min-h-10 items-center justify-center rounded-[8px] border border-[#F3B489] bg-[#fffffa] px-4 text-sm font-black text-[#A92B10] transition hover:border-[#A92B10] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                                      >
+                                        삭제
+                                      </button>
+                                    </div>
                                   </div>
                                   <p
-                                    id={reactionTitleId}
+                                    id={likeTitleId}
                                     className="mt-4 break-keep text-[12px] font-black text-[#33271E]"
                                   >
                                     이 일정은 어땠나요?
                                   </p>
                                   <div className="mt-2">
-                                    <PlanReactionControls
+                                    <SavedPlanLikeControls
                                       planId={plan.id}
-                                      reaction={getPlanReaction(plan.id)}
-                                      onSelectReaction={onSelectPlanReaction}
-                                      pending={isPlanReactionPending(plan.id)}
-                                      errorMessage={getPlanReactionError(plan.id)}
+                                      like={getSavedPlanLike(plan.id)}
+                                      onSelectLike={onSelectSavedPlanLike}
+                                      pending={isSavedPlanLikePending(plan.id)}
+                                      errorMessage={getSavedPlanLikeError(plan.id)}
                                       compact
-                                      labelledBy={reactionTitleId}
+                                      labelledBy={likeTitleId}
                                     />
                                   </div>
                                 </li>
@@ -176,7 +188,7 @@ export function MyPageView({
                               저장한 일정이 아직 없습니다.
                             </p>
                             <p className="mt-2 break-keep text-[12px] font-bold leading-5 text-[#6E5A50]">
-                              AI 일정 챗봇에서 마음에 드는 일정을 저장하면 이곳에서 좋아요/싫어요 피드백을 남길 수 있어요.
+                              AI 일정 챗봇에서 마음에 드는 일정을 저장하면 이곳에서 좋아요 피드백을 남길 수 있어요.
                             </p>
                           </div>
                         )}

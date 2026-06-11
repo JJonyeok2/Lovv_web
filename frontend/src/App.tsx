@@ -60,12 +60,12 @@ import {
 import { PlannerWorkspace, type PlannerStateStep } from './features/planner/PlannerWorkspace'
 import { PlanDetailView } from './features/planner/PlanDetailView'
 import {
-  getNextPlanReaction,
-  readStoredPlanReactions,
+  getNextSavedPlanLike,
+  readStoredSavedPlanLikes,
   readStoredSavedPlans,
-  savedPlansStorageKey,
-  writeStoredPlanReactions,
-  type PlanReactionMap,
+  writeStoredSavedPlanLikes,
+  writeStoredSavedPlans,
+  type SavedPlanLikeMap,
 } from './features/saved-plans/savedPlansStorage'
 import { AppHeader } from './shared/components/AppHeader'
 import { Footer } from './shared/components/Footer'
@@ -84,7 +84,7 @@ import type {
   MonthlyRecommendation,
   PlanDay,
   PlanDraft,
-  PlanReactionType,
+  SavedPlanLike,
   Preference,
   PreferenceProfile,
   PreferenceProfileSource,
@@ -129,9 +129,9 @@ function App() {
   const [preferenceNotice, setPreferenceNotice] = useState<string | null>(null)
   const [themeSelectionNotice, setThemeSelectionNotice] = useState<string | null>(null)
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => readStoredSavedPlans())
-  const [planReactions, setPlanReactions] = useState<PlanReactionMap>(() => readStoredPlanReactions())
-  const [pendingReactionPlanIds, setPendingReactionPlanIds] = useState<string[]>([])
-  const [planReactionErrors, setPlanReactionErrors] = useState<Record<string, string>>({})
+  const [savedPlanLikes, setSavedPlanLikes] = useState<SavedPlanLikeMap>(() => readStoredSavedPlanLikes())
+  const [pendingSavedPlanLikeIds, setPendingSavedPlanLikeIds] = useState<string[]>([])
+  const [savedPlanLikeErrors, setSavedPlanLikeErrors] = useState<Record<string, string>>({})
   const [plannerPreferenceProfile, setPlannerPreferenceProfile] = useState(() => selectedPreferenceProfile)
   const plannerPreferences = useMemo(
     () => getPreferencesForProfile(plannerPreferenceProfile),
@@ -249,11 +249,11 @@ function App() {
 
     return planDraft.days.find((day) => day.day === selectedPlanDayNumber) ?? planDraft.days[0] ?? fallbackDay
   }, [planDraft.days, selectedPlanDayNumber])
-  const getPlanReaction = (planId: string): PlanReactionType => planReactions[planId] ?? null
-  const isPlanReactionPending = (planId: string) => pendingReactionPlanIds.includes(planId)
-  const getPlanReactionError = (planId: string) => planReactionErrors[planId] ?? null
+  const getSavedPlanLike = (planId: string): SavedPlanLike => savedPlanLikes[planId] ?? null
+  const isSavedPlanLikePending = (planId: string) => pendingSavedPlanLikeIds.includes(planId)
+  const getSavedPlanLikeError = (planId: string) => savedPlanLikeErrors[planId] ?? null
   const isCurrentPlanSaved = savedPlans.some((plan) => plan.id === currentPlanId)
-  const isCurrentPlanLiked = getPlanReaction(currentPlanId) === 'like'
+  const isCurrentPlanLiked = getSavedPlanLike(currentPlanId) === 'like'
   const isRouteCurrentGeneratedPlan = routePlanId === currentPlanId && isPlannerReady
   const hasRoutePlan = Boolean(routePlanId && (isRouteCurrentGeneratedPlan || savedPlanForRoute))
   const savedRoutePlanDraft = useMemo<PlanDraft | null>(() => {
@@ -292,7 +292,7 @@ function App() {
     ? plannerBasisLabel
     : savedPlanForRoute?.cityPair ?? plannerBasisLabel
   const isActivePlanDetailReady = isRouteCurrentGeneratedPlan || Boolean(savedPlanForRoute)
-  const activePlanDetailReaction = getPlanReaction(activePlanDetailId)
+  const activeSavedPlanDetailLike = getSavedPlanLike(activePlanDetailId)
   const isActivePlanDetailSaved = isRouteCurrentGeneratedPlan ? isCurrentPlanSaved : Boolean(savedPlanForRoute)
   const activeCountrySmallCities = useMemo(
     () => smallCityCatalogState.cities.filter((city) => city.country === cityMapCountry),
@@ -508,50 +508,83 @@ function App() {
         : nextPlan
       const nextPlans = [updatedPlan, ...currentPlans.filter((plan) => plan.id !== currentPlanId)]
 
-      localStorage.setItem(savedPlansStorageKey, JSON.stringify(nextPlans))
+      writeStoredSavedPlans(nextPlans)
 
       return nextPlans
     })
     setSavedPlanNotice('마이페이지에서 다시 확인할 수 있어요.')
   }
 
-  const selectPlanReaction = (planId: string, reaction: Exclude<PlanReactionType, null>) => {
-    setPendingReactionPlanIds((currentPlanIds) =>
-      currentPlanIds.includes(planId) ? currentPlanIds : [...currentPlanIds, planId],
+  const deleteSavedPlan = (planId: string, options: { navigateToMyPage?: boolean } = {}) => {
+    setSavedPlans((currentPlans) => {
+      const nextPlans = currentPlans.filter((plan) => plan.id !== planId)
+
+      writeStoredSavedPlans(nextPlans)
+
+      return nextPlans
+    })
+    setSavedPlanLikes((currentLikes) => {
+      const nextLikes = { ...currentLikes }
+
+      delete nextLikes[planId]
+      writeStoredSavedPlanLikes(nextLikes)
+
+      return nextLikes
+    })
+    setPendingSavedPlanLikeIds((currentPlanIds) =>
+      currentPlanIds.filter((currentPlanId) => currentPlanId !== planId),
     )
-    setPlanReactionErrors((currentErrors) => {
+    setSavedPlanLikeErrors((currentErrors) => {
       const nextErrors = { ...currentErrors }
 
       delete nextErrors[planId]
 
       return nextErrors
     })
-    setPlanReactions((currentReactions) => {
-      const nextReaction = getNextPlanReaction(currentReactions[planId] ?? null, reaction)
-      const nextReactions = { ...currentReactions }
+    setSavedPlanNotice('저장한 일정이 삭제됐어요.')
 
-      if (nextReaction) {
-        nextReactions[planId] = nextReaction
+    if (options.navigateToMyPage) {
+      navigate('/mypage', { replace: true })
+    }
+  }
+
+  const selectSavedPlanLike = (planId: string, like: Exclude<SavedPlanLike, null>) => {
+    setPendingSavedPlanLikeIds((currentPlanIds) =>
+      currentPlanIds.includes(planId) ? currentPlanIds : [...currentPlanIds, planId],
+    )
+    setSavedPlanLikeErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors }
+
+      delete nextErrors[planId]
+
+      return nextErrors
+    })
+    setSavedPlanLikes((currentLikes) => {
+      const nextLike = getNextSavedPlanLike(currentLikes[planId] ?? null, like)
+      const nextLikes = { ...currentLikes }
+
+      if (nextLike) {
+        nextLikes[planId] = nextLike
       } else {
-        delete nextReactions[planId]
+        delete nextLikes[planId]
       }
 
       try {
-        writeStoredPlanReactions(nextReactions)
+        writeStoredSavedPlanLikes(nextLikes)
       } catch {
-        setPlanReactionErrors((currentErrors) => ({
+        setSavedPlanLikeErrors((currentErrors) => ({
           ...currentErrors,
-          [planId]: '반응을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          [planId]: '좋아요를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
         }))
 
-        return currentReactions
+        return currentLikes
       } finally {
-        setPendingReactionPlanIds((currentPlanIds) =>
+        setPendingSavedPlanLikeIds((currentPlanIds) =>
           currentPlanIds.filter((currentPlanId) => currentPlanId !== planId),
         )
       }
 
-      return nextReactions
+      return nextLikes
     })
   }
 
@@ -560,7 +593,7 @@ function App() {
       return
     }
 
-    selectPlanReaction(currentPlanId, 'like')
+    selectSavedPlanLike(currentPlanId, 'like')
   }
 
   const openPlanDetailView = () => {
@@ -1092,12 +1125,13 @@ function App() {
               planDraft={activePlanDetailDraft}
               plannerBasisLabel={activePlanDetailBasisLabel}
               planId={activePlanDetailId}
-              planReaction={activePlanDetailReaction}
-              onSelectPlanReaction={selectPlanReaction}
-              planReactionPending={isPlanReactionPending(activePlanDetailId)}
-              planReactionError={getPlanReactionError(activePlanDetailId)}
+              planLike={activeSavedPlanDetailLike}
+              onSelectSavedPlanLike={selectSavedPlanLike}
+              savedPlanLikePending={isSavedPlanLikePending(activePlanDetailId)}
+              savedPlanLikeError={getSavedPlanLikeError(activePlanDetailId)}
               saveGeneratedPlan={saveGeneratedPlan}
               isCurrentPlanSaved={isActivePlanDetailSaved}
+              onDeleteSavedPlan={deleteSavedPlan}
               openMyPage={openMyPage}
               savedPlanNotice={savedPlanNotice}
             />
@@ -1112,11 +1146,12 @@ function App() {
               selectedThemeHashtags={selectedThemeHashtags}
               currentUser={currentUser}
               savedPlans={savedPlans}
-              getPlanReaction={getPlanReaction}
-              onSelectPlanReaction={selectPlanReaction}
-              getPlanReactionError={getPlanReactionError}
-              isPlanReactionPending={isPlanReactionPending}
+              getSavedPlanLike={getSavedPlanLike}
+              onSelectSavedPlanLike={selectSavedPlanLike}
+              getSavedPlanLikeError={getSavedPlanLikeError}
+              isSavedPlanLikePending={isSavedPlanLikePending}
               openSavedPlanDetail={openSavedPlanDetail}
+              onDeleteSavedPlan={deleteSavedPlan}
               openPreferenceEdit={openPreferenceEdit}
               signOut={signOut}
             />
@@ -1152,6 +1187,7 @@ function App() {
               resetPlannerFlow={() => resetPlannerFlow()}
               saveGeneratedPlan={saveGeneratedPlan}
               isCurrentPlanSaved={isCurrentPlanSaved}
+              openMyPage={openMyPage}
               savedPlanNotice={savedPlanNotice}
             />
           )}

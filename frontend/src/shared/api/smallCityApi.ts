@@ -626,11 +626,12 @@ const adaptSmallCityPlacePayload = (
       return
     }
 
-    placesByCategory[normalizedPlace.place.category].push(normalizedPlace.place)
-
     if (isFestivalPlace(normalizedPlace.place)) {
       festivals.push(toSmallCityFestival(normalizedPlace.place))
+      return
     }
+
+    placesByCategory[normalizedPlace.place.category].push(normalizedPlace.place)
   })
 
   return {
@@ -678,17 +679,26 @@ export const adaptSmallCityDetailApiResponse = (
         })()
       : response.places ?? (response.summary ? { summary: response.summary } : undefined)
   const placeAdapterResult = adaptSmallCityPlacePayload(placesPayload, normalizedCity.city.id)
+  const detailFestivals =
+    placeAdapterResult.festivals.length > 0
+      ? placeAdapterResult.festivals
+      : normalizedCity.city.festivals ?? []
+  const detailFestivalCount = Math.max(
+    placeAdapterResult.festivalCount,
+    normalizedCity.city.festivalCount ?? 0,
+    detailFestivals.length,
+  )
 
   return {
     detail: {
       city: {
         ...normalizedCity.city,
-        festivals: placeAdapterResult.festivals,
-        festivalCount: placeAdapterResult.festivalCount,
+        festivals: detailFestivals,
+        festivalCount: detailFestivalCount,
       },
       placesByCategory: placeAdapterResult.placesByCategory,
-      festivals: placeAdapterResult.festivals,
-      festivalCount: placeAdapterResult.festivalCount,
+      festivals: detailFestivals,
+      festivalCount: detailFestivalCount,
     },
     rejectedRecords: placeAdapterResult.rejectedRecords,
   }

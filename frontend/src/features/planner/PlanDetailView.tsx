@@ -1,5 +1,5 @@
-import type { PlanDraft, PlanReactionType } from '../../shared/types/app'
-import { PlanReactionControls } from '../saved-plans/PlanReactionControls'
+import type { PlanDraft, SavedPlanLike } from '../../shared/types/app'
+import { SavedPlanLikeControls } from '../saved-plans/SavedPlanLikeControls'
 
 type PlanDetailViewProps = {
   isPlannerReady: boolean
@@ -9,12 +9,13 @@ type PlanDetailViewProps = {
   planDraft: PlanDraft
   plannerBasisLabel: string
   planId: string
-  planReaction: PlanReactionType
-  onSelectPlanReaction: (planId: string, reaction: Exclude<PlanReactionType, null>) => void
-  planReactionPending?: boolean
-  planReactionError?: string | null
+  planLike: SavedPlanLike
+  onSelectSavedPlanLike: (planId: string, like: Exclude<SavedPlanLike, null>) => void
+  savedPlanLikePending?: boolean
+  savedPlanLikeError?: string | null
   saveGeneratedPlan: () => void
   isCurrentPlanSaved: boolean
+  onDeleteSavedPlan: (planId: string, options?: { navigateToMyPage?: boolean }) => void
   openMyPage: () => void
   savedPlanNotice: string | null
 }
@@ -27,12 +28,13 @@ export function PlanDetailView({
   planDraft,
   plannerBasisLabel,
   planId,
-  planReaction,
-  onSelectPlanReaction,
-  planReactionPending = false,
-  planReactionError = null,
+  planLike,
+  onSelectSavedPlanLike,
+  savedPlanLikePending = false,
+  savedPlanLikeError = null,
   saveGeneratedPlan,
   isCurrentPlanSaved,
+  onDeleteSavedPlan,
   openMyPage,
   savedPlanNotice,
 }: PlanDetailViewProps) {
@@ -194,20 +196,20 @@ export function PlanDetailView({
                 일정을 살펴본 뒤 피드백을 남기거나 마이페이지에 저장해 다시 확인할 수 있습니다.
               </p>
               <div className="mt-5 rounded-[14px] border border-transparent bg-[#fffffa] p-4">
-                <p id="plan-detail-reaction-title" className="break-keep text-sm font-black text-[#33271E]">
+                <p id="plan-detail-like-title" className="break-keep text-sm font-black text-[#33271E]">
                   이 일정은 어땠나요?
                 </p>
                 <p className="mt-1 break-keep text-[12px] font-bold leading-5 text-[#6E5A50]">
-                  좋아요와 싫어요 중 하나만 선택되며, 다시 누르면 선택이 해제됩니다.
+                  좋아요를 누르면 저장되고, 다시 누르면 해제됩니다.
                 </p>
                 <div className="mt-3">
-                  <PlanReactionControls
+                  <SavedPlanLikeControls
                     planId={planId}
-                    reaction={planReaction}
-                    onSelectReaction={onSelectPlanReaction}
-                    pending={planReactionPending}
-                    errorMessage={planReactionError}
-                    labelledBy="plan-detail-reaction-title"
+                    like={planLike}
+                    onSelectLike={onSelectSavedPlanLike}
+                    pending={savedPlanLikePending}
+                    errorMessage={savedPlanLikeError}
+                    labelledBy="plan-detail-like-title"
                   />
                 </div>
               </div>
@@ -220,6 +222,15 @@ export function PlanDetailView({
                 >
                   {isCurrentPlanSaved ? '마이페이지에 저장됨' : '마이페이지에 저장'}
                 </button>
+                {isCurrentPlanSaved ? (
+                  <button
+                    type="button"
+                    onClick={() => onDeleteSavedPlan(planId, { navigateToMyPage: true })}
+                    className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-5 text-sm font-black text-[#A92B10] transition hover:border-[#A92B10] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                  >
+                    저장 일정 삭제
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={returnToChatWorkspace}

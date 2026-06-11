@@ -245,7 +245,7 @@ describe('small-city API contract adapter', () => {
         visitMonths: [6],
       },
     ])
-    expect(result.placesByCategory['관광지']).toHaveLength(2)
+    expect(result.placesByCategory['관광지']).toHaveLength(1)
     expect(result.placesByCategory['관광지'][0]).toMatchObject({
       id: 'ATTRACTION-250126',
       cityId: 'KR-Gangneung',
@@ -261,21 +261,7 @@ describe('small-city API contract adapter', () => {
       theme: '전통',
       themeTags: ['전통', '자연'],
     })
-    expect(result.placesByCategory['관광지'][1]).toMatchObject({
-      id: 'FESTIVAL-506743',
-      cityId: 'KR-Gangneung',
-      category: '관광지',
-      categoryName: '축제',
-      name: '강릉단오제',
-      summary: '축제 기간 20260601 - 20260608',
-      latitude: 37.7489,
-      longitude: 128.8941,
-      theme: '축제',
-      themeTags: ['축제'],
-      startDate: '20260601',
-      endDate: '20260608',
-      visitMonths: [6],
-    })
+    expect(result.placesByCategory['관광지'].some((place) => place.categoryName === '축제')).toBe(false)
     expect(result.placesByCategory['음식점']).toHaveLength(0)
     expect(result.placesByCategory['카페']).toHaveLength(0)
     expect(result.placesByCategory['숙소']).toHaveLength(0)

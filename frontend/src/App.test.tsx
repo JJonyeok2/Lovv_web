@@ -595,9 +595,19 @@ describe('MVP main entry screen', () => {
 
     fireEvent.change(nextSearchInput, { target: { value: '진주' } })
     fireEvent.click(within(screen.getByTestId('city-map-result-list')).getByRole('button', { name: /진주/ }))
-    expect(within(nextCityMapSection).getByTestId('city-map-detail-panel')).toHaveTextContent('진주남강유등축제')
+    const cityDetailPanel = within(nextCityMapSection).getByTestId('city-map-detail-panel')
+    const placePanel = within(nextCityMapSection).getByTestId('city-map-detail-place-panel')
+    const tourismPlaces = within(placePanel).getByLabelText('관광지 장소 후보')
+    const festivalInfo = within(placePanel).getByLabelText('축제 정보')
+
+    expect(cityDetailPanel).toHaveTextContent('진주남강유등축제')
+    expect(within(tourismPlaces).getByText('진주성 중심 산책')).toBeInTheDocument()
+    expect(within(tourismPlaces).queryByText('진주남강유등축제')).not.toBeInTheDocument()
+    expect(within(tourismPlaces).getByText('1')).toBeInTheDocument()
+    expect(within(festivalInfo).getByText('진주남강유등축제')).toBeInTheDocument()
+    expect(within(festivalInfo).getByText('2026.10.01 - 2026.10.12')).toBeInTheDocument()
     fireEvent.click(
-      within(within(nextCityMapSection).getByTestId('city-map-detail-panel')).getByRole('button', {
+      within(cityDetailPanel).getByRole('button', {
         name: '이 소도시로 AI 일정 짜기',
       }),
     )
@@ -1258,7 +1268,8 @@ describe('MVP main entry screen', () => {
     fireEvent.click(screen.getByRole('button', { name: '좋아요' }))
 
     expect(screen.getByRole('button', { name: '좋아요 취소' })).toBeInTheDocument()
-    expect(JSON.parse(localStorage.getItem('lovv.likedPlanIds') ?? '[]')).toHaveLength(1)
+    expect(Object.values(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}'))).toEqual(['like'])
+    expect(localStorage.getItem('lovv.likedPlanIds')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: '마이페이지에 저장' }))
 
@@ -1327,12 +1338,11 @@ describe('MVP main entry screen', () => {
 
     expect(within(detailView).getByRole('button', { name: '좋아요 선택됨' })).toBeInTheDocument()
     expect(within(detailView).getByRole('button', { name: '마이페이지에 저장됨' })).toBeInTheDocument()
-    expect(JSON.parse(localStorage.getItem('lovv.planReactions') ?? '{}')).toEqual(
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).toEqual(
       expect.objectContaining({
         [decodeURIComponent(window.location.pathname.replace('/plans/', ''))]: 'like',
       }),
     )
-    expect(JSON.parse(localStorage.getItem('lovv.likedPlanIds') ?? '[]')).toHaveLength(1)
     expect(JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')).toHaveLength(1)
 
     fireEvent.click(within(detailView).getByRole('button', { name: '채팅으로 돌아가기' }))
@@ -1377,7 +1387,7 @@ describe('MVP main entry screen', () => {
     expect(screen.getByRole('heading', { name: 'AI 일정 챗봇' })).toBeInTheDocument()
   })
 
-  it('keeps saved itinerary like and dislike reactions mutually exclusive across My Page and detail', () => {
+  it('toggles saved itinerary likes across My Page and detail', () => {
     seedUser()
     seedPreference('아산/온양 · 벳푸')
     renderApp('/planner')
@@ -1400,33 +1410,24 @@ describe('MVP main entry screen', () => {
     const savedPlanCard = within(savedPlanList).getByText('온천·휴양 1박 2일 초안').closest('li')
 
     expect(savedPlanCard).not.toBeNull()
-    expect(within(savedPlanCard!).queryByText(/현재 반응/)).not.toBeInTheDocument()
+    expect(within(savedPlanCard!).queryByText(/현재 좋아요/)).not.toBeInTheDocument()
     expect(within(savedPlanCard!).queryByText('없음')).not.toBeInTheDocument()
     expect(within(savedPlanCard!).getByRole('button', { name: '좋아요' })).toHaveAttribute('aria-pressed', 'false')
-    expect(within(savedPlanCard!).getByRole('button', { name: '싫어요' })).toHaveAttribute('aria-pressed', 'false')
+    expect(within(savedPlanCard!).queryByRole('button', { name: '싫어요' })).not.toBeInTheDocument()
 
     fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '좋아요' }))
 
     expect(within(savedPlanCard!).getByRole('button', { name: '좋아요 선택됨' })).toHaveAttribute('aria-pressed', 'true')
-    expect(JSON.parse(localStorage.getItem('lovv.planReactions') ?? '{}')).toMatchObject({
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).toMatchObject({
       [savedPlanId]: 'like',
     })
 
-    fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '싫어요' }))
+    fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '좋아요 선택됨' }))
 
-    expect(within(savedPlanCard!).getByRole('button', { name: '좋아요' })).toHaveAttribute('aria-pressed', 'false')
-    expect(within(savedPlanCard!).getByRole('button', { name: '싫어요 선택됨' })).toHaveAttribute('aria-pressed', 'true')
-    expect(JSON.parse(localStorage.getItem('lovv.planReactions') ?? '{}')).toMatchObject({
-      [savedPlanId]: 'dislike',
-    })
-
-    fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '싫어요 선택됨' }))
-
-    expect(within(savedPlanCard!).queryByText(/현재 반응/)).not.toBeInTheDocument()
+    expect(within(savedPlanCard!).queryByText(/현재 좋아요/)).not.toBeInTheDocument()
     expect(within(savedPlanCard!).queryByText('없음')).not.toBeInTheDocument()
     expect(within(savedPlanCard!).getByRole('button', { name: '좋아요' })).toHaveAttribute('aria-pressed', 'false')
-    expect(within(savedPlanCard!).getByRole('button', { name: '싫어요' })).toHaveAttribute('aria-pressed', 'false')
-    expect(JSON.parse(localStorage.getItem('lovv.planReactions') ?? '{}')).not.toHaveProperty(savedPlanId)
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).not.toHaveProperty(savedPlanId)
 
     fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '좋아요' }))
     fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '상세 보기' }))
@@ -1435,13 +1436,81 @@ describe('MVP main entry screen', () => {
     const detailView = screen.getByRole('region', { name: '세부 일정 상세' })
 
     expect(within(detailView).getByRole('button', { name: '좋아요 선택됨' })).toBeInTheDocument()
-    fireEvent.click(within(detailView).getByRole('button', { name: '싫어요' }))
+    expect(within(detailView).queryByRole('button', { name: '싫어요' })).not.toBeInTheDocument()
+    fireEvent.click(within(detailView).getByRole('button', { name: '좋아요 선택됨' }))
 
     expect(within(detailView).getByRole('button', { name: '좋아요' })).toHaveAttribute('aria-pressed', 'false')
-    expect(within(detailView).getByRole('button', { name: '싫어요 선택됨' })).toHaveAttribute('aria-pressed', 'true')
-    expect(JSON.parse(localStorage.getItem('lovv.planReactions') ?? '{}')).toMatchObject({
-      [savedPlanId]: 'dislike',
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).not.toHaveProperty(savedPlanId)
+  })
+
+  it('deletes a saved itinerary from My Page and clears like storage', () => {
+    seedUser()
+    seedPreference('아산/온양 · 벳푸')
+    renderApp('/planner')
+
+    completeGuidedPlanner({
+      festival: '축제 제외',
+      duration: '1박 2일',
+      query: '온천 숙소에 오래 머물고 덜 걷고 싶어요',
     })
+    fireEvent.click(screen.getByRole('button', { name: '마이페이지에 저장' }))
+
+    const savedPlans = JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')
+    const savedPlanId = savedPlans[0]?.id
+
+    expect(savedPlanId).toEqual(expect.any(String))
+
+    openMyPageFromSessionMenu()
+
+    const savedPlanList = screen.getByRole('list', { name: '저장 일정 목록' })
+    const savedPlanCard = within(savedPlanList).getByText('온천·휴양 1박 2일 초안').closest('li')
+
+    expect(savedPlanCard).not.toBeNull()
+    fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '좋아요' }))
+
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).toMatchObject({
+      [savedPlanId]: 'like',
+    })
+    expect(localStorage.getItem('lovv.likedPlanIds')).toBeNull()
+
+    fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '온천·휴양 1박 2일 초안 삭제' }))
+
+    expect(screen.getByText('저장한 일정이 삭제됐어요.')).toBeInTheDocument()
+    expect(screen.getByText('저장한 일정이 아직 없습니다.')).toBeInTheDocument()
+    expect(screen.getByText('아직 없음')).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')).toHaveLength(0)
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).not.toHaveProperty(savedPlanId)
+    expect(localStorage.getItem('lovv.likedPlanIds')).toBeNull()
+  })
+
+  it('deletes a saved itinerary from detail and returns safely to My Page', () => {
+    seedUser()
+    seedPreference('아산/온양 · 벳푸')
+    renderApp('/planner')
+
+    completeGuidedPlanner({
+      festival: '축제 제외',
+      duration: '1박 2일',
+      query: '온천 숙소에 오래 머물고 덜 걷고 싶어요',
+    })
+    fireEvent.click(screen.getByRole('button', { name: '마이페이지에 저장' }))
+    fireEvent.click(screen.getByRole('button', { name: '세부 일정 보기' }))
+
+    const savedPlans = JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')
+    const savedPlanId = savedPlans[0]?.id
+    const detailView = screen.getByRole('region', { name: '세부 일정 상세' })
+
+    expect(savedPlanId).toEqual(expect.any(String))
+    expect(within(detailView).getByRole('button', { name: '저장 일정 삭제' })).toBeInTheDocument()
+
+    fireEvent.click(within(detailView).getByRole('button', { name: '저장 일정 삭제' }))
+
+    expect(window.location.pathname).toBe('/mypage')
+    expect(screen.getByText('저장한 일정이 삭제됐어요.')).toBeInTheDocument()
+    expect(screen.getByText('저장한 일정이 아직 없습니다.')).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')).toHaveLength(0)
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).not.toHaveProperty(savedPlanId)
+    expect(localStorage.getItem('lovv.likedPlanIds')).toBeNull()
   })
 
   it('ignores invalid saved and liked plan storage when using generated plan actions', () => {
@@ -1460,7 +1529,8 @@ describe('MVP main entry screen', () => {
     fireEvent.click(screen.getByRole('button', { name: '좋아요' }))
     fireEvent.click(screen.getByRole('button', { name: '마이페이지에 저장' }))
 
-    expect(JSON.parse(localStorage.getItem('lovv.likedPlanIds') ?? '[]')).toHaveLength(1)
+    expect(Object.values(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}'))).toEqual(['like'])
+    expect(localStorage.getItem('lovv.likedPlanIds')).toBeNull()
     expect(JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')).toHaveLength(1)
   })
 

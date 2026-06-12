@@ -13,6 +13,7 @@ export function ThemeDetailView({
   openMonthlyRecommendationPlan,
 }: ThemeDetailViewProps) {
     const preference = recommendation.preference
+    const recommendationImage = recommendation.image ?? undefined
     const recommendationHasFestivalTheme = recommendation.themes.includes('축제')
     const detailFacts = [
       {
@@ -51,7 +52,7 @@ export function ThemeDetailView({
           <div className="grid min-h-[460px] grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] max-lg:grid-cols-1">
             <div className="relative min-h-[460px] overflow-hidden bg-[#33271E] max-sm:min-h-[320px]">
               <img
-                src={recommendation.image}
+                src={recommendationImage}
                 alt=""
                 onError={(event) => {
                   event.currentTarget.hidden = true

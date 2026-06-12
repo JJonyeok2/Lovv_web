@@ -1,7 +1,10 @@
 import foxFaceImage from '../../assets/foxhead-smile.png'
+import { useEffect, useState } from 'react'
 import type { MouseEvent } from 'react'
 import type { HeroTheme, MonthlyRecommendation, PreferenceProfile } from '../../shared/types/app'
 import { heroThemes, monthlyRecommendations } from './homeContent'
+
+export const monthlyRecommendationRotationIntervalMs = 7000
 
 type HomeViewProps = {
   currentHeroTheme: HeroTheme
@@ -23,6 +26,33 @@ const getHeroSummaryLines = (summary: string) =>
     .map((line) => line.trim())
     .filter(Boolean)
 
+type MonthlyRecommendationMediaProps = {
+  image?: string | null
+  altText: string
+}
+
+export function MonthlyRecommendationMedia({ image, altText }: MonthlyRecommendationMediaProps) {
+  const [hasImageError, setHasImageError] = useState(false)
+  const imageSource = image?.trim()
+
+  if (!imageSource || hasImageError) {
+    return (
+      <div className="absolute inset-0 flex h-full w-full items-center justify-center bg-[#FFF0E4] px-6 text-center text-sm font-black text-[#7A5A45]">
+        이미지 준비 중입니다.
+      </div>
+    )
+  }
+
+  return (
+    <img
+      src={imageSource}
+      alt={altText}
+      onError={() => setHasImageError(true)}
+      className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+    />
+  )
+}
+
 export function HomeView({
   currentHeroTheme,
   selectedPreferenceProfile,
@@ -37,6 +67,23 @@ export function HomeView({
   onToggleQuickActions,
 }: HomeViewProps) {
   const heroSummaryLines = getHeroSummaryLines(currentHeroTheme.summary)
+  const [featuredRecommendationIndex, setFeaturedRecommendationIndex] = useState(0)
+  const orderedMonthlyRecommendations = [
+    ...monthlyRecommendations.slice(featuredRecommendationIndex),
+    ...monthlyRecommendations.slice(0, featuredRecommendationIndex),
+  ]
+
+  useEffect(() => {
+    if (monthlyRecommendations.length <= 1) {
+      return undefined
+    }
+
+    const rotationTimer = window.setInterval(() => {
+      setFeaturedRecommendationIndex((currentIndex) => (currentIndex + 1) % monthlyRecommendations.length)
+    }, monthlyRecommendationRotationIntervalMs)
+
+    return () => window.clearInterval(rotationTimer)
+  }, [])
 
   return (
     <>
@@ -218,7 +265,7 @@ export function HomeView({
                       data-testid="monthly-recommendation-grid"
                       className="grid auto-rows-[296px] grid-cols-4 gap-5 max-lg:grid-cols-2 max-md:auto-rows-[306px] max-sm:grid-cols-1 max-sm:auto-rows-auto"
                     >
-                      {monthlyRecommendations.map((recommendation, index) => {
+                      {orderedMonthlyRecommendations.map((recommendation, index) => {
                         const isFeatured = index === 0
                         const isCurrentRecommendation =
                           selectedPreferenceProfile.selectedThemeIds.includes(recommendation.preference.themeId)
@@ -236,13 +283,9 @@ export function HomeView({
                                 : 'min-h-[296px] max-sm:min-h-[350px]'
                             }`}
                           >
-                            <img
-                              src={recommendation.image}
-                              alt=""
-                              onError={(event) => {
-                                event.currentTarget.hidden = true
-                              }}
-                              className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                            <MonthlyRecommendationMedia
+                              image={recommendation.image}
+                              altText={`${recommendation.preference.cityPair} 추천 소도시 이미지`}
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-[#1F1A17]/88 via-[#1F1A17]/28 to-transparent" />
                             <div className="relative z-10 flex h-full min-h-[inherit] flex-col justify-between gap-5 p-7 text-white max-sm:p-5">

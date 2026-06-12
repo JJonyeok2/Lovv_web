@@ -72,6 +72,30 @@ describe('small-city API contract adapter', () => {
     ])
   })
 
+  it('accepts both camelCase and snake_case city image fields', () => {
+    const result = adaptSmallCityApiResponse(
+      createResponse({
+        data: [
+          {
+            ...createResponse().data[0],
+            imageUrl: 'https://example.com/camel-city.jpg',
+            image_url: 'https://example.com/snake-city.jpg',
+          },
+          {
+            ...createResponse().data[0],
+            id: 'jp-shimanto-002',
+            imageUrl: null,
+            image_url: 'https://example.com/snake-only-city.jpg',
+          },
+        ],
+      }),
+    )
+
+    expect(result.rejectedRecords).toHaveLength(0)
+    expect(result.cities[0].image).toBe('https://example.com/camel-city.jpg')
+    expect(result.cities[1].image).toBe('https://example.com/snake-only-city.jpg')
+  })
+
   it('keeps internal metadata out of map marker payloads', () => {
     const result = adaptSmallCityApiResponse(createResponse())
     const markers = createSmallCityMapMarkers(result.cities)

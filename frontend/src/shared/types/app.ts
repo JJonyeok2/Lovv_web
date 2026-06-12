@@ -50,7 +50,7 @@ export type MonthlyRecommendation = {
   title: string
   summary: string
   badge: string
-  image: string
+  image?: string | null
   themes: string[]
 }
 

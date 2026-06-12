@@ -18,6 +18,7 @@ import {
   clearPendingOAuthLogin,
   createAuthLoginRequestFromCallback,
   createCognitoAuthorizationRequest,
+  createCognitoLogoutUrl,
   createCognitoTokenRequestFromCallback,
   createOAuthAuthorizationRequest,
   getAuthCallbackProvider,
@@ -106,7 +107,6 @@ import {
   getPlanDetailRouteId,
 } from './shared/components/viewRouting'
 import type {
-  AuthProvider,
   ChatMessage,
   FestivalThemeChoice,
   MockConditionExtraction,
@@ -118,6 +118,7 @@ import type {
   PreferenceProfile,
   PreferenceProfileSource,
   SavedPlan,
+  SocialAuthProvider,
   ThemeId,
   View,
   LovvUser,
@@ -500,7 +501,7 @@ function App() {
           return
         }
 
-        const session = adaptApiAuthSessionSnapshot(state)
+        const session = adaptApiAuthSessionSnapshot(state, authRuntimeMode)
 
         setAuthAccessToken(session.accessToken)
         setCurrentUser(session.user)
@@ -528,7 +529,7 @@ function App() {
     return () => {
       isActive = false
     }
-  }, [isBackendAuthMode])
+  }, [authRuntimeMode, isBackendAuthMode])
 
   useEffect(() => {
     // OAuth callback exchanges provider code through the backend and then resumes app routing.
@@ -586,7 +587,7 @@ function App() {
           return
         }
 
-        const session = adaptApiAuthSessionSnapshot(state)
+        const session = adaptApiAuthSessionSnapshot(state, authRuntimeMode)
 
         clearPendingOAuthLogin(window.sessionStorage, authCallbackProvider)
         setAuthFlowNotice(null)
@@ -618,7 +619,7 @@ function App() {
     return () => {
       isActive = false
     }
-  }, [authCallbackProvider, isApiAuthMode, location.search, navigate])
+  }, [authCallbackProvider, authRuntimeMode, isApiAuthMode, location.search, navigate])
 
   useEffect(() => {
     // Cognito mode exchanges the Hosted UI authorization code first, then bridges the Cognito JWT to Lovv.
@@ -671,13 +672,13 @@ function App() {
     })
 
     requestCognitoToken(tokenRequest.request)
-      .then((token) => requestCognitoBridgeSession(token.accessToken))
+      .then((token) => requestCognitoBridgeSession(token.idToken ?? token.accessToken))
       .then((state) => {
         if (!isActive) {
           return
         }
 
-        const session = adaptApiAuthSessionSnapshot(state)
+        const session = adaptApiAuthSessionSnapshot(state, authRuntimeMode)
 
         clearPendingOAuthLogin(window.sessionStorage, tokenRequest.provider)
         setAuthFlowNotice(null)
@@ -709,7 +710,7 @@ function App() {
     return () => {
       isActive = false
     }
-  }, [location.search, navigate, shouldHandleCognitoAuthCallback])
+  }, [authRuntimeMode, location.search, navigate, shouldHandleCognitoAuthCallback])
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -894,7 +895,7 @@ function App() {
     navigateToView('planner', { replace: true })
   }
 
-  const signInWithMockProvider = (provider: AuthProvider) => {
+  const signInWithMockProvider = (provider: SocialAuthProvider) => {
     if (isBackendAuthMode) {
       return
     }
@@ -912,7 +913,7 @@ function App() {
     navigateToView(hasStoredPreference ? 'home' : 'onboarding', { replace: true })
   }
 
-  const startApiOAuthSignIn = async (provider: AuthProvider) => {
+  const startApiOAuthSignIn = async (provider: SocialAuthProvider) => {
     try {
       setAuthFlowNotice(null)
       // Provider secrets stay server-side; frontend only starts the public authorization request.
@@ -931,7 +932,7 @@ function App() {
     }
   }
 
-  const startCognitoOAuthSignIn = async (provider: AuthProvider) => {
+  const startCognitoOAuthSignIn = async (provider: SocialAuthProvider) => {
     try {
       setAuthFlowNotice(null)
       const authorizationRequest = await createCognitoAuthorizationRequest(provider, {
@@ -962,8 +963,19 @@ function App() {
     }
 
     localStorage.removeItem(authStorageKey)
+    clearPendingOAuthLogins(window.sessionStorage)
     setAuthAccessToken(null)
     setCurrentUser(null)
+
+    if (isCognitoAuthMode) {
+      try {
+        window.location.assign(createCognitoLogoutUrl({ origin: window.location.origin }))
+        return
+      } catch {
+        setAuthFlowNotice('Cognito Hosted UI logout 설정이 필요합니다.')
+      }
+    }
+
     navigateToView('auth', { replace: true })
   }
 
@@ -1005,7 +1017,9 @@ function App() {
   }
 
   const currentProviderLabel =
-    currentUser?.provider === 'kakao'
+    currentUser?.provider === 'cognito'
+      ? 'Cognito'
+      : currentUser?.provider === 'kakao'
       ? isBackendAuthMode
         ? 'Kakao'
         : 'Kakao'

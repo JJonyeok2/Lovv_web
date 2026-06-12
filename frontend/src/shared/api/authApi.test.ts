@@ -283,6 +283,39 @@ describe('auth API adapter', () => {
     expect(result.accessToken).toBe('lovv-access-token')
   })
 
+  it('adapts Cognito bridge user records with provider cognito', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        authenticated: true,
+        accessToken: 'lovv-access-token',
+        user: {
+          userId: 'user-6',
+          displayName: 'Cognito User',
+          email: 'cognito@example.com',
+          provider: 'cognito',
+        },
+        linkedProvider: 'cognito',
+        onboardingCompleted: true,
+      }),
+    })
+
+    const result = await requestCognitoBridgeSession('cognito-id-token', {
+      baseUrl: 'https://api.lovv.example',
+      fetchImpl,
+    })
+
+    expect(result.authenticated).toBe(true)
+    expect(result.user).toEqual({
+      id: 'user-6',
+      name: 'Cognito User',
+      email: 'cognito@example.com',
+      avatarInitial: 'C',
+      provider: 'cognito',
+    })
+  })
+
   it('passes an in-memory bearer token for auth/me without persisting it', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({
       ok: true,

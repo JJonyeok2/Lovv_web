@@ -252,6 +252,7 @@ describe('MVP main entry screen', () => {
 
   it('does not fall back to mock social login when API auth mode lacks OAuth client config', async () => {
     vi.stubEnv('VITE_LOVV_AUTH_MODE', 'api')
+    vi.stubEnv('VITE_GOOGLE_OAUTH_CLIENT_ID', '')
     vi.mocked(requestAuthSession).mockResolvedValue(unauthenticatedApiState)
 
     renderApp('/auth')
@@ -338,22 +339,22 @@ describe('MVP main entry screen', () => {
     writePendingOAuthLogin(sessionStorage, {
       provider: 'google',
       state: 'state-1',
-      redirectUri: 'http://localhost/auth/callback',
+      redirectUri: 'http://localhost/auth/callback/cognito',
       codeVerifier: 'cognito-pkce-verifier',
       createdAt: 1_800_000_000_000,
     })
 
-    renderApp('/auth/callback?code=cognito-auth-code&state=state-1')
+    renderApp('/auth/callback/cognito?code=cognito-auth-code&state=state-1')
 
     await waitFor(() => {
       expect(requestCognitoToken).toHaveBeenCalledWith({
         code: 'cognito-auth-code',
-        redirectUri: 'http://localhost/auth/callback',
+        redirectUri: 'http://localhost/auth/callback/cognito',
         codeVerifier: 'cognito-pkce-verifier',
       })
     })
     await waitFor(() => {
-      expect(requestCognitoBridgeSession).toHaveBeenCalledWith('cognito-access-token')
+      expect(requestCognitoBridgeSession).toHaveBeenCalledWith('cognito-id-token')
     })
     await waitFor(() => {
       expect(window.location.pathname).toBe('/home')
@@ -370,12 +371,12 @@ describe('MVP main entry screen', () => {
     writePendingOAuthLogin(sessionStorage, {
       provider: 'kakao',
       state: 'state-1',
-      redirectUri: 'http://localhost/auth/callback',
+      redirectUri: 'http://localhost/auth/callback/cognito',
       codeVerifier: 'cognito-pkce-verifier',
       createdAt: 1_800_000_000_000,
     })
 
-    renderApp('/auth/callback?code=cognito-auth-code&state=state-2')
+    renderApp('/auth/callback/cognito?code=cognito-auth-code&state=state-2')
 
     await waitFor(() => {
       expect(window.location.pathname).toBe('/auth')

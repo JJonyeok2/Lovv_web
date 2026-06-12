@@ -4,6 +4,7 @@ import {
   clearPendingOAuthLogin,
   createAuthLoginRequestFromCallback,
   createCognitoAuthorizationRequest,
+  createCognitoLogoutUrl,
   createCognitoTokenRequestFromCallback,
   createOAuthAuthorizationRequest,
   cognitoAuthCallbackPath,
@@ -34,7 +35,9 @@ describe('OAuth redirect helpers', () => {
   it('matches backend callback routes by provider', () => {
     expect(authCallbackPath('google')).toBe('/auth/callback/google')
     expect(authCallbackPath('kakao')).toBe('/auth/callback/kakao')
-    expect(cognitoAuthCallbackPath).toBe('/auth/callback')
+    expect(cognitoAuthCallbackPath).toBe('/auth/callback/cognito')
+    expect(isCognitoAuthCallbackPath('/auth/callback/cognito')).toBe(true)
+    expect(isCognitoAuthCallbackPath('/auth/callback/cognito/')).toBe(true)
     expect(isCognitoAuthCallbackPath('/auth/callback')).toBe(true)
     expect(isCognitoAuthCallbackPath('/auth/callback/')).toBe(true)
     expect(isCognitoAuthCallbackPath('/auth/callback/google')).toBe(false)
@@ -82,7 +85,7 @@ describe('OAuth redirect helpers', () => {
     writePendingOAuthLogin(sessionStorage, {
       provider: 'kakao',
       state: 'state-2',
-      redirectUri: 'https://lovv.example/auth/callback',
+      redirectUri: 'https://lovv.example/auth/callback/cognito',
       codeVerifier: 'cognito-pkce-verifier',
       createdAt: 1_800_000_000_000,
     })
@@ -90,7 +93,7 @@ describe('OAuth redirect helpers', () => {
     expect(readPendingOAuthLoginByState(sessionStorage, 'state-2')).toEqual({
       provider: 'kakao',
       state: 'state-2',
-      redirectUri: 'https://lovv.example/auth/callback',
+      redirectUri: 'https://lovv.example/auth/callback/cognito',
       codeVerifier: 'cognito-pkce-verifier',
       createdAt: 1_800_000_000_000,
     })
@@ -149,7 +152,7 @@ describe('OAuth redirect helpers', () => {
     const request = await createCognitoAuthorizationRequest('google', {
       origin: 'https://lovv.example',
       env: {
-        VITE_COGNITO_HOSTED_UI_BASE_URL: 'https://lovv-test.auth.ap-northeast-2.amazoncognito.com/',
+        VITE_COGNITO_DOMAIN: 'https://lovv-test.auth.ap-northeast-2.amazoncognito.com/',
         VITE_COGNITO_CLIENT_ID: 'lovv-cognito-client-id',
       },
       storage: sessionStorage,
@@ -163,7 +166,7 @@ describe('OAuth redirect helpers', () => {
     )
     expect(authorizeUrl.searchParams.get('response_type')).toBe('code')
     expect(authorizeUrl.searchParams.get('client_id')).toBe('lovv-cognito-client-id')
-    expect(authorizeUrl.searchParams.get('redirect_uri')).toBe('https://lovv.example/auth/callback')
+    expect(authorizeUrl.searchParams.get('redirect_uri')).toBe('https://lovv.example/auth/callback/cognito')
     expect(authorizeUrl.searchParams.get('scope')).toBe('openid email profile')
     expect(authorizeUrl.searchParams.get('identity_provider')).toBe('Google')
     expect(authorizeUrl.searchParams.get('state')).toBe(request.pending.state)
@@ -172,6 +175,26 @@ describe('OAuth redirect helpers', () => {
     expect(request.pending.provider).toBe('google')
     expect(request.pending.codeVerifier).toBeTruthy()
     expect(readPendingOAuthLogin(sessionStorage, 'google')).toEqual(request.pending)
+  })
+
+  it('builds Cognito Hosted UI logout URLs without provider secrets', () => {
+    const logoutUrl = new URL(
+      createCognitoLogoutUrl({
+        origin: 'https://lovv.example',
+        env: {
+          VITE_COGNITO_DOMAIN: 'https://lovv-test.auth.ap-northeast-2.amazoncognito.com/',
+          VITE_COGNITO_CLIENT_ID: 'lovv-cognito-client-id',
+          VITE_COGNITO_LOGOUT_URI: 'https://lovv.example/',
+        },
+      }),
+    )
+
+    expect(`${logoutUrl.origin}${logoutUrl.pathname}`).toBe(
+      'https://lovv-test.auth.ap-northeast-2.amazoncognito.com/logout',
+    )
+    expect(logoutUrl.searchParams.get('client_id')).toBe('lovv-cognito-client-id')
+    expect(logoutUrl.searchParams.get('logout_uri')).toBe('https://lovv.example/')
+    expect(logoutUrl.searchParams.has('client_secret')).toBe(false)
   })
 
   it('creates backend authorization_code login payloads from verified callbacks', () => {
@@ -200,7 +223,7 @@ describe('OAuth redirect helpers', () => {
     writePendingOAuthLogin(sessionStorage, {
       provider: 'google',
       state: 'state-1',
-      redirectUri: 'https://lovv.example/auth/callback',
+      redirectUri: 'https://lovv.example/auth/callback/cognito',
       codeVerifier: 'cognito-pkce-verifier',
       createdAt: 1_800_000_000_000,
     })
@@ -210,7 +233,7 @@ describe('OAuth redirect helpers', () => {
       provider: 'google',
       request: {
         code: 'cognito-code',
-        redirectUri: 'https://lovv.example/auth/callback',
+        redirectUri: 'https://lovv.example/auth/callback/cognito',
         codeVerifier: 'cognito-pkce-verifier',
       },
     })

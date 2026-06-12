@@ -128,7 +128,9 @@ export type SavedPlan = {
   savedAt: string
 }
 
-export type AuthProvider = 'google' | 'kakao'
+export type SocialAuthProvider = 'google' | 'kakao'
+
+export type AuthProvider = SocialAuthProvider | 'cognito'
 
 export type LovvUser = {
   id: string

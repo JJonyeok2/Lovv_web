@@ -5,7 +5,7 @@
  */
 
 import type { AuthApiState } from '../../shared/api/authApi'
-import type { AuthProvider, LovvUser, PreferenceProfile } from '../../shared/types/app'
+import type { LovvUser, PreferenceProfile, SocialAuthProvider } from '../../shared/types/app'
 import { mockAuthUsers } from './authModel'
 
 export const authRuntimeModeEnvName = 'VITE_LOVV_AUTH_MODE'
@@ -37,7 +37,7 @@ export const getDefaultAuthRuntimeMode = () =>
 
 // Mock mode remains available for local UI checks, but production defaults to Cognito.
 export const createMockAuthSessionSnapshot = (
-  provider: AuthProvider,
+  provider: SocialAuthProvider,
   options: { onboardingCompleted: boolean },
 ): AuthSessionSnapshot => ({
   mode: 'mock',
@@ -51,10 +51,13 @@ export const createMockAuthSessionSnapshot = (
   sessionExpiresAt: null,
 })
 
-export const adaptApiAuthSessionSnapshot = (state: AuthApiState): AuthSessionSnapshot => {
+export const adaptApiAuthSessionSnapshot = (
+  state: AuthApiState,
+  mode: Extract<AuthRuntimeMode, 'api' | 'cognito'> = 'api',
+): AuthSessionSnapshot => {
   if (!state.authenticated || !state.user) {
     return {
-      mode: 'api',
+      mode,
       user: null,
       preferenceProfile: null,
       onboardingCompleted: false,
@@ -67,7 +70,7 @@ export const adaptApiAuthSessionSnapshot = (state: AuthApiState): AuthSessionSna
   }
 
   return {
-    mode: 'api',
+    mode,
     user: state.user,
     preferenceProfile: state.preferenceProfile,
     onboardingCompleted: state.onboardingCompleted,

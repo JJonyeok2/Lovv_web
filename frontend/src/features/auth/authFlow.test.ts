@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { AuthApiState } from '../../shared/api/authApi'
 import {
   adaptApiAuthSessionSnapshot,
@@ -17,6 +17,7 @@ describe('auth flow orchestration helpers', () => {
     expect(resolveAuthRuntimeMode('api')).toBe('api')
     expect(resolveAuthRuntimeMode('cognito')).toBe('cognito')
     expect(resolveAuthRuntimeMode('production')).toBe('cognito')
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', '')
     expect(getDefaultAuthRuntimeMode()).toBe('cognito')
   })
 
@@ -68,6 +69,38 @@ describe('auth flow orchestration helpers', () => {
       tokenType: 'Bearer',
       expiresIn: 900,
       sessionId: 'session-1',
+      sessionExpiresAt: '2026-06-25T00:00:00Z',
+    })
+  })
+
+  it('keeps Cognito backend session snapshots marked as Cognito mode', () => {
+    const authState: AuthApiState = {
+      authenticated: true,
+      accessToken: 'lovv-access-token',
+      tokenType: 'Bearer',
+      expiresIn: 900,
+      sessionId: 'session-2',
+      sessionExpiresAt: '2026-06-25T00:00:00Z',
+      user: {
+        id: 'user-2',
+        name: 'Cognito User',
+        email: 'cognito@example.com',
+        avatarInitial: 'C',
+        provider: 'cognito',
+      },
+      preferenceProfile: null,
+      onboardingCompleted: true,
+    }
+
+    expect(adaptApiAuthSessionSnapshot(authState, 'cognito')).toEqual({
+      mode: 'cognito',
+      user: authState.user,
+      preferenceProfile: null,
+      onboardingCompleted: true,
+      accessToken: 'lovv-access-token',
+      tokenType: 'Bearer',
+      expiresIn: 900,
+      sessionId: 'session-2',
       sessionExpiresAt: '2026-06-25T00:00:00Z',
     })
   })

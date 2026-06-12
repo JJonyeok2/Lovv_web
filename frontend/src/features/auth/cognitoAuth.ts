@@ -40,7 +40,8 @@ export class CognitoTokenRequestError extends Error {
   }
 }
 
-const defaultHostedUiBaseUrl = import.meta.env.VITE_COGNITO_HOSTED_UI_BASE_URL?.trim() ?? ''
+const defaultHostedUiBaseUrl =
+  import.meta.env.VITE_COGNITO_DOMAIN?.trim() || import.meta.env.VITE_COGNITO_HOSTED_UI_BASE_URL?.trim() || ''
 const defaultClientId = import.meta.env.VITE_COGNITO_CLIENT_ID?.trim() ?? ''
 
 const readString = (...values: unknown[]) =>

@@ -1,8 +1,8 @@
-import type { AuthProvider, LovvUser } from '../../shared/types/app'
+import type { AuthProvider, LovvUser, SocialAuthProvider } from '../../shared/types/app'
 
 export const authStorageKey = 'lovv.auth.user'
 
-export const mockAuthUsers: Record<AuthProvider, LovvUser> = {
+export const mockAuthUsers: Record<SocialAuthProvider, LovvUser> = {
   google: {
     id: 'mock-google-user',
     name: 'Lovv Google User',
@@ -69,12 +69,15 @@ export const readStoredUser = (): LovvUser | null => {
       return null
     }
 
+    const provider: AuthProvider =
+      parsedUser.provider === 'cognito' ? 'cognito' : parsedUser.provider === 'kakao' ? 'kakao' : 'google'
+
     return {
       id: parsedUser.id,
       name: parsedUser.name,
       email: parsedUser.email,
       avatarInitial: parsedUser.avatarInitial,
-      provider: parsedUser.provider === 'kakao' ? 'kakao' : 'google',
+      provider,
     }
   } catch {
     return null

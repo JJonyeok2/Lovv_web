@@ -5,13 +5,13 @@
  */
 
 import logoImage from '../../assets/lovv-logo.png'
-import type { AuthProvider } from '../../shared/types/app'
+import type { SocialAuthProvider } from '../../shared/types/app'
 import { authJourneyItems, authServiceBullets, authServiceCards } from './authModel'
 
 type AuthViewProps = {
   authNotice?: string
   isSignInDisabled?: boolean
-  onSignIn: (provider: AuthProvider) => void
+  onSignIn: (provider: SocialAuthProvider) => void
 }
 
 const googleButtonClassName =

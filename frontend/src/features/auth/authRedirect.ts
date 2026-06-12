@@ -5,19 +5,21 @@
  */
 
 import type { AuthLoginRequest } from '../../shared/api/authApi'
-import type { AuthProvider } from '../../shared/types/app'
+import type { SocialAuthProvider } from '../../shared/types/app'
 
 export type OAuthClientEnv = {
   readonly [key: string]: unknown
   VITE_GOOGLE_OAUTH_CLIENT_ID?: string
   VITE_KAKAO_OAUTH_CLIENT_ID?: string
+  VITE_COGNITO_DOMAIN?: string
   VITE_COGNITO_HOSTED_UI_BASE_URL?: string
   VITE_COGNITO_CLIENT_ID?: string
   VITE_COGNITO_REDIRECT_URI?: string
+  VITE_COGNITO_LOGOUT_URI?: string
 }
 
 export type PendingOAuthLogin = {
-  provider: AuthProvider
+  provider: SocialAuthProvider
   state: string
   redirectUri: string
   codeVerifier?: string
@@ -51,12 +53,12 @@ export type CognitoTokenRequest = {
 export type CognitoCallbackTokenResult =
   | {
       status: 'success'
-      provider: AuthProvider
+      provider: SocialAuthProvider
       request: CognitoTokenRequest
     }
   | {
       status: 'error'
-      provider?: AuthProvider
+      provider?: SocialAuthProvider
       errorCode: string
       errorDescription: string
     }
@@ -91,7 +93,7 @@ const oauthProviderConfig = {
   },
 } as const
 
-const cognitoIdentityProviderNames: Record<AuthProvider, string> = {
+const cognitoIdentityProviderNames: Record<SocialAuthProvider, string> = {
   google: 'Google',
   kakao: 'Kakao',
 }
@@ -101,7 +103,8 @@ const cognitoScope = 'openid email profile'
 // Stored only until callback validation; this is not the Lovv app session.
 const pendingOAuthLoginStoragePrefix = 'lovv.auth.oauth'
 
-const readString = (value: unknown) => (typeof value === 'string' ? value.trim() : '')
+const readString = (...values: unknown[]) =>
+  values.find((value): value is string => typeof value === 'string' && value.trim().length > 0)?.trim() ?? ''
 
 const base64UrlEncodeBytes = (bytes: Uint8Array) => {
   const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('')
@@ -120,24 +123,26 @@ const randomBytes = (length: number, crypto: OAuthCrypto = globalThis.crypto) =>
   return bytes
 }
 
-export const authCallbackPath = (provider: AuthProvider) => `/auth/callback/${provider}`
+export const authCallbackPath = (provider: SocialAuthProvider) => `/auth/callback/${provider}`
 
-export const cognitoAuthCallbackPath = '/auth/callback'
+export const cognitoAuthCallbackPath = '/auth/callback/cognito'
+export const legacyCognitoAuthCallbackPath = '/auth/callback'
 
-export const isCognitoAuthCallbackPath = (pathname: string) => /^\/auth\/callback\/?$/.test(pathname)
+export const isCognitoAuthCallbackPath = (pathname: string) =>
+  /^\/auth\/callback\/?$/.test(pathname) || /^\/auth\/callback\/cognito\/?$/.test(pathname)
 
-export const getAuthCallbackProvider = (pathname: string): AuthProvider | null => {
+export const getAuthCallbackProvider = (pathname: string): SocialAuthProvider | null => {
   const match = /^\/auth\/callback\/(google|kakao)\/?$/.exec(pathname)
 
-  return match ? (match[1] as AuthProvider) : null
+  return match ? (match[1] as SocialAuthProvider) : null
 }
 
 export const getOAuthClientId = (
-  provider: AuthProvider,
+  provider: SocialAuthProvider,
   env: OAuthClientEnv = import.meta.env,
 ) => readString(env[oauthClientEnvNames[provider]])
 
-export const hasOAuthClientConfig = (provider: AuthProvider, env: OAuthClientEnv = import.meta.env) =>
+export const hasOAuthClientConfig = (provider: SocialAuthProvider, env: OAuthClientEnv = import.meta.env) =>
   getOAuthClientId(provider, env).length > 0
 
 export const readOAuthCallbackParams = (search: string): OAuthCallbackParams => {
@@ -151,14 +156,14 @@ export const readOAuthCallbackParams = (search: string): OAuthCallbackParams => 
   }
 }
 
-export const getPendingOAuthLoginStorageKey = (provider: AuthProvider) =>
+export const getPendingOAuthLoginStorageKey = (provider: SocialAuthProvider) =>
   `${pendingOAuthLoginStoragePrefix}.${provider}`
 
 export const writePendingOAuthLogin = (storage: Storage, pendingLogin: PendingOAuthLogin) => {
   storage.setItem(getPendingOAuthLoginStorageKey(pendingLogin.provider), JSON.stringify(pendingLogin))
 }
 
-export const readPendingOAuthLogin = (storage: Storage, provider: AuthProvider): PendingOAuthLogin | null => {
+export const readPendingOAuthLogin = (storage: Storage, provider: SocialAuthProvider): PendingOAuthLogin | null => {
   const rawPendingLogin = storage.getItem(getPendingOAuthLoginStorageKey(provider))
 
   if (!rawPendingLogin) {
@@ -187,7 +192,7 @@ export const readPendingOAuthLogin = (storage: Storage, provider: AuthProvider):
   }
 }
 
-export const clearPendingOAuthLogin = (storage: Storage, provider: AuthProvider) => {
+export const clearPendingOAuthLogin = (storage: Storage, provider: SocialAuthProvider) => {
   storage.removeItem(getPendingOAuthLoginStorageKey(provider))
 }
 
@@ -238,7 +243,7 @@ export const createOAuthAuthorizeUrl = ({
   state,
   codeChallenge,
 }: {
-  provider: AuthProvider
+  provider: SocialAuthProvider
   clientId: string
   redirectUri: string
   state: string
@@ -264,7 +269,7 @@ export const createOAuthAuthorizeUrl = ({
 const normalizeOrigin = (origin: string) => origin.replace(/\/+$/, '')
 
 const getCognitoHostedUiBaseUrl = (env: OAuthClientEnv = import.meta.env) =>
-  readString(env.VITE_COGNITO_HOSTED_UI_BASE_URL).replace(/\/+$/, '')
+  readString(env.VITE_COGNITO_DOMAIN, env.VITE_COGNITO_HOSTED_UI_BASE_URL).replace(/\/+$/, '')
 
 const getCognitoClientId = (env: OAuthClientEnv = import.meta.env) =>
   readString(env.VITE_COGNITO_CLIENT_ID)
@@ -276,6 +281,14 @@ const getCognitoRedirectUri = ({
   origin: string
   env?: OAuthClientEnv
 }) => readString(env.VITE_COGNITO_REDIRECT_URI) || `${normalizeOrigin(origin)}${cognitoAuthCallbackPath}`
+
+const getCognitoLogoutUri = ({
+  origin,
+  env = import.meta.env,
+}: {
+  origin: string
+  env?: OAuthClientEnv
+}) => readString(env.VITE_COGNITO_LOGOUT_URI) || `${normalizeOrigin(origin)}/`
 
 export const createCognitoAuthorizeUrl = ({
   hostedUiBaseUrl,
@@ -306,8 +319,40 @@ export const createCognitoAuthorizeUrl = ({
   return authorizeUrl.toString()
 }
 
+export const createCognitoLogoutUrl = ({
+  origin,
+  env = import.meta.env,
+}: {
+  origin: string
+  env?: OAuthClientEnv
+}) => {
+  const hostedUiBaseUrl = getCognitoHostedUiBaseUrl(env)
+  const clientId = getCognitoClientId(env)
+  const logoutUri = getCognitoLogoutUri({ origin, env })
+
+  if (!hostedUiBaseUrl) {
+    throw new OAuthRedirectConfigError(
+      'COGNITO_HOSTED_UI_BASE_URL_MISSING',
+      'VITE_COGNITO_DOMAIN is required for Cognito logout.',
+    )
+  }
+
+  if (!clientId) {
+    throw new OAuthRedirectConfigError(
+      'COGNITO_CLIENT_ID_MISSING',
+      'VITE_COGNITO_CLIENT_ID is required for Cognito logout.',
+    )
+  }
+
+  const logoutUrl = new URL(`${hostedUiBaseUrl}/logout`)
+  logoutUrl.searchParams.set('client_id', clientId)
+  logoutUrl.searchParams.set('logout_uri', logoutUri)
+
+  return logoutUrl.toString()
+}
+
 export const createCognitoAuthorizationRequest = async (
-  provider: AuthProvider,
+  provider: SocialAuthProvider,
   {
     origin,
     env = import.meta.env,
@@ -368,7 +413,7 @@ export const createCognitoAuthorizationRequest = async (
 }
 
 export const createOAuthAuthorizationRequest = async (
-  provider: AuthProvider,
+  provider: SocialAuthProvider,
   {
     origin,
     env = import.meta.env,
@@ -421,7 +466,7 @@ export const createOAuthAuthorizationRequest = async (
 }
 
 export const createAuthLoginRequestFromCallback = (
-  provider: AuthProvider,
+  provider: SocialAuthProvider,
   search: string,
   storage: Storage,
 ): OAuthCallbackLoginResult => {

@@ -4,7 +4,7 @@
  * @lastModified 2026-06-12
  */
 
-import type { AuthProvider, LovvUser, PreferenceProfile } from '../types/app'
+import type { AuthProvider, LovvUser, PreferenceProfile, SocialAuthProvider } from '../types/app'
 import { adaptPreferenceApiRecord, type PreferenceApiRecord } from './preferencesApi'
 
 export const authApiEndpoints = {
@@ -78,7 +78,7 @@ export type AuthApiState = {
   authenticated: boolean
 }
 
-const validAuthProviders = new Set<AuthProvider>(['google', 'kakao'])
+const validAuthProviders = new Set<AuthProvider>(['google', 'kakao', 'cognito'])
 
 const readString = (...values: unknown[]) =>
   values.find((value): value is string => typeof value === 'string' && value.trim().length > 0)?.trim() ?? ''
@@ -269,7 +269,7 @@ const requestAuthApiJson = async (
 }
 
 export const requestAuthLogin = async (
-  provider: AuthProvider,
+  provider: SocialAuthProvider,
   request: AuthLoginRequest,
   options: AuthApiRequestOptions = {},
 ) => {

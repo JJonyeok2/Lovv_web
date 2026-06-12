@@ -55,6 +55,7 @@ export type SmallCityApiRecord = {
   detail: string
   highlights: string[]
   route_seed: string[]
+  imageUrl?: string | null
   image_url?: string | null
   festivalCount?: number
   festival_count?: number
@@ -355,7 +356,9 @@ const normalizeSmallCityApiRecord = (
       detail,
       highlights,
       routeSeed,
-      image: normalizeOptionalString(record.image_url),
+      image:
+        normalizeOptionalString(record.imageUrl) ??
+        normalizeOptionalString(record.image_url),
       festivals,
       festivalCount,
     },

@@ -1,15 +1,15 @@
-import type { PlanReactionType, SavedPlan } from '../../shared/types/app'
+import type { SavedPlanLike, SavedPlan } from '../../shared/types/app'
 
 export const savedPlansStorageKey = 'lovv.savedPlans'
 export const likedPlanIdsStorageKey = 'lovv.likedPlanIds'
-export const planReactionsStorageKey = 'lovv.planReactions'
+export const savedPlanLikesStorageKey = 'lovv.savedPlanLikes'
 
-export type PlanReactionMap = Record<string, Exclude<PlanReactionType, null>>
+export type SavedPlanLikeMap = Record<string, Exclude<SavedPlanLike, null>>
 
-export const getNextPlanReaction = (
-  currentReaction: PlanReactionType,
-  clickedReaction: Exclude<PlanReactionType, null>,
-): PlanReactionType => (currentReaction === clickedReaction ? null : clickedReaction)
+export const getNextSavedPlanLike = (
+  currentLike: SavedPlanLike,
+  clickedLike: Exclude<SavedPlanLike, null>,
+): SavedPlanLike => (currentLike === clickedLike ? null : clickedLike)
 
 export const readStoredSavedPlans = (): SavedPlan[] => {
   try {
@@ -39,6 +39,10 @@ export const readStoredSavedPlans = (): SavedPlan[] => {
   }
 }
 
+export const writeStoredSavedPlans = (plans: SavedPlan[]) => {
+  localStorage.setItem(savedPlansStorageKey, JSON.stringify(plans))
+}
+
 export const readStoredLikedPlanIds = (): string[] => {
   try {
     const rawPlanIds = localStorage.getItem(likedPlanIdsStorageKey)
@@ -57,19 +61,19 @@ export const readStoredLikedPlanIds = (): string[] => {
   }
 }
 
-export const readStoredPlanReactions = (): PlanReactionMap => {
-  const reactions: PlanReactionMap = {}
+export const readStoredSavedPlanLikes = (): SavedPlanLikeMap => {
+  const likes: SavedPlanLikeMap = {}
 
   try {
-    const rawReactions = localStorage.getItem(planReactionsStorageKey)
+    const rawLikes = localStorage.getItem(savedPlanLikesStorageKey)
 
-    if (rawReactions) {
-      const parsedReactions = JSON.parse(rawReactions)
+    if (rawLikes) {
+      const parsedLikes = JSON.parse(rawLikes)
 
-      if (parsedReactions && typeof parsedReactions === 'object' && !Array.isArray(parsedReactions)) {
-        Object.entries(parsedReactions).forEach(([planId, reaction]) => {
-          if (reaction === 'like' || reaction === 'dislike') {
-            reactions[planId] = reaction
+      if (parsedLikes && typeof parsedLikes === 'object' && !Array.isArray(parsedLikes)) {
+        Object.entries(parsedLikes).forEach(([planId, like]) => {
+          if (like === 'like') {
+            likes[planId] = like
           }
         })
       }
@@ -79,20 +83,13 @@ export const readStoredPlanReactions = (): PlanReactionMap => {
   }
 
   readStoredLikedPlanIds().forEach((planId) => {
-    reactions[planId] ??= 'like'
+    likes[planId] ??= 'like'
   })
 
-  return reactions
+  return likes
 }
 
-export const writeStoredPlanReactions = (reactions: PlanReactionMap) => {
-  localStorage.setItem(planReactionsStorageKey, JSON.stringify(reactions))
-  localStorage.setItem(
-    likedPlanIdsStorageKey,
-    JSON.stringify(
-      Object.entries(reactions)
-        .filter(([, reaction]) => reaction === 'like')
-        .map(([planId]) => planId),
-    ),
-  )
+export const writeStoredSavedPlanLikes = (likes: SavedPlanLikeMap) => {
+  localStorage.setItem(savedPlanLikesStorageKey, JSON.stringify(likes))
+  localStorage.removeItem(likedPlanIdsStorageKey)
 }

@@ -59,6 +59,7 @@ type PlannerWorkspaceProps = {
   resetPlannerFlow: () => void
   saveGeneratedPlan: () => void
   isCurrentPlanSaved: boolean
+  openMyPage: () => void
   savedPlanNotice: string | null
 }
 
@@ -93,6 +94,7 @@ export function PlannerWorkspace({
   resetPlannerFlow,
   saveGeneratedPlan,
   isCurrentPlanSaved,
+  openMyPage,
   savedPlanNotice,
 }: PlannerWorkspaceProps) {
   const renderPlannerStateHeader = () => (
@@ -647,10 +649,14 @@ export function PlannerWorkspace({
               </button>
               <button
                 type="button"
-                onClick={goHome}
-                className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-4 text-sm font-bold text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                onClick={isCurrentPlanSaved ? openMyPage : goHome}
+                className={`inline-flex min-h-11 items-center justify-center rounded-full border px-4 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
+                  isCurrentPlanSaved
+                    ? 'border-[#A92B10] bg-[#F36B12] text-[#33271E] hover:bg-[#FF8A2A]'
+                    : 'border-[#F3B489] bg-[#fffffa] text-[#33271E] hover:border-[#F36B12] hover:bg-[#FFE0CA]'
+                }`}
               >
-                다시하기
+                {isCurrentPlanSaved ? '마이페이지 보기' : '다시하기'}
               </button>
             </div>
           </section>

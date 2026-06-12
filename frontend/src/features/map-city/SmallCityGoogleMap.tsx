@@ -245,7 +245,7 @@ export function SmallCityGoogleMap({
     markerInstancesRef.current = markers.map((cityMarker) => {
       const isSelected = cityMarker.cityId === selectedMarkerCityId
       const marker = new GoogleMarker({
-        clickable: true,
+        clickable: false,
         label: {
           color: isSelected ? '#33271E' : '#ffffff',
           fontSize: '11px',
@@ -253,8 +253,10 @@ export function SmallCityGoogleMap({
           text: cityMarker.label.slice(0, 2),
         },
         map,
+        opacity: 0,
         position: { lat: cityMarker.latitude, lng: cityMarker.longitude },
         title: cityMarker.label,
+        zIndex: isSelected ? 100000 : Math.round(cityMarker.latitude * 1000),
       })
 
       marker.addListener?.('click', () => {
@@ -276,6 +278,36 @@ export function SmallCityGoogleMap({
       role="region"
     >
       <div ref={mapContainerRef} className="absolute inset-0" aria-hidden={runtimeStatus !== 'ready'} />
+      {runtimeStatus === 'ready' && markers.length > 0 ? (
+        <div
+          role="list"
+          aria-label={`${countryLabel} 지도 마커`}
+          className="pointer-events-none absolute inset-0"
+        >
+          {markers.map((marker) => {
+            const isSelected = marker.cityId === selectedMarkerCityId
+
+            return (
+              <button
+                key={marker.id}
+                type="button"
+                aria-label={`지도 마커: ${marker.label}`}
+                aria-pressed={isSelected}
+                onClick={() => onSelectMarker(marker)}
+                style={getFallbackMarkerPosition(marker, country)}
+                className={`pointer-events-auto absolute inline-flex min-h-7 -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-[5px] border px-2 py-1 text-[11px] font-black leading-4 shadow-[0_12px_22px_-16px_rgba(51,39,30,0.5)] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
+                  isSelected
+                    ? 'z-20 border-[#A92B10] bg-[#F36B12] text-[#33271E]'
+                    : 'z-10 border-white/80 bg-white/90 text-[#33271E] hover:bg-[#FFE0CA]'
+                }`}
+              >
+                <span className={`size-2 rounded-full ${isSelected ? 'bg-[#33271E]' : 'bg-[#F36B12]'}`} />
+                {marker.label}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
       {runtimeStatus !== 'ready' ? (
         <div className="lovv-google-map-fallback absolute inset-0 flex flex-col gap-4 p-5">
           <div className="max-w-[360px] rounded-[8px] bg-white/88 px-3 py-2 text-[12px] font-black leading-5 text-[#33271E] shadow-[0_12px_24px_-22px_rgba(51,39,30,0.35)] backdrop-blur">

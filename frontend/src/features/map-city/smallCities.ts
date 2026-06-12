@@ -767,36 +767,12 @@ const createStaticPlace = (
   }
 }
 
-const createStaticFestivalPlace = (city: SmallCity, festival: SmallCityFestival): SmallCityPlace => ({
-  id: festival.id,
-  cityId: city.id,
-  category: '관광지',
-  categoryName: '축제',
-  name: festival.name,
-  summary: festival.summary,
-  addressName: `${city.countryLabel} ${city.region} ${city.nameKo}`,
-  roadAddressName: `${city.countryLabel} ${city.region} ${city.nameKo}`,
-  latitude: city.latitude,
-  longitude: city.longitude,
-  theme: '축제',
-  themeTags: festival.themeTags ?? ['축제'],
-  startDate: festival.startDate,
-  endDate: festival.endDate,
-  visitMonths: festival.visitMonths,
-})
-
 export const createSmallCityPlaceGroups = (city: SmallCity): SmallCityPlaceGroups => {
   const groups = smallCityPlaceCategories.reduce((placeGroups, category) => {
     placeGroups[category] = [createStaticPlace(city, category)]
 
     return placeGroups
   }, {} as SmallCityPlaceGroups)
-
-  const festivalPlaces = (city.festivals ?? []).map((festival) => createStaticFestivalPlace(city, festival))
-
-  if (festivalPlaces.length > 0) {
-    groups['관광지'] = [...groups['관광지'], ...festivalPlaces]
-  }
 
   return groups
 }

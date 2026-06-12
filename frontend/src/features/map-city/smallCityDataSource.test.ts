@@ -115,7 +115,7 @@ describe('small-city data source boundary', () => {
     expect(jinjuDetail.status).toBe('success')
     expect(jinjuDetail.detail?.festivalCount).toBe(1)
     expect(jinjuDetail.detail?.festivals[0].name).toBe('진주남강유등축제')
-    expect(jinjuDetail.detail?.placesByCategory['관광지'].some((place) => place.categoryName === '축제')).toBe(true)
+    expect(jinjuDetail.detail?.placesByCategory['관광지'].some((place) => place.categoryName === '축제')).toBe(false)
   })
 
   it('represents empty, loading, and error states explicitly', () => {

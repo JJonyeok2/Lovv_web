@@ -98,7 +98,7 @@ export type PlanDraft = {
   stops: PlanStop[]
 }
 
-export type PlanReactionType = 'like' | 'dislike' | null
+export type SavedPlanLike = 'like' | null
 
 export type MockConditionExtraction = {
   activeRequiredThemes: ThemeId[]
@@ -123,11 +123,14 @@ export type SavedPlan = {
   summary: string
   days?: PlanDay[]
   stops: PlanStop[]
+  isLiked?: boolean
   createdAt: string
   savedAt: string
 }
 
-export type AuthProvider = 'google' | 'kakao'
+export type SocialAuthProvider = 'google' | 'kakao'
+
+export type AuthProvider = SocialAuthProvider | 'cognito'
 
 export type LovvUser = {
   id: string

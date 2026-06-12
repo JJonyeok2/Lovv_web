@@ -1,7 +1,31 @@
+/**
+ * @file App.tsx
+ * @description Main Lovv frontend route and state coordinator.
+ * @lastModified 2026-06-12
+ */
+
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AuthView } from './features/auth/AuthView'
-import { authStorageKey, mockAuthUsers, readStoredUser } from './features/auth/authModel'
+import { authStorageKey, readStoredUser } from './features/auth/authModel'
+import {
+  adaptApiAuthSessionSnapshot,
+  createMockAuthSessionSnapshot,
+  getDefaultAuthRuntimeMode,
+} from './features/auth/authFlow'
+import { getAuthExceptionNotice, type AuthExceptionNotice } from './features/auth/authException'
+import {
+  clearPendingOAuthLogins,
+  clearPendingOAuthLogin,
+  createAuthLoginRequestFromCallback,
+  createCognitoAuthorizationRequest,
+  createCognitoLogoutUrl,
+  createCognitoTokenRequestFromCallback,
+  createOAuthAuthorizationRequest,
+  getAuthCallbackProvider,
+  isCognitoAuthCallbackPath,
+} from './features/auth/authRedirect'
+import { requestCognitoToken } from './features/auth/cognitoAuth'
 import { heroRotationIntervalMs, heroThemes, monthlyRecommendations } from './features/home/homeContent'
 import { HomeView } from './features/home/HomeView'
 import { ThemeDetailView } from './features/home/ThemeDetailView'
@@ -60,15 +84,21 @@ import {
 import { PlannerWorkspace, type PlannerStateStep } from './features/planner/PlannerWorkspace'
 import { PlanDetailView } from './features/planner/PlanDetailView'
 import {
-  getNextPlanReaction,
-  readStoredPlanReactions,
+  getNextSavedPlanLike,
+  readStoredSavedPlanLikes,
   readStoredSavedPlans,
-  savedPlansStorageKey,
-  writeStoredPlanReactions,
-  type PlanReactionMap,
+  writeStoredSavedPlanLikes,
+  writeStoredSavedPlans,
+  type SavedPlanLikeMap,
 } from './features/saved-plans/savedPlansStorage'
 import { AppHeader } from './shared/components/AppHeader'
 import { Footer } from './shared/components/Footer'
+import {
+  requestAuthLogin,
+  requestAuthLogout,
+  requestAuthSession,
+  requestCognitoBridgeSession,
+} from './shared/api/authApi'
 import {
   getCanonicalViewFromPath,
   getGuardRedirectPath,
@@ -77,18 +107,18 @@ import {
   getPlanDetailRouteId,
 } from './shared/components/viewRouting'
 import type {
-  AuthProvider,
   ChatMessage,
   FestivalThemeChoice,
   MockConditionExtraction,
   MonthlyRecommendation,
   PlanDay,
   PlanDraft,
-  PlanReactionType,
+  SavedPlanLike,
   Preference,
   PreferenceProfile,
   PreferenceProfileSource,
   SavedPlan,
+  SocialAuthProvider,
   ThemeId,
   View,
   LovvUser,
@@ -97,11 +127,26 @@ function App() {
   const cityMapDetailPanelRef = useRef<HTMLDivElement | null>(null)
   const location = useLocation()
   const navigate = useNavigate()
-  const [currentUser, setCurrentUser] = useState<LovvUser | null>(() => readStoredUser())
-  const [selectedPreferenceProfile, setSelectedPreferenceProfile] = useState(
-    () => readStoredPreferenceProfile() ?? getDefaultPreferenceProfile(),
+  const initialAuthCallbackRef = useRef(
+    Boolean(getAuthCallbackProvider(window.location.pathname)) ||
+      isCognitoAuthCallbackPath(window.location.pathname),
   )
-  const [hasCompletedPreference, setHasCompletedPreference] = useState(() => Boolean(readStoredPreferenceProfile()))
+  const processedOAuthCallbackKeyRef = useRef('')
+  const authRuntimeMode = useMemo(() => getDefaultAuthRuntimeMode(), [])
+  const isApiAuthMode = authRuntimeMode === 'api'
+  const isCognitoAuthMode = authRuntimeMode === 'cognito'
+  const isBackendAuthMode = isApiAuthMode || isCognitoAuthMode
+  const [currentUser, setCurrentUser] = useState<LovvUser | null>(() =>
+    isBackendAuthMode ? null : readStoredUser(),
+  )
+  const [authAccessToken, setAuthAccessToken] = useState<string | null>(null)
+  const [isAuthSessionRestoring, setIsAuthSessionRestoring] = useState(isBackendAuthMode)
+  const [selectedPreferenceProfile, setSelectedPreferenceProfile] = useState(
+    () => (isBackendAuthMode ? null : readStoredPreferenceProfile()) ?? getDefaultPreferenceProfile(),
+  )
+  const [hasCompletedPreference, setHasCompletedPreference] = useState(
+    () => !isBackendAuthMode && Boolean(readStoredPreferenceProfile()),
+  )
   const selectedPreferences = useMemo(
     () => getPreferencesForProfile(selectedPreferenceProfile),
     [selectedPreferenceProfile],
@@ -115,6 +160,10 @@ function App() {
     activeViewOverride && location.pathname === getPathForView(activeViewOverride)
       ? activeViewOverride
       : routedView
+  const authCallbackProvider = getAuthCallbackProvider(location.pathname)
+  const shouldHandleCognitoAuthCallback = isCognitoAuthMode && isCognitoAuthCallbackPath(location.pathname)
+  const shouldHandleAuthCallback =
+    (isApiAuthMode && Boolean(authCallbackProvider)) || shouldHandleCognitoAuthCallback
   const [pendingPreferenceProfile, setPendingPreferenceProfile] = useState(() => selectedPreferenceProfile)
   const [selectedPreviewImageKey, setSelectedPreviewImageKey] = useState<string | null>(null)
   const [isPreviewTrayOpen, setIsPreviewTrayOpen] = useState(false)
@@ -128,10 +177,11 @@ function App() {
   const [savedPlanNotice, setSavedPlanNotice] = useState<string | null>(null)
   const [preferenceNotice, setPreferenceNotice] = useState<string | null>(null)
   const [themeSelectionNotice, setThemeSelectionNotice] = useState<string | null>(null)
+  const [authFlowNotice, setAuthFlowNotice] = useState<AuthExceptionNotice | null>(null)
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => readStoredSavedPlans())
-  const [planReactions, setPlanReactions] = useState<PlanReactionMap>(() => readStoredPlanReactions())
-  const [pendingReactionPlanIds, setPendingReactionPlanIds] = useState<string[]>([])
-  const [planReactionErrors, setPlanReactionErrors] = useState<Record<string, string>>({})
+  const [savedPlanLikes, setSavedPlanLikes] = useState<SavedPlanLikeMap>(() => readStoredSavedPlanLikes())
+  const [pendingSavedPlanLikeIds, setPendingSavedPlanLikeIds] = useState<string[]>([])
+  const [savedPlanLikeErrors, setSavedPlanLikeErrors] = useState<Record<string, string>>({})
   const [plannerPreferenceProfile, setPlannerPreferenceProfile] = useState(() => selectedPreferenceProfile)
   const plannerPreferences = useMemo(
     () => getPreferencesForProfile(plannerPreferenceProfile),
@@ -249,11 +299,11 @@ function App() {
 
     return planDraft.days.find((day) => day.day === selectedPlanDayNumber) ?? planDraft.days[0] ?? fallbackDay
   }, [planDraft.days, selectedPlanDayNumber])
-  const getPlanReaction = (planId: string): PlanReactionType => planReactions[planId] ?? null
-  const isPlanReactionPending = (planId: string) => pendingReactionPlanIds.includes(planId)
-  const getPlanReactionError = (planId: string) => planReactionErrors[planId] ?? null
+  const getSavedPlanLike = (planId: string): SavedPlanLike => savedPlanLikes[planId] ?? null
+  const isSavedPlanLikePending = (planId: string) => pendingSavedPlanLikeIds.includes(planId)
+  const getSavedPlanLikeError = (planId: string) => savedPlanLikeErrors[planId] ?? null
   const isCurrentPlanSaved = savedPlans.some((plan) => plan.id === currentPlanId)
-  const isCurrentPlanLiked = getPlanReaction(currentPlanId) === 'like'
+  const isCurrentPlanLiked = getSavedPlanLike(currentPlanId) === 'like'
   const isRouteCurrentGeneratedPlan = routePlanId === currentPlanId && isPlannerReady
   const hasRoutePlan = Boolean(routePlanId && (isRouteCurrentGeneratedPlan || savedPlanForRoute))
   const savedRoutePlanDraft = useMemo<PlanDraft | null>(() => {
@@ -292,7 +342,7 @@ function App() {
     ? plannerBasisLabel
     : savedPlanForRoute?.cityPair ?? plannerBasisLabel
   const isActivePlanDetailReady = isRouteCurrentGeneratedPlan || Boolean(savedPlanForRoute)
-  const activePlanDetailReaction = getPlanReaction(activePlanDetailId)
+  const activeSavedPlanDetailLike = getSavedPlanLike(activePlanDetailId)
   const isActivePlanDetailSaved = isRouteCurrentGeneratedPlan ? isCurrentPlanSaved : Boolean(savedPlanForRoute)
   const activeCountrySmallCities = useMemo(
     () => smallCityCatalogState.cities.filter((city) => city.country === cityMapCountry),
@@ -398,6 +448,10 @@ function App() {
   }
 
   useEffect(() => {
+    if (isAuthSessionRestoring || shouldHandleAuthCallback) {
+      return
+    }
+
     const legacyRedirectPath = getLegacyViewRedirectPath(
       location.search,
       isPlannerReady ? currentPlanId : null,
@@ -425,11 +479,230 @@ function App() {
     currentUser,
     hasCompletedPreference,
     hasRoutePlan,
+    isAuthSessionRestoring,
     isPlannerReady,
     location.pathname,
     location.search,
     navigate,
+    shouldHandleAuthCallback,
   ])
+
+  useEffect(() => {
+    // API mode restores the Lovv session from the HttpOnly refresh cookie.
+    if (!isBackendAuthMode || initialAuthCallbackRef.current) {
+      return undefined
+    }
+
+    let isActive = true
+
+    requestAuthSession()
+      .then((state) => {
+        if (!isActive) {
+          return
+        }
+
+        const session = adaptApiAuthSessionSnapshot(state, authRuntimeMode)
+
+        setAuthAccessToken(session.accessToken)
+        setCurrentUser(session.user)
+        setHasCompletedPreference(session.onboardingCompleted)
+
+        if (session.preferenceProfile) {
+          setSelectedPreferenceProfile(session.preferenceProfile)
+        }
+      })
+      .catch(() => {
+        if (!isActive) {
+          return
+        }
+
+        setAuthAccessToken(null)
+        setCurrentUser(null)
+        setHasCompletedPreference(false)
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsAuthSessionRestoring(false)
+        }
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [authRuntimeMode, isBackendAuthMode])
+
+  useEffect(() => {
+    // OAuth callback exchanges provider code through the backend and then resumes app routing.
+    if (!isApiAuthMode || !authCallbackProvider) {
+      return undefined
+    }
+
+    const callbackKey = `${authCallbackProvider}:${location.search}`
+
+    if (processedOAuthCallbackKeyRef.current === callbackKey) {
+      return undefined
+    }
+
+    processedOAuthCallbackKeyRef.current = callbackKey
+    const loginRequest = createAuthLoginRequestFromCallback(
+      authCallbackProvider,
+      location.search,
+      window.sessionStorage,
+    )
+    let isActive = true
+
+    if (loginRequest.status === 'error') {
+      queueMicrotask(() => {
+        if (!isActive) {
+          return
+        }
+
+        clearPendingOAuthLogin(window.sessionStorage, authCallbackProvider)
+        setAuthAccessToken(null)
+        setCurrentUser(null)
+        setHasCompletedPreference(false)
+        setAuthFlowNotice(getAuthExceptionNotice(loginRequest.errorCode))
+        setIsAuthSessionRestoring(false)
+        navigate('/auth', { replace: true })
+      })
+
+      return () => {
+        isActive = false
+      }
+    }
+
+    queueMicrotask(() => {
+      if (isActive) {
+        setIsAuthSessionRestoring(true)
+      }
+    })
+
+    requestAuthLogin(authCallbackProvider, loginRequest.request)
+      .then((state) => {
+        if (!isActive) {
+          return
+        }
+
+        const session = adaptApiAuthSessionSnapshot(state, authRuntimeMode)
+
+        clearPendingOAuthLogin(window.sessionStorage, authCallbackProvider)
+        setAuthFlowNotice(null)
+        setAuthAccessToken(session.accessToken)
+        setCurrentUser(session.user)
+        setHasCompletedPreference(session.onboardingCompleted)
+
+        if (session.preferenceProfile) {
+          setSelectedPreferenceProfile(session.preferenceProfile)
+        }
+
+        setIsAuthSessionRestoring(false)
+        navigate(session.onboardingCompleted ? '/home' : '/onboarding', { replace: true })
+      })
+      .catch((error) => {
+        if (!isActive) {
+          return
+        }
+
+        clearPendingOAuthLogin(window.sessionStorage, authCallbackProvider)
+        setAuthAccessToken(null)
+        setCurrentUser(null)
+        setHasCompletedPreference(false)
+        setAuthFlowNotice(getAuthExceptionNotice(error))
+        setIsAuthSessionRestoring(false)
+        navigate('/auth', { replace: true })
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [authCallbackProvider, authRuntimeMode, isApiAuthMode, location.search, navigate])
+
+  useEffect(() => {
+    // Cognito mode exchanges the Hosted UI authorization code first, then bridges the Cognito JWT to Lovv.
+    if (!shouldHandleCognitoAuthCallback) {
+      return undefined
+    }
+
+    const callbackKey = `cognito:${location.search}`
+
+    if (processedOAuthCallbackKeyRef.current === callbackKey) {
+      return undefined
+    }
+
+    processedOAuthCallbackKeyRef.current = callbackKey
+    const tokenRequest = createCognitoTokenRequestFromCallback(location.search, window.sessionStorage)
+    let isActive = true
+
+    if (tokenRequest.status === 'error') {
+      queueMicrotask(() => {
+        if (!isActive) {
+          return
+        }
+
+        if (tokenRequest.provider) {
+          clearPendingOAuthLogin(window.sessionStorage, tokenRequest.provider)
+        } else {
+          clearPendingOAuthLogins(window.sessionStorage)
+        }
+        setAuthAccessToken(null)
+        setCurrentUser(null)
+        setHasCompletedPreference(false)
+        setAuthFlowNotice(getAuthExceptionNotice(tokenRequest.errorCode))
+        setIsAuthSessionRestoring(false)
+        navigate('/auth', { replace: true })
+      })
+
+      return () => {
+        isActive = false
+      }
+    }
+
+    queueMicrotask(() => {
+      if (isActive) {
+        setIsAuthSessionRestoring(true)
+      }
+    })
+
+    requestCognitoToken(tokenRequest.request)
+      .then((token) => requestCognitoBridgeSession(token.idToken ?? token.accessToken))
+      .then((state) => {
+        if (!isActive) {
+          return
+        }
+
+        const session = adaptApiAuthSessionSnapshot(state, authRuntimeMode)
+
+        clearPendingOAuthLogin(window.sessionStorage, tokenRequest.provider)
+        setAuthFlowNotice(null)
+        setAuthAccessToken(session.accessToken)
+        setCurrentUser(session.user)
+        setHasCompletedPreference(session.onboardingCompleted)
+
+        if (session.preferenceProfile) {
+          setSelectedPreferenceProfile(session.preferenceProfile)
+        }
+
+        setIsAuthSessionRestoring(false)
+        navigate(session.onboardingCompleted ? '/home' : '/onboarding', { replace: true })
+      })
+      .catch((error) => {
+        if (!isActive) {
+          return
+        }
+
+        clearPendingOAuthLogin(window.sessionStorage, tokenRequest.provider)
+        setAuthAccessToken(null)
+        setCurrentUser(null)
+        setHasCompletedPreference(false)
+        setAuthFlowNotice(getAuthExceptionNotice(error))
+        setIsAuthSessionRestoring(false)
+        navigate('/auth', { replace: true })
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [authRuntimeMode, location.search, navigate, shouldHandleCognitoAuthCallback])
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -508,50 +781,83 @@ function App() {
         : nextPlan
       const nextPlans = [updatedPlan, ...currentPlans.filter((plan) => plan.id !== currentPlanId)]
 
-      localStorage.setItem(savedPlansStorageKey, JSON.stringify(nextPlans))
+      writeStoredSavedPlans(nextPlans)
 
       return nextPlans
     })
     setSavedPlanNotice('마이페이지에서 다시 확인할 수 있어요.')
   }
 
-  const selectPlanReaction = (planId: string, reaction: Exclude<PlanReactionType, null>) => {
-    setPendingReactionPlanIds((currentPlanIds) =>
-      currentPlanIds.includes(planId) ? currentPlanIds : [...currentPlanIds, planId],
+  const deleteSavedPlan = (planId: string, options: { navigateToMyPage?: boolean } = {}) => {
+    setSavedPlans((currentPlans) => {
+      const nextPlans = currentPlans.filter((plan) => plan.id !== planId)
+
+      writeStoredSavedPlans(nextPlans)
+
+      return nextPlans
+    })
+    setSavedPlanLikes((currentLikes) => {
+      const nextLikes = { ...currentLikes }
+
+      delete nextLikes[planId]
+      writeStoredSavedPlanLikes(nextLikes)
+
+      return nextLikes
+    })
+    setPendingSavedPlanLikeIds((currentPlanIds) =>
+      currentPlanIds.filter((currentPlanId) => currentPlanId !== planId),
     )
-    setPlanReactionErrors((currentErrors) => {
+    setSavedPlanLikeErrors((currentErrors) => {
       const nextErrors = { ...currentErrors }
 
       delete nextErrors[planId]
 
       return nextErrors
     })
-    setPlanReactions((currentReactions) => {
-      const nextReaction = getNextPlanReaction(currentReactions[planId] ?? null, reaction)
-      const nextReactions = { ...currentReactions }
+    setSavedPlanNotice('저장한 일정이 삭제됐어요.')
 
-      if (nextReaction) {
-        nextReactions[planId] = nextReaction
+    if (options.navigateToMyPage) {
+      navigate('/mypage', { replace: true })
+    }
+  }
+
+  const selectSavedPlanLike = (planId: string, like: Exclude<SavedPlanLike, null>) => {
+    setPendingSavedPlanLikeIds((currentPlanIds) =>
+      currentPlanIds.includes(planId) ? currentPlanIds : [...currentPlanIds, planId],
+    )
+    setSavedPlanLikeErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors }
+
+      delete nextErrors[planId]
+
+      return nextErrors
+    })
+    setSavedPlanLikes((currentLikes) => {
+      const nextLike = getNextSavedPlanLike(currentLikes[planId] ?? null, like)
+      const nextLikes = { ...currentLikes }
+
+      if (nextLike) {
+        nextLikes[planId] = nextLike
       } else {
-        delete nextReactions[planId]
+        delete nextLikes[planId]
       }
 
       try {
-        writeStoredPlanReactions(nextReactions)
+        writeStoredSavedPlanLikes(nextLikes)
       } catch {
-        setPlanReactionErrors((currentErrors) => ({
+        setSavedPlanLikeErrors((currentErrors) => ({
           ...currentErrors,
-          [planId]: '반응을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
+          [planId]: '좋아요를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.',
         }))
 
-        return currentReactions
+        return currentLikes
       } finally {
-        setPendingReactionPlanIds((currentPlanIds) =>
+        setPendingSavedPlanLikeIds((currentPlanIds) =>
           currentPlanIds.filter((currentPlanId) => currentPlanId !== planId),
         )
       }
 
-      return nextReactions
+      return nextLikes
     })
   }
 
@@ -560,7 +866,7 @@ function App() {
       return
     }
 
-    selectPlanReaction(currentPlanId, 'like')
+    selectSavedPlanLike(currentPlanId, 'like')
   }
 
   const openPlanDetailView = () => {
@@ -581,20 +887,78 @@ function App() {
     navigateToView('planner', { replace: true })
   }
 
-  const signInWithMockProvider = (provider: AuthProvider) => {
-    const mockUser = mockAuthUsers[provider]
+  const signInWithMockProvider = (provider: SocialAuthProvider) => {
+    if (isBackendAuthMode) {
+      return
+    }
+
+    const session = createMockAuthSessionSnapshot(provider, {
+      onboardingCompleted: Boolean(readStoredPreferenceProfile()),
+    })
+    const mockUser = session.user
     const hasStoredPreference = Boolean(readStoredPreferenceProfile())
 
     localStorage.setItem(authStorageKey, JSON.stringify(mockUser))
+    setAuthAccessToken(null)
     setCurrentUser(mockUser)
     setHasCompletedPreference(hasStoredPreference)
     navigateToView(hasStoredPreference ? 'home' : 'onboarding', { replace: true })
   }
 
-  const signOut = () => {
+  const startApiOAuthSignIn = async (provider: SocialAuthProvider) => {
+    try {
+      setAuthFlowNotice(null)
+      // Provider secrets stay server-side; frontend only starts the public authorization request.
+      const authorizationRequest = await createOAuthAuthorizationRequest(provider, {
+        origin: window.location.origin,
+        storage: window.sessionStorage,
+      })
+
+      window.location.assign(authorizationRequest.authorizationUrl)
+    } catch (error) {
+      setAuthFlowNotice(getAuthExceptionNotice(error))
+    }
+  }
+
+  const startCognitoOAuthSignIn = async (provider: SocialAuthProvider) => {
+    try {
+      setAuthFlowNotice(null)
+      const authorizationRequest = await createCognitoAuthorizationRequest(provider, {
+        origin: window.location.origin,
+        storage: window.sessionStorage,
+      })
+
+      window.location.assign(authorizationRequest.authorizationUrl)
+    } catch (error) {
+      setAuthFlowNotice(getAuthExceptionNotice(error))
+    }
+  }
+
+  const signOut = async () => {
     setIsSessionMenuOpen(false)
+
+    if (isBackendAuthMode) {
+      try {
+        await requestAuthLogout({ accessToken: authAccessToken })
+      } catch {
+        // Keep the UI from remaining on authenticated screens after a local sign-out action.
+      }
+    }
+
     localStorage.removeItem(authStorageKey)
+    clearPendingOAuthLogins(window.sessionStorage)
+    setAuthAccessToken(null)
     setCurrentUser(null)
+
+    if (isCognitoAuthMode) {
+      try {
+        window.location.assign(createCognitoLogoutUrl({ origin: window.location.origin }))
+        return
+      } catch (error) {
+        setAuthFlowNotice(getAuthExceptionNotice(error))
+      }
+    }
+
     navigateToView('auth', { replace: true })
   }
 
@@ -636,11 +1000,23 @@ function App() {
   }
 
   const currentProviderLabel =
-    currentUser?.provider === 'kakao'
-      ? 'Kakao mock'
+    currentUser?.provider === 'cognito'
+      ? 'Cognito'
+      : currentUser?.provider === 'kakao'
+      ? isBackendAuthMode
+        ? 'Kakao'
+        : 'Kakao'
       : currentUser?.provider === 'google'
-        ? 'Google mock'
-        : 'Mock session'
+        ? isBackendAuthMode
+          ? 'Google'
+          : 'Google'
+        : '로그인 세션'
+
+  const authNotice = isBackendAuthMode
+    ? isCognitoAuthMode
+      ? 'Google 또는 Kakao 계정으로 안전하게 로그인합니다.'
+      : 'API auth mode입니다. OAuth authorization_code callback으로 로그인합니다.'
+    : undefined
 
   const openChat = (event?: React.MouseEvent<HTMLElement>) => {
     event?.preventDefault()
@@ -1028,7 +1404,17 @@ function App() {
     <main className="lovv-app-shell lovv-warm-pattern lovv-ambient-background min-h-dvh bg-[#fff8ee] text-[#33271E]">
       <div className="lovv-app-content">
         {activeView === 'auth' ? (
-        <AuthView onSignIn={signInWithMockProvider} />
+        <AuthView
+          authExceptionNotice={authFlowNotice}
+          authNotice={authNotice}
+          onSignIn={
+            isCognitoAuthMode
+              ? startCognitoOAuthSignIn
+              : isApiAuthMode
+                ? startApiOAuthSignIn
+                : signInWithMockProvider
+          }
+        />
       ) : activeView === 'onboarding' || isPreferenceEditView ? (
         <OnboardingPreferenceView
           isPreferenceEditView={isPreferenceEditView}
@@ -1092,12 +1478,13 @@ function App() {
               planDraft={activePlanDetailDraft}
               plannerBasisLabel={activePlanDetailBasisLabel}
               planId={activePlanDetailId}
-              planReaction={activePlanDetailReaction}
-              onSelectPlanReaction={selectPlanReaction}
-              planReactionPending={isPlanReactionPending(activePlanDetailId)}
-              planReactionError={getPlanReactionError(activePlanDetailId)}
+              planLike={activeSavedPlanDetailLike}
+              onSelectSavedPlanLike={selectSavedPlanLike}
+              savedPlanLikePending={isSavedPlanLikePending(activePlanDetailId)}
+              savedPlanLikeError={getSavedPlanLikeError(activePlanDetailId)}
               saveGeneratedPlan={saveGeneratedPlan}
               isCurrentPlanSaved={isActivePlanDetailSaved}
+              onDeleteSavedPlan={deleteSavedPlan}
               openMyPage={openMyPage}
               savedPlanNotice={savedPlanNotice}
             />
@@ -1112,11 +1499,12 @@ function App() {
               selectedThemeHashtags={selectedThemeHashtags}
               currentUser={currentUser}
               savedPlans={savedPlans}
-              getPlanReaction={getPlanReaction}
-              onSelectPlanReaction={selectPlanReaction}
-              getPlanReactionError={getPlanReactionError}
-              isPlanReactionPending={isPlanReactionPending}
+              getSavedPlanLike={getSavedPlanLike}
+              onSelectSavedPlanLike={selectSavedPlanLike}
+              getSavedPlanLikeError={getSavedPlanLikeError}
+              isSavedPlanLikePending={isSavedPlanLikePending}
               openSavedPlanDetail={openSavedPlanDetail}
+              onDeleteSavedPlan={deleteSavedPlan}
               openPreferenceEdit={openPreferenceEdit}
               signOut={signOut}
             />
@@ -1152,6 +1540,7 @@ function App() {
               resetPlannerFlow={() => resetPlannerFlow()}
               saveGeneratedPlan={saveGeneratedPlan}
               isCurrentPlanSaved={isCurrentPlanSaved}
+              openMyPage={openMyPage}
               savedPlanNotice={savedPlanNotice}
             />
           )}
@@ -1165,3 +1554,5 @@ function App() {
 }
 
 export default App
+
+// EOF: App.tsx

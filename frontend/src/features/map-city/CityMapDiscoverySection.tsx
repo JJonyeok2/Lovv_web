@@ -10,6 +10,7 @@ import {
   type SmallCityCountry,
   type SmallCityMapMarker,
   type SmallCityTheme,
+  type SmallCityFestival,
 } from './smallCities'
 import type { SmallCityCatalogState, SmallCityDetailState } from './smallCityDataSource'
 
@@ -34,6 +35,33 @@ type CityMapDiscoverySectionProps = {
   onSelectMapMarker: (marker: SmallCityMapMarker) => void
   onSetPanelMode: (mode: 'list' | 'detail') => void
   onOpenPlanner: (city: SmallCity) => void
+}
+
+const formatCompactFestivalDate = (value?: string) => {
+  if (!value) {
+    return null
+  }
+
+  const dateMatch = value.match(/^(\d{4})(\d{2})(\d{2})$/)
+
+  if (!dateMatch) {
+    return value
+  }
+
+  const [, year, month, day] = dateMatch
+
+  return `${year}.${month}.${day}`
+}
+
+const formatFestivalPeriod = (festival: SmallCityFestival) => {
+  const startDate = formatCompactFestivalDate(festival.startDate)
+  const endDate = formatCompactFestivalDate(festival.endDate)
+
+  if (startDate && endDate) {
+    return startDate === endDate ? startDate : `${startDate} - ${endDate}`
+  }
+
+  return startDate ?? endDate
 }
 
 export function CityMapDiscoverySection({
@@ -132,6 +160,8 @@ export function CityMapDiscoverySection({
         )
       }
 
+      const selectedCityFestivals = selectedSmallCityDetail.festivals
+
       return (
         <div data-testid={testId} className="mt-5 rounded-[12px] border border-transparent bg-[#fffffa] p-4">
           <p className="text-[12px] font-black uppercase tracking-[0.14em] text-[#A92B10]">
@@ -139,7 +169,9 @@ export function CityMapDiscoverySection({
           </p>
           <div className="mt-3 grid gap-3">
             {smallCityPlaceCategories.map((category) => {
-              const places = selectedSmallCityDetail.placesByCategory[category]
+              const places = selectedSmallCityDetail.placesByCategory[category].filter(
+                (place) => place.categoryName !== '축제',
+              )
 
               return (
                 <section
@@ -193,6 +225,51 @@ export function CityMapDiscoverySection({
               )
             })}
           </div>
+          {selectedCityFestivals.length > 0 ? (
+            <section
+              aria-label="축제 정보"
+              className="mt-4 rounded-[8px] border border-[#FFE0CA] bg-white p-3"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h4 className="break-keep text-[13px] font-black leading-5 text-[#33271E]">
+                  축제 정보
+                </h4>
+                <span className="rounded-[5px] bg-[#FFF8F6] px-2 py-1 text-[11px] font-black text-[#6E5A50]">
+                  {selectedCityFestivals.length}
+                </span>
+              </div>
+              <ul className="mt-2 grid gap-2">
+                {selectedCityFestivals.map((festival) => {
+                  const festivalPeriod = formatFestivalPeriod(festival)
+
+                  return (
+                    <li
+                      key={`${testId}-${festival.id}`}
+                      className="break-keep text-[12px] leading-5 text-[#33271E]"
+                    >
+                      <p className="font-black">{festival.name}</p>
+                      <p className="mt-1 font-semibold text-[#6E5A50]">{festival.summary}</p>
+                      {festivalPeriod ? (
+                        <p className="mt-1 font-bold text-[#8A7467]">{festivalPeriod}</p>
+                      ) : null}
+                      {festival.themeTags && festival.themeTags.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {festival.themeTags.map((tag) => (
+                            <span
+                              key={`${testId}-${festival.id}-${tag}`}
+                              className="rounded-[5px] bg-[#FFF8F6] px-2 py-1 text-[11px] font-black text-[#6E5A50]"
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          ) : null}
         </div>
       )
     }

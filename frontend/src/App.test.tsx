@@ -1,13 +1,38 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { AuthApiState } from './shared/api/authApi'
+import {
+  requestAuthLogin,
+  requestAuthLogout,
+  requestAuthSession,
+  requestCognitoBridgeSession,
+} from './shared/api/authApi'
 import App from './App'
+import { requestCognitoToken } from './features/auth/cognitoAuth'
+import { writePendingOAuthLogin } from './features/auth/authRedirect'
 import {
   createSmallCityMapMarkers,
   smallCities,
   smallCityCounts,
   smallCityPlaceCategories,
 } from './data/smallCities'
+
+vi.mock('./shared/api/authApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./shared/api/authApi')>()
+
+  return {
+    ...actual,
+    requestAuthLogin: vi.fn(),
+    requestAuthLogout: vi.fn(),
+    requestAuthSession: vi.fn(),
+    requestCognitoBridgeSession: vi.fn(),
+  }
+})
+
+vi.mock('./features/auth/cognitoAuth', () => ({
+  requestCognitoToken: vi.fn(),
+}))
 
 const authStorageKey = 'lovv.auth.user'
 const preferenceStorageKey = 'lovv.preference'
@@ -71,7 +96,7 @@ const expectStoredThemeIds = (themeIds: string[]) => {
 
 const openSessionMenu = () => {
   const sessionMenuButton = screen.getByRole('button', {
-    name: '현재 세션: Google mock 메뉴 열기',
+    name: '현재 세션: Google 메뉴 열기',
   })
 
   fireEvent.click(sessionMenuButton)
@@ -108,12 +133,55 @@ const completeGuidedPlanner = ({
   fireEvent.click(sendButton)
 }
 
+beforeEach(() => {
+  vi.stubEnv('VITE_LOVV_AUTH_MODE', 'mock')
+})
+
 afterEach(() => {
   vi.useRealTimers()
+  vi.unstubAllEnvs()
+  vi.clearAllMocks()
+  sessionStorage.clear()
 })
+
+const restoredGoogleAuthState: AuthApiState = {
+  authenticated: true,
+  accessToken: 'restored-access-token',
+  tokenType: 'Bearer',
+  expiresIn: 900,
+  sessionId: 'session-1',
+  sessionExpiresAt: '2026-06-25T00:00:00Z',
+  user: {
+    id: 'api-google-user',
+    name: 'API Google User',
+    email: 'api-google@example.com',
+    avatarInitial: 'A',
+    provider: 'google',
+  },
+  preferenceProfile: {
+    version: 2,
+    selectedThemeIds: ['history_tradition'],
+    source: 'onboarding',
+    updatedAt: '2026-06-11T00:00:00.000Z',
+  },
+  onboardingCompleted: true,
+}
+
+const unauthenticatedApiState: AuthApiState = {
+  authenticated: false,
+  accessToken: null,
+  tokenType: 'Bearer',
+  expiresIn: null,
+  sessionId: null,
+  sessionExpiresAt: null,
+  user: null,
+  preferenceProfile: null,
+  onboardingCompleted: false,
+}
 
 describe('MVP main entry screen', () => {
   it('shows social mock signup before onboarding on first entry', () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'mock')
     renderApp('/auth')
 
     expect(screen.getByRole('heading', { name: '서울/오사카 말고, 지금은 이곳' })).toBeInTheDocument()
@@ -121,7 +189,7 @@ describe('MVP main entry screen', () => {
     expect(screen.queryByText(/저장한 취향과 여행 일정/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Google 간편 로그인으로 시작하기' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Kakao 간편 로그인으로 시작하기' })).toBeInTheDocument()
-    expect(screen.getByText(/OAuth API 없이 mock session만 저장합니다/)).toBeInTheDocument()
+    expect(screen.getByText(/로컬 세션으로 로그인 흐름을 확인합니다/)).toBeInTheDocument()
     expect(screen.queryByText('MVP mock session')).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '여행의 분위기를 골라주세요' })).not.toBeInTheDocument()
     expect(screen.queryByRole('banner')).not.toBeInTheDocument()
@@ -154,6 +222,7 @@ describe('MVP main entry screen', () => {
   })
 
   it('starts onboarding through Kakao mock signup without an API call', () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'mock')
     renderApp('/auth')
 
     fireEvent.click(screen.getByRole('button', { name: 'Kakao 간편 로그인으로 시작하기' }))
@@ -161,6 +230,223 @@ describe('MVP main entry screen', () => {
     expect(localStorage.getItem(authStorageKey)).toContain('Lovv Kakao User')
     expect(localStorage.getItem(authStorageKey)).toContain('kakao')
     expect(screen.getByRole('heading', { name: '여행의 분위기를 골라주세요' })).toBeInTheDocument()
+  })
+
+  it('restores backend auth sessions in API mode without writing mock auth storage', async () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'api')
+    vi.mocked(requestAuthSession).mockResolvedValue(restoredGoogleAuthState)
+
+    renderApp('/auth')
+
+    await waitFor(() => {
+      expect(requestAuthSession).toHaveBeenCalledTimes(1)
+    })
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/home')
+    })
+
+    expect(localStorage.getItem(authStorageKey)).toBeNull()
+    expect(screen.getByRole('button', { name: '현재 세션: Google 메뉴 열기' })).toBeInTheDocument()
+    expect(screen.getByText('처음엔 작게, 추천은 명확하게')).toBeInTheDocument()
+  })
+
+  it('does not fall back to mock social login when API auth mode lacks OAuth client config', async () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'api')
+    vi.stubEnv('VITE_GOOGLE_OAUTH_CLIENT_ID', '')
+    vi.mocked(requestAuthSession).mockResolvedValue(unauthenticatedApiState)
+
+    renderApp('/auth')
+
+    await waitFor(() => {
+      expect(requestAuthSession).toHaveBeenCalledTimes(1)
+    })
+
+    const googleButton = screen.getByRole('button', { name: 'Google 간편 로그인으로 시작하기' })
+
+    expect(googleButton).toBeEnabled()
+    fireEvent.click(googleButton)
+
+    await waitFor(() => {
+      expect(screen.getByText('로그인 설정이 필요합니다.')).toBeInTheDocument()
+    })
+    expect(screen.getByRole('alert')).toHaveTextContent('현재 환경에서 소셜 로그인을 시작할 수 없습니다.')
+
+    expect(requestAuthLogin).not.toHaveBeenCalled()
+    expect(localStorage.getItem(authStorageKey)).toBeNull()
+    expect(window.location.pathname).toBe('/auth')
+  })
+
+  it('exchanges OAuth callback authorization_code through the backend auth API', async () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'api')
+    vi.mocked(requestAuthLogin).mockResolvedValue(restoredGoogleAuthState)
+    writePendingOAuthLogin(sessionStorage, {
+      provider: 'google',
+      state: 'state-1',
+      redirectUri: 'http://localhost/auth/callback/google',
+      codeVerifier: 'google-pkce-verifier',
+      createdAt: 1_800_000_000_000,
+    })
+
+    renderApp('/auth/callback/google?code=google-auth-code&state=state-1')
+
+    await waitFor(() => {
+      expect(requestAuthLogin).toHaveBeenCalledWith('google', {
+        credentialType: 'authorization_code',
+        credential: 'google-auth-code',
+        redirectUri: 'http://localhost/auth/callback/google',
+        codeVerifier: 'google-pkce-verifier',
+      })
+    })
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/home')
+    })
+
+    expect(requestAuthSession).not.toHaveBeenCalled()
+    expect(sessionStorage.getItem('lovv.auth.oauth.google')).toBeNull()
+    expect(localStorage.getItem(authStorageKey)).toBeNull()
+  })
+
+  it('rejects OAuth callbacks with mismatched state before calling the backend', async () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'api')
+    writePendingOAuthLogin(sessionStorage, {
+      provider: 'kakao',
+      state: 'state-1',
+      redirectUri: 'http://localhost/auth/callback/kakao',
+      createdAt: 1_800_000_000_000,
+    })
+
+    renderApp('/auth/callback/kakao?code=kakao-auth-code&state=state-2')
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/auth')
+    })
+
+    expect(requestAuthLogin).not.toHaveBeenCalled()
+    expect(requestAuthSession).not.toHaveBeenCalled()
+    expect(sessionStorage.getItem('lovv.auth.oauth.kakao')).toBeNull()
+    expect(screen.getByText('로그인 요청이 만료되었습니다.')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('이전 로그인 요청을 더 이상 사용할 수 없습니다. 다시 시도해 주세요.')
+  })
+
+  it('exchanges Cognito callbacks through Hosted UI token exchange and backend bridge session', async () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'cognito')
+    vi.mocked(requestCognitoToken).mockResolvedValue({
+      accessToken: 'cognito-access-token',
+      idToken: 'cognito-id-token',
+      refreshToken: null,
+      tokenType: 'Bearer',
+      expiresIn: 3600,
+    })
+    vi.mocked(requestCognitoBridgeSession).mockResolvedValue(restoredGoogleAuthState)
+    writePendingOAuthLogin(sessionStorage, {
+      provider: 'google',
+      state: 'state-1',
+      redirectUri: 'http://localhost/auth/callback/cognito',
+      codeVerifier: 'cognito-pkce-verifier',
+      createdAt: 1_800_000_000_000,
+    })
+
+    renderApp('/auth/callback/cognito?code=cognito-auth-code&state=state-1')
+
+    await waitFor(() => {
+      expect(requestCognitoToken).toHaveBeenCalledWith({
+        code: 'cognito-auth-code',
+        redirectUri: 'http://localhost/auth/callback/cognito',
+        codeVerifier: 'cognito-pkce-verifier',
+      })
+    })
+    await waitFor(() => {
+      expect(requestCognitoBridgeSession).toHaveBeenCalledWith('cognito-id-token')
+    })
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/home')
+    })
+
+    expect(requestAuthLogin).not.toHaveBeenCalled()
+    expect(requestAuthSession).not.toHaveBeenCalled()
+    expect(sessionStorage.getItem('lovv.auth.oauth.google')).toBeNull()
+    expect(localStorage.getItem(authStorageKey)).toBeNull()
+  })
+
+  it('rejects invalid Cognito callback state without falling back to mock auth', async () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'cognito')
+    writePendingOAuthLogin(sessionStorage, {
+      provider: 'kakao',
+      state: 'state-1',
+      redirectUri: 'http://localhost/auth/callback/cognito',
+      codeVerifier: 'cognito-pkce-verifier',
+      createdAt: 1_800_000_000_000,
+    })
+
+    renderApp('/auth/callback/cognito?code=cognito-auth-code&state=state-2')
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/auth')
+    })
+
+    expect(requestCognitoToken).not.toHaveBeenCalled()
+    expect(requestCognitoBridgeSession).not.toHaveBeenCalled()
+    expect(requestAuthLogin).not.toHaveBeenCalled()
+    expect(localStorage.getItem(authStorageKey)).toBeNull()
+    expect(screen.getByText('로그인 요청이 만료되었습니다.')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('이전 로그인 요청을 더 이상 사용할 수 없습니다. 다시 시도해 주세요.')
+  })
+
+  it('shows a retryable Cognito session notice when PKCE metadata is missing', async () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'cognito')
+    writePendingOAuthLogin(sessionStorage, {
+      provider: 'google',
+      state: 'state-1',
+      redirectUri: 'http://localhost/auth/callback/cognito',
+      createdAt: 1_800_000_000_000,
+    })
+
+    renderApp('/auth/callback/cognito?code=cognito-auth-code&state=state-1')
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/auth')
+    })
+
+    expect(requestCognitoToken).not.toHaveBeenCalled()
+    expect(requestCognitoBridgeSession).not.toHaveBeenCalled()
+    expect(sessionStorage.getItem('lovv.auth.oauth.google')).toBeNull()
+    expect(localStorage.getItem(authStorageKey)).toBeNull()
+    expect(screen.getByText('로그인 세션 정보가 없습니다.')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('브라우저의 로그인 세션 정보를 확인할 수 없습니다. 다시 시도해 주세요.')
+  })
+
+  it('shows a friendly backend Auth notice when Cognito bridge session fails', async () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'cognito')
+    vi.mocked(requestCognitoToken).mockResolvedValue({
+      accessToken: 'cognito-access-token',
+      idToken: 'cognito-id-token',
+      refreshToken: null,
+      tokenType: 'Bearer',
+      expiresIn: 3600,
+    })
+    vi.mocked(requestCognitoBridgeSession).mockRejectedValue({
+      code: 'PROVIDER_UNAVAILABLE',
+      message: 'upstream token endpoint unavailable',
+    })
+    writePendingOAuthLogin(sessionStorage, {
+      provider: 'google',
+      state: 'state-1',
+      redirectUri: 'http://localhost/auth/callback/cognito',
+      codeVerifier: 'cognito-pkce-verifier',
+      createdAt: 1_800_000_000_000,
+    })
+
+    renderApp('/auth/callback/cognito?code=cognito-auth-code&state=state-1')
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/auth')
+    })
+
+    expect(requestCognitoBridgeSession).toHaveBeenCalledWith('cognito-id-token')
+    expect(sessionStorage.getItem('lovv.auth.oauth.google')).toBeNull()
+    expect(localStorage.getItem(authStorageKey)).toBeNull()
+    expect(screen.getByText('외부 로그인 서버 응답이 지연되고 있습니다.')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('잠시 후 다시 시도해 주세요.')
   })
 
   it('renders the Lovv landing content from the MVP Figma frame', () => {
@@ -174,7 +460,7 @@ describe('MVP main entry screen', () => {
     expect(screen.queryByRole('link', { name: '새 여정 만들기' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '마이페이지' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '로그아웃' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '현재 세션: Google mock 메뉴 열기' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '현재 세션: Google 메뉴 열기' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '당신이 몰랐던 소도시의 숨은 매력' })).toBeInTheDocument()
     expect(screen.getByTestId('main-entry')).toHaveClass('lovv-rotating-hero')
     expect(screen.getByTestId('main-entry')).toHaveClass('min-h-[820px]')
@@ -595,9 +881,19 @@ describe('MVP main entry screen', () => {
 
     fireEvent.change(nextSearchInput, { target: { value: '진주' } })
     fireEvent.click(within(screen.getByTestId('city-map-result-list')).getByRole('button', { name: /진주/ }))
-    expect(within(nextCityMapSection).getByTestId('city-map-detail-panel')).toHaveTextContent('진주남강유등축제')
+    const cityDetailPanel = within(nextCityMapSection).getByTestId('city-map-detail-panel')
+    const placePanel = within(nextCityMapSection).getByTestId('city-map-detail-place-panel')
+    const tourismPlaces = within(placePanel).getByLabelText('관광지 장소 후보')
+    const festivalInfo = within(placePanel).getByLabelText('축제 정보')
+
+    expect(cityDetailPanel).toHaveTextContent('진주남강유등축제')
+    expect(within(tourismPlaces).getByText('진주성 중심 산책')).toBeInTheDocument()
+    expect(within(tourismPlaces).queryByText('진주남강유등축제')).not.toBeInTheDocument()
+    expect(within(tourismPlaces).getByText('1')).toBeInTheDocument()
+    expect(within(festivalInfo).getByText('진주남강유등축제')).toBeInTheDocument()
+    expect(within(festivalInfo).getByText('2026.10.01 - 2026.10.12')).toBeInTheDocument()
     fireEvent.click(
-      within(within(nextCityMapSection).getByTestId('city-map-detail-panel')).getByRole('button', {
+      within(cityDetailPanel).getByRole('button', {
         name: '이 소도시로 AI 일정 짜기',
       }),
     )
@@ -668,7 +964,7 @@ describe('MVP main entry screen', () => {
     expect(within(banner).queryByRole('button', { name: '소도시 검색 열기' })).not.toBeInTheDocument()
     expect(within(banner).queryByRole('button', { name: '마이페이지' })).not.toBeInTheDocument()
     const sessionMenuButton = within(banner).getByRole('button', {
-      name: '현재 세션: Google mock 메뉴 열기',
+      name: '현재 세션: Google 메뉴 열기',
     })
 
     expect(sessionMenuButton).toHaveTextContent('G')
@@ -706,7 +1002,7 @@ describe('MVP main entry screen', () => {
 
     expect(window.location.pathname).toBe('/mypage')
     expect(screen.getByRole('heading', { name: '마이페이지' })).toBeInTheDocument()
-    expect(screen.getByText('Google mock')).toBeInTheDocument()
+    expect(screen.getByText('Google')).toBeInTheDocument()
     expect(screen.getAllByText('역사·전통').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText(/API 호출 없이 더미 사용자만 저장 중입니다/)).toBeInTheDocument()
     expect(screen.getByText('저장한 일정이 아직 없습니다.')).toBeInTheDocument()
@@ -837,7 +1133,7 @@ describe('MVP main entry screen', () => {
     seedPreference()
     renderApp()
 
-    expect(screen.getByRole('button', { name: '현재 세션: Google mock 메뉴 열기' })).toHaveClass('bg-[#F36B12]')
+    expect(screen.getByRole('button', { name: '현재 세션: Google 메뉴 열기' })).toHaveClass('bg-[#F36B12]')
     expect(screen.getByRole('link', { name: '여행지 찾아보기' })).toHaveClass(
       'bg-[#B64A00]',
       'border-[#A92B10]',
@@ -1258,7 +1554,8 @@ describe('MVP main entry screen', () => {
     fireEvent.click(screen.getByRole('button', { name: '좋아요' }))
 
     expect(screen.getByRole('button', { name: '좋아요 취소' })).toBeInTheDocument()
-    expect(JSON.parse(localStorage.getItem('lovv.likedPlanIds') ?? '[]')).toHaveLength(1)
+    expect(Object.values(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}'))).toEqual(['like'])
+    expect(localStorage.getItem('lovv.likedPlanIds')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: '마이페이지에 저장' }))
 
@@ -1327,12 +1624,11 @@ describe('MVP main entry screen', () => {
 
     expect(within(detailView).getByRole('button', { name: '좋아요 선택됨' })).toBeInTheDocument()
     expect(within(detailView).getByRole('button', { name: '마이페이지에 저장됨' })).toBeInTheDocument()
-    expect(JSON.parse(localStorage.getItem('lovv.planReactions') ?? '{}')).toEqual(
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).toEqual(
       expect.objectContaining({
         [decodeURIComponent(window.location.pathname.replace('/plans/', ''))]: 'like',
       }),
     )
-    expect(JSON.parse(localStorage.getItem('lovv.likedPlanIds') ?? '[]')).toHaveLength(1)
     expect(JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')).toHaveLength(1)
 
     fireEvent.click(within(detailView).getByRole('button', { name: '채팅으로 돌아가기' }))
@@ -1377,7 +1673,7 @@ describe('MVP main entry screen', () => {
     expect(screen.getByRole('heading', { name: 'AI 일정 챗봇' })).toBeInTheDocument()
   })
 
-  it('keeps saved itinerary like and dislike reactions mutually exclusive across My Page and detail', () => {
+  it('toggles saved itinerary likes across My Page and detail', () => {
     seedUser()
     seedPreference('아산/온양 · 벳푸')
     renderApp('/planner')
@@ -1400,33 +1696,24 @@ describe('MVP main entry screen', () => {
     const savedPlanCard = within(savedPlanList).getByText('온천·휴양 1박 2일 초안').closest('li')
 
     expect(savedPlanCard).not.toBeNull()
-    expect(within(savedPlanCard!).queryByText(/현재 반응/)).not.toBeInTheDocument()
+    expect(within(savedPlanCard!).queryByText(/현재 좋아요/)).not.toBeInTheDocument()
     expect(within(savedPlanCard!).queryByText('없음')).not.toBeInTheDocument()
     expect(within(savedPlanCard!).getByRole('button', { name: '좋아요' })).toHaveAttribute('aria-pressed', 'false')
-    expect(within(savedPlanCard!).getByRole('button', { name: '싫어요' })).toHaveAttribute('aria-pressed', 'false')
+    expect(within(savedPlanCard!).queryByRole('button', { name: '싫어요' })).not.toBeInTheDocument()
 
     fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '좋아요' }))
 
     expect(within(savedPlanCard!).getByRole('button', { name: '좋아요 선택됨' })).toHaveAttribute('aria-pressed', 'true')
-    expect(JSON.parse(localStorage.getItem('lovv.planReactions') ?? '{}')).toMatchObject({
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).toMatchObject({
       [savedPlanId]: 'like',
     })
 
-    fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '싫어요' }))
+    fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '좋아요 선택됨' }))
 
-    expect(within(savedPlanCard!).getByRole('button', { name: '좋아요' })).toHaveAttribute('aria-pressed', 'false')
-    expect(within(savedPlanCard!).getByRole('button', { name: '싫어요 선택됨' })).toHaveAttribute('aria-pressed', 'true')
-    expect(JSON.parse(localStorage.getItem('lovv.planReactions') ?? '{}')).toMatchObject({
-      [savedPlanId]: 'dislike',
-    })
-
-    fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '싫어요 선택됨' }))
-
-    expect(within(savedPlanCard!).queryByText(/현재 반응/)).not.toBeInTheDocument()
+    expect(within(savedPlanCard!).queryByText(/현재 좋아요/)).not.toBeInTheDocument()
     expect(within(savedPlanCard!).queryByText('없음')).not.toBeInTheDocument()
     expect(within(savedPlanCard!).getByRole('button', { name: '좋아요' })).toHaveAttribute('aria-pressed', 'false')
-    expect(within(savedPlanCard!).getByRole('button', { name: '싫어요' })).toHaveAttribute('aria-pressed', 'false')
-    expect(JSON.parse(localStorage.getItem('lovv.planReactions') ?? '{}')).not.toHaveProperty(savedPlanId)
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).not.toHaveProperty(savedPlanId)
 
     fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '좋아요' }))
     fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '상세 보기' }))
@@ -1435,13 +1722,81 @@ describe('MVP main entry screen', () => {
     const detailView = screen.getByRole('region', { name: '세부 일정 상세' })
 
     expect(within(detailView).getByRole('button', { name: '좋아요 선택됨' })).toBeInTheDocument()
-    fireEvent.click(within(detailView).getByRole('button', { name: '싫어요' }))
+    expect(within(detailView).queryByRole('button', { name: '싫어요' })).not.toBeInTheDocument()
+    fireEvent.click(within(detailView).getByRole('button', { name: '좋아요 선택됨' }))
 
     expect(within(detailView).getByRole('button', { name: '좋아요' })).toHaveAttribute('aria-pressed', 'false')
-    expect(within(detailView).getByRole('button', { name: '싫어요 선택됨' })).toHaveAttribute('aria-pressed', 'true')
-    expect(JSON.parse(localStorage.getItem('lovv.planReactions') ?? '{}')).toMatchObject({
-      [savedPlanId]: 'dislike',
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).not.toHaveProperty(savedPlanId)
+  })
+
+  it('deletes a saved itinerary from My Page and clears like storage', () => {
+    seedUser()
+    seedPreference('아산/온양 · 벳푸')
+    renderApp('/planner')
+
+    completeGuidedPlanner({
+      festival: '축제 제외',
+      duration: '1박 2일',
+      query: '온천 숙소에 오래 머물고 덜 걷고 싶어요',
     })
+    fireEvent.click(screen.getByRole('button', { name: '마이페이지에 저장' }))
+
+    const savedPlans = JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')
+    const savedPlanId = savedPlans[0]?.id
+
+    expect(savedPlanId).toEqual(expect.any(String))
+
+    openMyPageFromSessionMenu()
+
+    const savedPlanList = screen.getByRole('list', { name: '저장 일정 목록' })
+    const savedPlanCard = within(savedPlanList).getByText('온천·휴양 1박 2일 초안').closest('li')
+
+    expect(savedPlanCard).not.toBeNull()
+    fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '좋아요' }))
+
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).toMatchObject({
+      [savedPlanId]: 'like',
+    })
+    expect(localStorage.getItem('lovv.likedPlanIds')).toBeNull()
+
+    fireEvent.click(within(savedPlanCard!).getByRole('button', { name: '온천·휴양 1박 2일 초안 삭제' }))
+
+    expect(screen.getByText('저장한 일정이 삭제됐어요.')).toBeInTheDocument()
+    expect(screen.getByText('저장한 일정이 아직 없습니다.')).toBeInTheDocument()
+    expect(screen.getByText('아직 없음')).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')).toHaveLength(0)
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).not.toHaveProperty(savedPlanId)
+    expect(localStorage.getItem('lovv.likedPlanIds')).toBeNull()
+  })
+
+  it('deletes a saved itinerary from detail and returns safely to My Page', () => {
+    seedUser()
+    seedPreference('아산/온양 · 벳푸')
+    renderApp('/planner')
+
+    completeGuidedPlanner({
+      festival: '축제 제외',
+      duration: '1박 2일',
+      query: '온천 숙소에 오래 머물고 덜 걷고 싶어요',
+    })
+    fireEvent.click(screen.getByRole('button', { name: '마이페이지에 저장' }))
+    fireEvent.click(screen.getByRole('button', { name: '세부 일정 보기' }))
+
+    const savedPlans = JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')
+    const savedPlanId = savedPlans[0]?.id
+    const detailView = screen.getByRole('region', { name: '세부 일정 상세' })
+
+    expect(savedPlanId).toEqual(expect.any(String))
+    expect(within(detailView).getByRole('button', { name: '저장 일정 삭제' })).toBeInTheDocument()
+
+    fireEvent.click(within(detailView).getByRole('button', { name: '저장 일정 삭제' }))
+
+    expect(window.location.pathname).toBe('/mypage')
+    expect(screen.getByText('저장한 일정이 삭제됐어요.')).toBeInTheDocument()
+    expect(screen.getByText('저장한 일정이 아직 없습니다.')).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')).toHaveLength(0)
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).not.toHaveProperty(savedPlanId)
+    expect(localStorage.getItem('lovv.likedPlanIds')).toBeNull()
   })
 
   it('ignores invalid saved and liked plan storage when using generated plan actions', () => {
@@ -1460,7 +1815,8 @@ describe('MVP main entry screen', () => {
     fireEvent.click(screen.getByRole('button', { name: '좋아요' }))
     fireEvent.click(screen.getByRole('button', { name: '마이페이지에 저장' }))
 
-    expect(JSON.parse(localStorage.getItem('lovv.likedPlanIds') ?? '[]')).toHaveLength(1)
+    expect(Object.values(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}'))).toEqual(['like'])
+    expect(localStorage.getItem('lovv.likedPlanIds')).toBeNull()
     expect(JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')).toHaveLength(1)
   })
 
@@ -1476,5 +1832,28 @@ describe('MVP main entry screen', () => {
     expect(screen.getByRole('heading', { name: '서울/오사카 말고, 지금은 이곳' })).toBeInTheDocument()
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
     expect(screen.queryByText('경주 · 교토 감성으로 시작합니다')).not.toBeInTheDocument()
+  })
+
+  it('calls backend logout before clearing API auth state', async () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'api')
+    vi.mocked(requestAuthSession).mockResolvedValue(restoredGoogleAuthState)
+    vi.mocked(requestAuthLogout).mockResolvedValue(true)
+
+    renderApp('/home')
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '현재 세션: Google 메뉴 열기' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '현재 세션: Google 메뉴 열기' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: '로그아웃' }))
+
+    await waitFor(() => {
+      expect(requestAuthLogout).toHaveBeenCalledWith({ accessToken: 'restored-access-token' })
+    })
+    expect(localStorage.getItem(authStorageKey)).toBeNull()
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: '서울/오사카 말고, 지금은 이곳' })).toBeInTheDocument()
+    })
   })
 })

@@ -167,6 +167,24 @@ const restoredGoogleAuthState: AuthApiState = {
   onboardingCompleted: true,
 }
 
+const newCognitoAuthState: AuthApiState = {
+  authenticated: true,
+  accessToken: 'new-cognito-access-token',
+  tokenType: 'Bearer',
+  expiresIn: 900,
+  sessionId: 'session-new',
+  sessionExpiresAt: '2026-06-25T00:00:00Z',
+  user: {
+    id: 'api-cognito-user',
+    name: 'New Cognito User',
+    email: 'new-cognito@example.com',
+    avatarInitial: 'N',
+    provider: 'cognito',
+  },
+  preferenceProfile: null,
+  onboardingCompleted: false,
+}
+
 const unauthenticatedApiState: AuthApiState = {
   authenticated: false,
   accessToken: null,
@@ -365,6 +383,39 @@ describe('MVP main entry screen', () => {
     expect(requestAuthLogin).not.toHaveBeenCalled()
     expect(requestAuthSession).not.toHaveBeenCalled()
     expect(sessionStorage.getItem('lovv.auth.oauth.google')).toBeNull()
+    expect(localStorage.getItem(authStorageKey)).toBeNull()
+  })
+
+  it('routes first Cognito login to onboarding after committing auth state', async () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'cognito')
+    vi.mocked(requestCognitoToken).mockResolvedValue({
+      accessToken: 'cognito-access-token',
+      idToken: 'cognito-id-token',
+      refreshToken: null,
+      tokenType: 'Bearer',
+      expiresIn: 3600,
+    })
+    vi.mocked(requestCognitoBridgeSession).mockResolvedValue(newCognitoAuthState)
+    writePendingOAuthLogin(sessionStorage, {
+      provider: 'kakao',
+      state: 'state-1',
+      redirectUri: 'http://localhost/auth/callback/cognito',
+      codeVerifier: 'cognito-pkce-verifier',
+      createdAt: 1_800_000_000_000,
+    })
+
+    renderApp('/auth/callback/cognito?code=cognito-auth-code&state=state-1')
+
+    await waitFor(() => {
+      expect(requestCognitoBridgeSession).toHaveBeenCalledWith('cognito-id-token')
+    })
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/onboarding')
+    })
+
+    expect(screen.getByRole('heading', { name: '여행의 분위기를 골라주세요' })).toBeInTheDocument()
+    expect(screen.queryByText('회원가입하고 Lovv 시작하기')).not.toBeInTheDocument()
+    expect(sessionStorage.getItem('lovv.auth.oauth.kakao')).toBeNull()
     expect(localStorage.getItem(authStorageKey)).toBeNull()
   })
 

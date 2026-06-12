@@ -141,6 +141,7 @@ function App() {
   )
   const [authAccessToken, setAuthAccessToken] = useState<string | null>(null)
   const [isAuthSessionRestoring, setIsAuthSessionRestoring] = useState(isBackendAuthMode)
+  const [pendingAuthRedirectPath, setPendingAuthRedirectPath] = useState<string | null>(null)
   const [selectedPreferenceProfile, setSelectedPreferenceProfile] = useState(
     () => (isBackendAuthMode ? null : readStoredPreferenceProfile()) ?? getDefaultPreferenceProfile(),
   )
@@ -448,7 +449,21 @@ function App() {
   }
 
   useEffect(() => {
-    if (isAuthSessionRestoring || shouldHandleAuthCallback) {
+    if (!pendingAuthRedirectPath || isAuthSessionRestoring || !currentUser) {
+      return
+    }
+
+    if (location.pathname !== pendingAuthRedirectPath) {
+      navigate(pendingAuthRedirectPath, { replace: true })
+    }
+
+    queueMicrotask(() => {
+      setPendingAuthRedirectPath(null)
+    })
+  }, [currentUser, isAuthSessionRestoring, location.pathname, navigate, pendingAuthRedirectPath])
+
+  useEffect(() => {
+    if (isAuthSessionRestoring || shouldHandleAuthCallback || pendingAuthRedirectPath) {
       return
     }
 
@@ -484,6 +499,7 @@ function App() {
     location.pathname,
     location.search,
     navigate,
+    pendingAuthRedirectPath,
     shouldHandleAuthCallback,
   ])
 
@@ -586,6 +602,17 @@ function App() {
         const session = adaptApiAuthSessionSnapshot(state, authRuntimeMode)
 
         clearPendingOAuthLogin(window.sessionStorage, authCallbackProvider)
+
+        if (!session.user) {
+          setAuthAccessToken(null)
+          setCurrentUser(null)
+          setHasCompletedPreference(false)
+          setAuthFlowNotice(getAuthExceptionNotice('UNAUTHORIZED'))
+          setIsAuthSessionRestoring(false)
+          navigate('/auth', { replace: true })
+          return
+        }
+
         setAuthFlowNotice(null)
         setAuthAccessToken(session.accessToken)
         setCurrentUser(session.user)
@@ -596,7 +623,7 @@ function App() {
         }
 
         setIsAuthSessionRestoring(false)
-        navigate(session.onboardingCompleted ? '/home' : '/onboarding', { replace: true })
+        setPendingAuthRedirectPath(session.onboardingCompleted ? '/home' : '/onboarding')
       })
       .catch((error) => {
         if (!isActive) {
@@ -673,6 +700,17 @@ function App() {
         const session = adaptApiAuthSessionSnapshot(state, authRuntimeMode)
 
         clearPendingOAuthLogin(window.sessionStorage, tokenRequest.provider)
+
+        if (!session.user) {
+          setAuthAccessToken(null)
+          setCurrentUser(null)
+          setHasCompletedPreference(false)
+          setAuthFlowNotice(getAuthExceptionNotice('UNAUTHORIZED'))
+          setIsAuthSessionRestoring(false)
+          navigate('/auth', { replace: true })
+          return
+        }
+
         setAuthFlowNotice(null)
         setAuthAccessToken(session.accessToken)
         setCurrentUser(session.user)
@@ -683,7 +721,7 @@ function App() {
         }
 
         setIsAuthSessionRestoring(false)
-        navigate(session.onboardingCompleted ? '/home' : '/onboarding', { replace: true })
+        setPendingAuthRedirectPath(session.onboardingCompleted ? '/home' : '/onboarding')
       })
       .catch((error) => {
         if (!isActive) {

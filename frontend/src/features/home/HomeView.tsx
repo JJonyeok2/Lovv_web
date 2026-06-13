@@ -1,10 +1,13 @@
 import foxFaceImage from '../../assets/foxhead-smile.png'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 import type { HeroTheme, MonthlyRecommendation, PreferenceProfile } from '../../shared/types/app'
 import { heroThemes, monthlyRecommendations } from './homeContent'
 
 export const monthlyRecommendationRotationIntervalMs = 7000
+export const monthlyRecommendationTransitionDurationMs = 420
+
+type MonthlyRecommendationMotion = 'idle' | 'next' | 'previous'
 
 type HomeViewProps = {
   currentHeroTheme: HeroTheme
@@ -25,6 +28,9 @@ const getHeroSummaryLines = (summary: string) =>
     .split(/(?<=\.)\s+/)
     .map((line) => line.trim())
     .filter(Boolean)
+
+const getWrappedRecommendationIndex = (index: number) =>
+  (index + monthlyRecommendations.length) % monthlyRecommendations.length
 
 type MonthlyRecommendationMediaProps = {
   image?: string | null
@@ -48,7 +54,7 @@ export function MonthlyRecommendationMedia({ image, altText }: MonthlyRecommenda
       src={imageSource}
       alt={altText}
       onError={() => setHasImageError(true)}
-      className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+      className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover/card:scale-[1.04]"
     />
   )
 }
@@ -68,10 +74,42 @@ export function HomeView({
 }: HomeViewProps) {
   const heroSummaryLines = getHeroSummaryLines(currentHeroTheme.summary)
   const [featuredRecommendationIndex, setFeaturedRecommendationIndex] = useState(0)
-  const orderedMonthlyRecommendations = [
-    ...monthlyRecommendations.slice(featuredRecommendationIndex),
-    ...monthlyRecommendations.slice(0, featuredRecommendationIndex),
-  ]
+  const [monthlyRecommendationMotion, setMonthlyRecommendationMotion] =
+    useState<MonthlyRecommendationMotion>('idle')
+  const monthlyRecommendationMotionRef = useRef<MonthlyRecommendationMotion>('idle')
+  const monthlyRecommendationMotionTimerRef = useRef<number | null>(null)
+  const featuredRecommendation = monthlyRecommendations[featuredRecommendationIndex]
+  const previousRecommendation =
+    monthlyRecommendations[getWrappedRecommendationIndex(featuredRecommendationIndex - 1)]
+  const nextRecommendation =
+    monthlyRecommendations[getWrappedRecommendationIndex(featuredRecommendationIndex + 1)]
+  const visibleMonthlyRecommendations = [
+    { placement: 'previous', recommendation: previousRecommendation },
+    { placement: 'featured', recommendation: featuredRecommendation },
+    { placement: 'next', recommendation: nextRecommendation },
+  ] as const
+  const moveMonthlyRecommendation = useCallback((direction: -1 | 1) => {
+    if (monthlyRecommendations.length <= 1 || monthlyRecommendationMotionRef.current !== 'idle') {
+      return
+    }
+
+    const nextMotion = direction === 1 ? 'next' : 'previous'
+    if (monthlyRecommendationMotionTimerRef.current !== null) {
+      window.clearTimeout(monthlyRecommendationMotionTimerRef.current)
+    }
+
+    monthlyRecommendationMotionRef.current = nextMotion
+    setFeaturedRecommendationIndex((currentIndex) =>
+      getWrappedRecommendationIndex(currentIndex + direction),
+    )
+    setMonthlyRecommendationMotion(nextMotion)
+
+    monthlyRecommendationMotionTimerRef.current = window.setTimeout(() => {
+      monthlyRecommendationMotionRef.current = 'idle'
+      monthlyRecommendationMotionTimerRef.current = null
+      setMonthlyRecommendationMotion('idle')
+    }, monthlyRecommendationTransitionDurationMs)
+  }, [])
 
   useEffect(() => {
     if (monthlyRecommendations.length <= 1) {
@@ -79,11 +117,22 @@ export function HomeView({
     }
 
     const rotationTimer = window.setInterval(() => {
-      setFeaturedRecommendationIndex((currentIndex) => (currentIndex + 1) % monthlyRecommendations.length)
+      moveMonthlyRecommendation(1)
     }, monthlyRecommendationRotationIntervalMs)
 
-    return () => window.clearInterval(rotationTimer)
-  }, [])
+    return () => {
+      window.clearInterval(rotationTimer)
+    }
+  }, [moveMonthlyRecommendation])
+
+  useEffect(
+    () => () => {
+      if (monthlyRecommendationMotionTimerRef.current !== null) {
+        window.clearTimeout(monthlyRecommendationMotionTimerRef.current)
+      }
+    },
+    [],
+  )
 
   return (
     <>
@@ -272,24 +321,56 @@ export function HomeView({
 
                     <div
                       data-testid="monthly-recommendation-grid"
-                      className="grid auto-rows-[296px] grid-cols-4 gap-5 max-lg:grid-cols-2 max-md:auto-rows-[306px] max-sm:grid-cols-1 max-sm:auto-rows-auto"
+                      data-featured-index={featuredRecommendationIndex}
+                      data-motion={monthlyRecommendationMotion}
+                      className="group/carousel relative grid min-h-[520px] grid-cols-[minmax(160px,0.58fr)_minmax(0,1.45fr)_minmax(160px,0.58fr)] items-center gap-5 overflow-hidden rounded-[26px] border border-[#F3B489]/40 bg-white/48 p-5 shadow-[0_18px_54px_-44px_rgba(51,39,30,0.42)] max-lg:grid-cols-[minmax(0,0.62fr)_minmax(0,1.18fr)_minmax(0,0.62fr)] max-md:min-h-0 max-md:grid-cols-1 max-md:p-4"
                     >
-                      {orderedMonthlyRecommendations.map((recommendation, index) => {
-                        const isFeatured = index === 0
+                      <button
+                        type="button"
+                        aria-label="이전 추천 보기"
+                        disabled={monthlyRecommendationMotion !== 'idle'}
+                        onClick={() => moveMonthlyRecommendation(-1)}
+                        className="absolute left-7 top-1/2 z-20 flex size-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/80 bg-white/90 text-2xl font-black text-[#33271E] opacity-0 shadow-[0_16px_34px_-22px_rgba(51,39,30,0.48)] transition hover:bg-[#FFF0E4] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] disabled:cursor-not-allowed disabled:opacity-40 group-hover/carousel:opacity-100 max-md:left-6 max-md:top-[45%]"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="다음 추천 보기"
+                        disabled={monthlyRecommendationMotion !== 'idle'}
+                        onClick={() => moveMonthlyRecommendation(1)}
+                        className="absolute right-7 top-1/2 z-20 flex size-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/80 bg-white/90 text-2xl font-black text-[#33271E] opacity-0 shadow-[0_16px_34px_-22px_rgba(51,39,30,0.48)] transition hover:bg-[#FFF0E4] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] disabled:cursor-not-allowed disabled:opacity-40 group-hover/carousel:opacity-100 max-md:right-6 max-md:top-[45%]"
+                      >
+                        ›
+                      </button>
+
+                      {visibleMonthlyRecommendations.map(({ placement, recommendation }) => {
+                        const isFeatured = placement === 'featured'
                         const isCurrentRecommendation =
                           selectedPreferenceProfile.selectedThemeIds.includes(recommendation.preference.themeId)
 
                         return (
                           <button
-                            key={recommendation.id}
+                            key={`${placement}-${recommendation.id}`}
                             type="button"
                             aria-current={isCurrentRecommendation ? 'true' : undefined}
                             aria-label={`${recommendation.preference.cityPair} 이달 추천 상세 보기`}
-                            onClick={() => onOpenMonthlyRecommendationDetail(recommendation)}
-                            className={`group relative min-w-0 overflow-hidden rounded-[8px] border border-transparent bg-[#33271E] text-left shadow-[0_18px_50px_-34px_rgba(51,39,30,0.45)] transition hover:-translate-y-1 hover:border-[#A92B10] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#33271E] ${
+                            data-testid={`monthly-recommendation-${placement}`}
+                            data-placement={placement}
+                            data-motion={monthlyRecommendationMotion}
+                            onClick={() =>
+                              monthlyRecommendationMotion !== 'idle'
+                                ? undefined
+                                : isFeatured
+                                ? onOpenMonthlyRecommendationDetail(recommendation)
+                                : moveMonthlyRecommendation(placement === 'previous' ? -1 : 1)
+                            }
+                            className={`lovv-monthly-card group/card relative min-w-0 overflow-hidden rounded-[18px] border border-transparent bg-[#33271E] text-left shadow-[0_18px_50px_-34px_rgba(51,39,30,0.45)] transition-[border-color,box-shadow,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:border-[#A92B10] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#33271E] motion-reduce:transform-none motion-reduce:transition-none ${
                               isFeatured
-                                ? 'col-span-2 row-span-2 min-h-[612px] max-lg:col-span-2 max-sm:col-span-1 max-sm:row-span-1 max-sm:min-h-[410px]'
-                                : 'min-h-[296px] max-sm:min-h-[350px]'
+                                ? 'min-h-[500px] max-md:min-h-[430px]'
+                                : 'min-h-[330px] opacity-[0.78] max-md:min-h-[230px]'
+                            } ${
+                              monthlyRecommendationMotion !== 'idle' ? 'pointer-events-none' : ''
                             }`}
                           >
                             <MonthlyRecommendationMedia
@@ -316,24 +397,23 @@ export function HomeView({
                                 <h3
                                   className={`mt-2 break-keep font-black tracking-normal ${
                                     isFeatured
-                                      ? 'text-[34px] leading-10 max-sm:text-[28px] max-sm:leading-9'
-                                      : 'text-[21px] leading-7'
+                                      ? 'text-[38px] leading-[46px] max-sm:text-[28px] max-sm:leading-9'
+                                      : 'line-clamp-2 text-[20px] leading-7'
                                   }`}
                                 >
                                   {recommendation.title}
                                 </h3>
-                                <p className="mt-3 line-clamp-2 break-keep text-sm font-semibold leading-6 text-white/90">
+                                <p
+                                  className={`mt-3 break-keep text-sm font-semibold leading-6 text-white/90 ${
+                                    isFeatured ? 'line-clamp-3' : 'line-clamp-2'
+                                  }`}
+                                >
                                   {recommendation.summary}
                                 </p>
                                 <div className="mt-3 flex flex-wrap gap-2">
-                                  {recommendation.themes.map((theme) => (
-                                    <span
-                                      key={`${recommendation.id}-${theme}`}
-                                      className="rounded-[5px] bg-white/18 px-3 py-1 text-[12px] font-bold text-white backdrop-blur"
-                                    >
-                                      #{theme}
-                                    </span>
-                                  ))}
+                                  <span className="rounded-[5px] bg-white/18 px-3 py-1 text-[12px] font-bold text-white backdrop-blur">
+                                    {recommendation.themes.join('·')}
+                                  </span>
                                 </div>
                               </div>
                             </div>

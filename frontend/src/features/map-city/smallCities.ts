@@ -643,7 +643,11 @@ export const getSmallCityMapCities = (cities: SmallCity[]) => {
   return Array.from(citiesByName.values())
 }
 
-const getSmallCitySearchText = (city: SmallCity) =>
+type SmallCityFilterOptions = {
+  includeDiscoveryText?: boolean
+}
+
+const getSmallCitySearchText = (city: SmallCity, options: SmallCityFilterOptions = {}) =>
   normalizeSmallCityQuery(
     [
       city.nameKo,
@@ -651,10 +655,9 @@ const getSmallCitySearchText = (city: SmallCity) =>
       city.countryLabel,
       city.region,
       ...city.themes,
-      city.summary,
-      city.detail,
-      ...city.highlights,
-      ...city.routeSeed,
+      ...(options.includeDiscoveryText === false
+        ? []
+        : [city.summary, city.detail, ...city.highlights, ...city.routeSeed]),
     ]
       .filter(Boolean)
       .join(' '),
@@ -664,11 +667,14 @@ export const filterSmallCities = (
   cities: SmallCity[],
   query: string,
   selectedThemes: SmallCityTheme[],
+  options: SmallCityFilterOptions = {},
 ) => {
   const normalizedQuery = normalizeSmallCityQuery(query)
 
   return cities.filter((city) => {
-    const matchesQuery = normalizedQuery ? getSmallCitySearchText(city).includes(normalizedQuery) : true
+    const matchesQuery = normalizedQuery
+      ? getSmallCitySearchText(city, options).includes(normalizedQuery)
+      : true
     const matchesTheme =
       selectedThemes.length === 0 || selectedThemes.some((theme) => city.themes.includes(theme))
 

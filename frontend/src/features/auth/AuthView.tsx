@@ -5,6 +5,7 @@
  */
 
 import logoImage from '../../assets/lovv-logo.png'
+import type { LegalNoticeType } from '../../shared/components/legalNoticeContent'
 import type { SocialAuthProvider } from '../../shared/types/app'
 import type { AuthExceptionNotice } from './authException'
 import { authJourneyItems, authServiceBullets, authServiceCards } from './authModel'
@@ -14,6 +15,7 @@ type AuthViewProps = {
   authNotice?: string
   isSignInDisabled?: boolean
   signInPendingProvider?: SocialAuthProvider | null
+  onOpenLegalNotice?: (noticeType: LegalNoticeType) => void
   onSignIn: (provider: SocialAuthProvider) => void
 }
 
@@ -23,11 +25,22 @@ const googleButtonClassName =
 const kakaoButtonClassName =
   'inline-flex min-h-[54px] items-center justify-center rounded-[14px] border border-[#A92B10] bg-[#F36B12] px-6 text-sm font-black text-[#33271E] shadow-[0_14px_32px_-18px_rgba(51,39,30,0.45)] transition hover:-translate-y-0.5 hover:border-[#A92B10] hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0 disabled:hover:border-[#A92B10] disabled:hover:bg-[#F36B12]'
 
+function AuthButtonSpinner() {
+  return (
+    <span
+      aria-hidden="true"
+      data-testid="auth-button-spinner"
+      className="size-4 shrink-0 animate-spin rounded-full border-2 border-[#33271E]/25 border-t-[#33271E]"
+    />
+  )
+}
+
 export function AuthView({
   authExceptionNotice,
   authNotice,
   isSignInDisabled = false,
   signInPendingProvider = null,
+  onOpenLegalNotice,
   onSignIn,
 }: AuthViewProps) {
   const isSignInPending = Boolean(signInPendingProvider)
@@ -38,7 +51,10 @@ export function AuthView({
   return (
     <section
               aria-labelledby="auth-title"
-              className="mx-auto grid min-h-dvh max-w-[1440px] grid-cols-[minmax(360px,440px)_minmax(0,1fr)] lg:h-dvh lg:overflow-hidden max-lg:grid-cols-1"
+              aria-busy={isSignInPending || undefined}
+              className={`mx-auto grid min-h-dvh max-w-[1440px] grid-cols-[minmax(360px,440px)_minmax(0,1fr)] transition-opacity lg:h-dvh lg:overflow-hidden max-lg:grid-cols-1 ${
+                isSignInPending ? 'opacity-80' : 'opacity-100'
+              }`}
             >
               <div
                 data-testid="auth-fixed-panel"
@@ -82,22 +98,32 @@ export function AuthView({
                       disabled={isAuthButtonDisabled}
                       aria-busy={isGoogleSignInPending || undefined}
                       onClick={() => onSignIn('google')}
-                      className={googleButtonClassName}
+                      className={`${googleButtonClassName} gap-2`}
                     >
-                      {isGoogleSignInPending
-                        ? 'Google 로그인 페이지로 이동 중...'
-                        : 'Google 간편 로그인으로 시작하기'}
+                      {isGoogleSignInPending ? (
+                        <>
+                          <AuthButtonSpinner />
+                          <span>Google로 이동 중...</span>
+                        </>
+                      ) : (
+                        'Google 간편 로그인으로 시작하기'
+                      )}
                     </button>
                     <button
                       type="button"
                       disabled={isAuthButtonDisabled}
                       aria-busy={isKakaoSignInPending || undefined}
                       onClick={() => onSignIn('kakao')}
-                      className={kakaoButtonClassName}
+                      className={`${kakaoButtonClassName} gap-2`}
                     >
-                      {isKakaoSignInPending
-                        ? 'Kakao 로그인 페이지로 이동 중...'
-                        : 'Kakao 간편 로그인으로 시작하기'}
+                      {isKakaoSignInPending ? (
+                        <>
+                          <AuthButtonSpinner />
+                          <span>Kakao로 이동 중...</span>
+                        </>
+                      ) : (
+                        'Kakao 간편 로그인으로 시작하기'
+                      )}
                     </button>
                   </div>
                   {!authExceptionNotice ? (
@@ -109,24 +135,27 @@ export function AuthView({
                 </div>
 
                 <div className="flex flex-wrap gap-x-4 gap-y-2 text-[12px] font-bold text-[#33271E]/80">
-                  <a
-                    href="#auth-title"
-                    className="rounded-full hover:text-[#F36B12] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#33271E]"
+                  <button
+                    type="button"
+                    onClick={() => onOpenLegalNotice?.('terms')}
+                    className="rounded-full transition hover:text-[#F36B12] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#33271E]"
                   >
                     이용약관
-                  </a>
-                  <a
-                    href="#auth-title"
-                    className="rounded-full hover:text-[#F36B12] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#33271E]"
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onOpenLegalNotice?.('privacy')}
+                    className="rounded-full transition hover:text-[#F36B12] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#33271E]"
                   >
                     개인정보처리방침
-                  </a>
-                  <a
-                    href="#auth-title"
-                    className="rounded-full hover:text-[#F36B12] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#33271E]"
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onOpenLegalNotice?.('contact')}
+                    className="rounded-full transition hover:text-[#F36B12] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#33271E]"
                   >
                     문의하기
-                  </a>
+                  </button>
                 </div>
               </div>
 

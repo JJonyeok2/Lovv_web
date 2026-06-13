@@ -407,6 +407,35 @@ body {
     48px 48px;
 }
 
+.lovv-monthly-card {
+  transform: translate3d(0, 0, 0);
+  will-change: opacity, transform;
+}
+
+.lovv-monthly-card[data-motion="next"][data-placement="featured"] {
+  animation: lovv-monthly-featured-in-next var(--lovv-duration-carousel, 420ms) var(--lovv-ease-standard) both;
+}
+
+.lovv-monthly-card[data-motion="next"][data-placement="previous"] {
+  animation: lovv-monthly-side-in-next var(--lovv-duration-carousel, 420ms) var(--lovv-ease-standard) both;
+}
+
+.lovv-monthly-card[data-motion="next"][data-placement="next"] {
+  animation: lovv-monthly-far-side-in-next var(--lovv-duration-carousel, 420ms) var(--lovv-ease-standard) both;
+}
+
+.lovv-monthly-card[data-motion="previous"][data-placement="featured"] {
+  animation: lovv-monthly-featured-in-previous var(--lovv-duration-carousel, 420ms) var(--lovv-ease-standard) both;
+}
+
+.lovv-monthly-card[data-motion="previous"][data-placement="previous"] {
+  animation: lovv-monthly-far-side-in-previous var(--lovv-duration-carousel, 420ms) var(--lovv-ease-standard) both;
+}
+
+.lovv-monthly-card[data-motion="previous"][data-placement="next"] {
+  animation: lovv-monthly-side-in-previous var(--lovv-duration-carousel, 420ms) var(--lovv-ease-standard) both;
+}
+
 @keyframes lovv-ambient-drift {
   0% {
     background-position:
@@ -433,6 +462,78 @@ body {
       20px 14px,
       24px 12px,
       16px 0;
+  }
+}
+
+@keyframes lovv-monthly-featured-in-next {
+  from {
+    opacity: 0.72;
+    transform: translate3d(10%, 0, 0) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes lovv-monthly-side-in-next {
+  from {
+    opacity: 0.98;
+    transform: translate3d(18%, 0, 0) scale(1.04);
+  }
+
+  to {
+    opacity: 0.78;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes lovv-monthly-far-side-in-next {
+  from {
+    opacity: 0.48;
+    transform: translate3d(10%, 0, 0) scale(0.96);
+  }
+
+  to {
+    opacity: 0.78;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes lovv-monthly-featured-in-previous {
+  from {
+    opacity: 0.72;
+    transform: translate3d(-10%, 0, 0) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes lovv-monthly-side-in-previous {
+  from {
+    opacity: 0.98;
+    transform: translate3d(-18%, 0, 0) scale(1.04);
+  }
+
+  to {
+    opacity: 0.78;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes lovv-monthly-far-side-in-previous {
+  from {
+    opacity: 0.48;
+    transform: translate3d(-10%, 0, 0) scale(0.96);
+  }
+
+  to {
+    opacity: 0.78;
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
@@ -482,7 +583,8 @@ body {
   }
 
   .lovv-float-soft,
-  .lovv-ambient-background {
+  .lovv-ambient-background,
+  .lovv-monthly-card {
     animation: none;
   }
 }

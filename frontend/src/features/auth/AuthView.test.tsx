@@ -25,14 +25,33 @@ describe('AuthView', () => {
 
     render(<AuthView onSignIn={onSignIn} signInPendingProvider="google" />)
 
-    expect(screen.getByRole('button', { name: 'Google 로그인 페이지로 이동 중...' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Google 로그인 페이지로 이동 중...' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Google로 이동 중...' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Google로 이동 중...' })).toHaveAttribute(
       'aria-busy',
       'true',
     )
+    expect(screen.getByRole('region', { name: '서울/오사카 말고, 지금은 이곳' })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    )
+    expect(screen.getByTestId('auth-button-spinner')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Kakao 간편 로그인으로 시작하기' })).toBeDisabled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Google 로그인 페이지로 이동 중...' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Google로 이동 중...' }))
     expect(onSignIn).not.toHaveBeenCalled()
+  })
+
+  it('routes legal notice actions through the shared opener', () => {
+    const onOpenLegalNotice = vi.fn()
+
+    render(<AuthView onSignIn={vi.fn()} onOpenLegalNotice={onOpenLegalNotice} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '이용약관' }))
+    fireEvent.click(screen.getByRole('button', { name: '개인정보처리방침' }))
+    fireEvent.click(screen.getByRole('button', { name: '문의하기' }))
+
+    expect(onOpenLegalNotice).toHaveBeenNthCalledWith(1, 'terms')
+    expect(onOpenLegalNotice).toHaveBeenNthCalledWith(2, 'privacy')
+    expect(onOpenLegalNotice).toHaveBeenNthCalledWith(3, 'contact')
   })
 })

@@ -4,6 +4,7 @@ import {
   HomeView,
   MonthlyRecommendationMedia,
   monthlyRecommendationRotationIntervalMs,
+  monthlyRecommendationTransitionDurationMs,
 } from './HomeView'
 import { heroThemes, monthlyRecommendations } from './homeContent'
 
@@ -83,7 +84,7 @@ describe('HomeView hero summary', () => {
 })
 
 describe('HomeView monthly recommendations', () => {
-  it('rotates each monthly recommendation into the featured card position', () => {
+  it('rotates recommendations through one featured card with side cards', () => {
     vi.useFakeTimers()
 
     render(
@@ -109,11 +110,25 @@ describe('HomeView monthly recommendations', () => {
     )
 
     const grid = screen.getByTestId('monthly-recommendation-grid')
-    const getFeaturedRecommendationButton = () => within(grid).getAllByRole('button')[0]
+    const getFeaturedRecommendationButton = () => screen.getByTestId('monthly-recommendation-featured')
 
     expect(getFeaturedRecommendationButton()).toHaveAttribute(
       'aria-label',
       `${monthlyRecommendations[0].preference.cityPair} 이달 추천 상세 보기`,
+    )
+    expect(screen.getByTestId('monthly-recommendation-previous')).toHaveAttribute(
+      'aria-label',
+      `${monthlyRecommendations[monthlyRecommendations.length - 1].preference.cityPair} 이달 추천 상세 보기`,
+    )
+    expect(screen.getByTestId('monthly-recommendation-next')).toHaveAttribute(
+      'aria-label',
+      `${monthlyRecommendations[1].preference.cityPair} 이달 추천 상세 보기`,
+    )
+    expect(grid).toHaveAttribute('data-featured-index', '0')
+    expect(screen.queryByText('이달의 온천')).not.toBeInTheDocument()
+    expect(screen.getAllByText('온천·휴양').length).toBeGreaterThan(0)
+    expect(monthlyRecommendations.find(({ id }) => id === 'jeonju-osaka-local-table')?.badge).toBe(
+      '미식·노포',
     )
 
     act(() => {
@@ -124,6 +139,14 @@ describe('HomeView monthly recommendations', () => {
       'aria-label',
       `${monthlyRecommendations[1].preference.cityPair} 이달 추천 상세 보기`,
     )
+    expect(grid).toHaveAttribute('data-featured-index', '1')
+    expect(grid).toHaveAttribute('data-motion', 'next')
+
+    act(() => {
+      vi.advanceTimersByTime(monthlyRecommendationTransitionDurationMs)
+    })
+
+    expect(grid).toHaveAttribute('data-motion', 'idle')
 
     act(() => {
       vi.advanceTimersByTime(monthlyRecommendationRotationIntervalMs)
@@ -132,6 +155,93 @@ describe('HomeView monthly recommendations', () => {
     expect(getFeaturedRecommendationButton()).toHaveAttribute(
       'aria-label',
       `${monthlyRecommendations[2].preference.cityPair} 이달 추천 상세 보기`,
+    )
+  })
+
+  it('moves the monthly carousel with hover-only navigation controls and side cards', () => {
+    vi.useFakeTimers()
+
+    render(
+      <HomeView
+        currentHeroTheme={heroThemes[0]}
+        selectedPreferenceProfile={{
+          version: 2,
+          countryTrack: 'KR',
+          selectedThemeIds: [monthlyRecommendations[0].preference.themeId],
+          source: 'onboarding',
+          updatedAt: '2026-06-12T00:00:00.000Z',
+        }}
+        selectedThemeHashtags={[]}
+        recommendationBasisHashtags={[]}
+        openChat={vi.fn()}
+        openMap={vi.fn()}
+        onOpenMonthlyRecommendationDetail={vi.fn()}
+        isQuickActionsOpen={false}
+        onOpenChatFromQuickAction={vi.fn()}
+        onScrollToTop={vi.fn()}
+        onToggleQuickActions={vi.fn()}
+      />,
+    )
+
+    const grid = screen.getByTestId('monthly-recommendation-grid')
+    const previousControl = within(grid).getByRole('button', { name: '이전 추천 보기' })
+    const nextControl = within(grid).getByRole('button', { name: '다음 추천 보기' })
+
+    expect(previousControl.className).toContain('opacity-0')
+    expect(previousControl.className).toContain('group-hover/carousel:opacity-100')
+    expect(nextControl.className).toContain('group-hover/carousel:opacity-100')
+
+    fireEvent.click(nextControl)
+    expect(grid).toHaveAttribute('data-motion', 'next')
+    expect(nextControl).toBeDisabled()
+    expect(screen.getByTestId('monthly-recommendation-featured')).toHaveAttribute(
+      'data-motion',
+      'next',
+    )
+    expect(screen.getByTestId('monthly-recommendation-featured')).toHaveAttribute(
+      'aria-label',
+      `${monthlyRecommendations[1].preference.cityPair} 이달 추천 상세 보기`,
+    )
+
+    act(() => {
+      vi.advanceTimersByTime(monthlyRecommendationTransitionDurationMs)
+    })
+
+    expect(screen.getByTestId('monthly-recommendation-featured')).toHaveAttribute(
+      'aria-label',
+      `${monthlyRecommendations[1].preference.cityPair} 이달 추천 상세 보기`,
+    )
+
+    fireEvent.click(previousControl)
+    expect(grid).toHaveAttribute('data-motion', 'previous')
+    expect(screen.getByTestId('monthly-recommendation-featured')).toHaveAttribute(
+      'aria-label',
+      `${monthlyRecommendations[0].preference.cityPair} 이달 추천 상세 보기`,
+    )
+
+    act(() => {
+      vi.advanceTimersByTime(monthlyRecommendationTransitionDurationMs)
+    })
+
+    expect(screen.getByTestId('monthly-recommendation-featured')).toHaveAttribute(
+      'aria-label',
+      `${monthlyRecommendations[0].preference.cityPair} 이달 추천 상세 보기`,
+    )
+
+    fireEvent.click(screen.getByTestId('monthly-recommendation-previous'))
+    expect(grid).toHaveAttribute('data-motion', 'previous')
+    expect(screen.getByTestId('monthly-recommendation-featured')).toHaveAttribute(
+      'aria-label',
+      `${monthlyRecommendations[monthlyRecommendations.length - 1].preference.cityPair} 이달 추천 상세 보기`,
+    )
+
+    act(() => {
+      vi.advanceTimersByTime(monthlyRecommendationTransitionDurationMs)
+    })
+
+    expect(screen.getByTestId('monthly-recommendation-featured')).toHaveAttribute(
+      'aria-label',
+      `${monthlyRecommendations[monthlyRecommendations.length - 1].preference.cityPair} 이달 추천 상세 보기`,
     )
   })
 })

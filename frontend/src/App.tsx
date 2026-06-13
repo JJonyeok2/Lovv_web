@@ -92,6 +92,8 @@ import {
 } from './features/saved-plans/savedPlansStorage'
 import { AppHeader } from './shared/components/AppHeader'
 import { Footer } from './shared/components/Footer'
+import { LegalNoticeDialog } from './shared/components/LegalNoticeDialog'
+import type { LegalNoticeType } from './shared/components/legalNoticeContent'
 import {
   requestAuthLogin,
   requestAuthLogout,
@@ -134,6 +136,33 @@ import type {
 } from './shared/types/app'
 
 type PreparedAuthRedirectUrls = Partial<Record<SocialAuthProvider, string>>
+
+function AuthLoadingView() {
+  return (
+    <section
+      role="status"
+      aria-live="polite"
+      aria-labelledby="auth-loading-title"
+      className="grid min-h-dvh place-items-center px-6 py-16 text-center"
+    >
+      <div className="w-full max-w-[420px] rounded-[24px] border border-[#F3B489]/45 bg-[#fffffa]/90 px-8 py-8 shadow-[0_24px_60px_-42px_rgba(51,39,30,0.45)] backdrop-blur">
+        <span
+          aria-hidden="true"
+          className="mx-auto block size-9 animate-spin rounded-full border-4 border-[#F3B489]/45 border-t-[#F36B12]"
+        />
+        <h1
+          id="auth-loading-title"
+          className="mt-6 break-keep text-2xl font-black leading-8 text-[#33271E]"
+        >
+          로그인 정보를 확인하고 있어요
+        </h1>
+        <p className="mt-3 break-keep text-sm font-bold leading-6 text-[#6E5A50]">
+          잠시만 기다려주세요
+        </p>
+      </div>
+    </section>
+  )
+}
 
 function App() {
   const cityMapDetailPanelRef = useRef<HTMLDivElement | null>(null)
@@ -193,6 +222,7 @@ function App() {
   const [isPreferenceSaving, setIsPreferenceSaving] = useState(false)
   const [authFlowNotice, setAuthFlowNotice] = useState<AuthExceptionNotice | null>(null)
   const [signInPendingProvider, setSignInPendingProvider] = useState<SocialAuthProvider | null>(null)
+  const [activeLegalNoticeType, setActiveLegalNoticeType] = useState<LegalNoticeType | null>(null)
   const [preparedAuthRedirectUrls, setPreparedAuthRedirectUrls] =
     useState<PreparedAuthRedirectUrls>({})
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => readStoredSavedPlans())
@@ -364,7 +394,10 @@ function App() {
     [cityMapCountry, smallCityCatalogState.cities],
   )
   const filteredSmallCities = useMemo(
-    () => filterSmallCities(activeCountrySmallCities, cityMapQuery, selectedSmallCityThemes),
+    () =>
+      filterSmallCities(activeCountrySmallCities, cityMapQuery, selectedSmallCityThemes, {
+        includeDiscoveryText: false,
+      }),
     [activeCountrySmallCities, cityMapQuery, selectedSmallCityThemes],
   )
   const visibleSmallCityMapMarkers = useMemo(
@@ -1879,14 +1912,22 @@ function App() {
 
 
 
+  const isAuthCallbackLoading = isBackendAuthMode && shouldHandleAuthCallback
+  const isAuthRestoreLoading = isBackendAuthMode && activeView === 'auth' && isAuthSessionRestoring
+  const shouldShowAuthLoadingView = isAuthCallbackLoading || isAuthRestoreLoading
+
   return (
     <main className="lovv-app-shell lovv-warm-pattern lovv-ambient-background min-h-dvh bg-[#fff8ee] text-[#33271E]">
       <div className="lovv-app-content">
-        {activeView === 'auth' ? (
+        {shouldShowAuthLoadingView ? (
+          <AuthLoadingView />
+        ) : activeView === 'auth' ? (
         <AuthView
           authExceptionNotice={authFlowNotice}
           authNotice={authNotice}
+          isSignInDisabled={isAuthSessionRestoring || shouldHandleAuthCallback}
           signInPendingProvider={signInPendingProvider}
+          onOpenLegalNotice={setActiveLegalNoticeType}
           onSignIn={
             isCognitoAuthMode
               ? startCognitoOAuthSignIn
@@ -2026,9 +2067,13 @@ function App() {
             />
           )}
 
-          <Footer onGoHome={goHome} />
+          <Footer onOpenLegalNotice={setActiveLegalNoticeType} />
         </>
         )}
+        <LegalNoticeDialog
+          noticeType={activeLegalNoticeType}
+          onClose={() => setActiveLegalNoticeType(null)}
+        />
       </div>
     </main>
   )

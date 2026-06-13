@@ -107,8 +107,14 @@ export function OnboardingPreferenceView({
                         <div
                           role="group"
                           aria-label="기본 국가 선호"
-                          className="grid grid-cols-2 gap-2 rounded-[16px] bg-[#FFF0E4] p-1 max-sm:grid-cols-1"
+                          className="relative isolate inline-grid min-w-[232px] grid-cols-2 overflow-hidden rounded-full border border-[#F3B489]/45 bg-[#FFF0E4] p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.7)] max-sm:min-w-0 max-sm:w-full"
                         >
+                          <span
+                            aria-hidden="true"
+                            className={`absolute inset-y-1 left-1 z-0 w-[calc(50%-4px)] rounded-full bg-[#F36B12] shadow-[0_10px_24px_-20px_rgba(51,39,30,0.5)] transition-transform duration-300 ease-out ${
+                              activeCountryTrack === 'JP' ? 'translate-x-full' : 'translate-x-0'
+                            }`}
+                          />
                           {countryTrackOptions.map((option) => {
                             const isSelected = activeCountryTrack === option.id
 
@@ -119,10 +125,10 @@ export function OnboardingPreferenceView({
                                 aria-pressed={isSelected}
                                 aria-label={`${option.label} 기본 추천`}
                                 onClick={() => onSelectCountryTrack(option.id)}
-                                className={`min-h-11 min-w-[112px] rounded-[12px] px-4 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
+                                className={`relative z-10 min-h-11 min-w-[112px] rounded-full border border-transparent bg-transparent px-4 text-sm font-bold text-[#33271E] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
                                   isSelected
-                                    ? 'bg-[#F36B12] text-[#33271E] shadow-[0_10px_24px_-20px_rgba(51,39,30,0.5)]'
-                                    : 'bg-transparent text-[#6E5A50] hover:bg-[#FFF8F6]'
+                                    ? 'cursor-default'
+                                    : 'text-[#6E5A50] hover:bg-[#FFF8F6]/70'
                                 }`}
                               >
                                 {option.label}

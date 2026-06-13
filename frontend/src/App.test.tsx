@@ -337,7 +337,10 @@ describe('MVP main entry screen', () => {
     expect(screen.getByTestId('auth-scroll-panel')).toHaveClass('lovv-auth-story-panel')
     expect(screen.queryByRole('img', { name: '손을 흔드는 오렌지색 캐리어 캐릭터' })).not.toBeInTheDocument()
     expect(screen.getByText('지금은 이곳')).toHaveClass('text-[#F36B12]')
-    expect(screen.getByRole('link', { name: '문의하기' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '문의하기' }))
+    expect(screen.getByRole('dialog', { name: '문의하기' })).toBeInTheDocument()
+    expect(screen.getByText('현재 데모 버전에서는 별도 문의 접수 폼을 제공하지 않습니다.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '문의하기 닫기' }))
     expect(screen.getByRole('heading', { name: '소도시 여행의 새로운 기준, Lovv' })).toBeInTheDocument()
     expect(screen.getByRole('list', { name: 'Lovv 서비스 설명' })).toHaveStyle({
       listStyleType: 'square',
@@ -497,6 +500,9 @@ describe('MVP main entry screen', () => {
 
     renderApp('/auth/callback/google?code=google-auth-code&state=state-1')
 
+    expect(screen.getByText('로그인 정보를 확인하고 있어요')).toBeInTheDocument()
+    expect(screen.getByText('잠시만 기다려주세요')).toBeInTheDocument()
+
     await waitFor(() => {
       expect(requestAuthLogin).toHaveBeenCalledWith('google', {
         credentialType: 'authorization_code',
@@ -539,7 +545,9 @@ describe('MVP main entry screen', () => {
       expect(window.location.pathname).toBe('/onboarding')
     })
 
-    expect(screen.getByRole('heading', { name: '여행의 분위기를 골라주세요' })).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: '여행의 분위기를 골라주세요' }),
+    ).toBeInTheDocument()
     expect(screen.queryByText('회원가입하고 Lovv 시작하기')).not.toBeInTheDocument()
     expect(sessionStorage.getItem('lovv.auth.oauth.google')).toBeNull()
     expect(localStorage.getItem(authStorageKey)).toBeNull()
@@ -594,6 +602,9 @@ describe('MVP main entry screen', () => {
     })
 
     renderApp('/auth/callback/cognito?code=cognito-auth-code&state=state-1')
+
+    expect(screen.getByText('로그인 정보를 확인하고 있어요')).toBeInTheDocument()
+    expect(screen.getByText('잠시만 기다려주세요')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(requestCognitoToken).toHaveBeenCalledWith({
@@ -826,13 +837,21 @@ describe('MVP main entry screen', () => {
     expect(screen.queryByRole('heading', { name: '내가 가고 싶은 소도시 찾아보기' })).not.toBeInTheDocument()
     const monthlyGrid = screen.getByTestId('monthly-recommendation-grid')
 
-    expect(monthlyGrid).toHaveClass('grid-cols-4')
+    expect(monthlyGrid.className).toContain('grid-cols-[minmax(160px,0.58fr)_minmax(0,1.45fr)_minmax(160px,0.58fr)]')
     expect(within(monthlyGrid).getAllByRole('button')).toHaveLength(5)
+    expect(screen.getByTestId('monthly-recommendation-featured')).toHaveAttribute(
+      'aria-label',
+      '아산/온양 · 벳푸 이달 추천 상세 보기',
+    )
+    expect(screen.getByTestId('monthly-recommendation-next')).toHaveAttribute(
+      'aria-label',
+      '부산 · 오키나와 이달 추천 상세 보기',
+    )
     ;[
+      '이전 추천 보기',
+      '다음 추천 보기',
       '아산/온양 · 벳푸 이달 추천 상세 보기',
       '부산 · 오키나와 이달 추천 상세 보기',
-      '경주 · 교토 이달 추천 상세 보기',
-      '전주 · 오사카 이달 추천 상세 보기',
       '강릉 · 가나자와 이달 추천 상세 보기',
     ].forEach((buttonName) => {
       expect(within(monthlyGrid).getByRole('button', { name: buttonName })).toBeInTheDocument()
@@ -950,12 +969,22 @@ describe('MVP main entry screen', () => {
     expect(screen.getByRole('heading', { name: '마이페이지' })).toBeInTheDocument()
   })
 
-  it('opens monthly recommendation detail before starting the planner', () => {
+  it('opens monthly recommendation detail before starting the planner', async () => {
     seedUser()
     seedPreference('아산/온양 · 벳푸')
     renderApp()
 
     fireEvent.click(screen.getByRole('button', { name: '부산 · 오키나와 이달 추천 상세 보기' }))
+    await waitFor(() => {
+      expect(screen.getByTestId('monthly-recommendation-featured')).toHaveAttribute(
+        'aria-label',
+        '부산 · 오키나와 이달 추천 상세 보기',
+      )
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('monthly-recommendation-grid')).toHaveAttribute('data-motion', 'idle')
+    })
+    fireEvent.click(screen.getByTestId('monthly-recommendation-featured'))
 
     expectStoredThemeIds(['hot_spring_rest'])
     expect(screen.getByRole('heading', { name: '바다색이 선명한 해안 휴식' })).toBeInTheDocument()
@@ -1006,8 +1035,8 @@ describe('MVP main entry screen', () => {
     const cityThemeFilter = within(cityMapSection).getByRole('group', { name: '소도시 테마 필터' })
 
     expect(within(cityMapSection).getByRole('heading', { name: '내가 가고 싶은 소도시 찾아보기' })).toBeInTheDocument()
-    expect(layoutShell.className).toContain('grid-cols-[minmax(0,2fr)_minmax(440px,0.52fr)]')
-    expect(layoutShell.className).toContain('xl:h-[min(900px,calc(100vh-72px))]')
+    expect(layoutShell.className).toContain('grid-cols-[minmax(0,1.7fr)_minmax(380px,0.82fr)]')
+    expect(layoutShell.className).toContain('xl:h-[min(900px,calc(100vh-112px))]')
     expect(layoutShell.className).toContain('xl:overflow-hidden')
     expect(within(cityMapSection).getByRole('button', { name: '한국' })).toHaveAttribute('aria-pressed', 'true')
     expect(within(cityThemeFilter).getAllByRole('button')).toHaveLength(6)
@@ -1052,8 +1081,18 @@ describe('MVP main entry screen', () => {
       within(screen.getByTestId('city-map-result-list')).queryByRole('button', { name: /가마쿠라 공예/ }),
     ).not.toBeInTheDocument()
 
-    fireEvent.change(within(cityMapSection).getByPlaceholderText('도시, 지역, 테마 검색'), {
+    const citySearchInput = within(cityMapSection).getByPlaceholderText('도시, 지역, 테마 검색')
+
+    fireEvent.change(citySearchInput, {
       target: { value: '게곤폭포' },
+    })
+
+    expect(within(cityMapSection).getByText('일본 0곳 / 전체 6곳')).toBeInTheDocument()
+    expect(within(cityMapSection).getByTestId('city-map-google-map')).toHaveAttribute('data-marker-count', '0')
+    expect(screen.queryByTestId('city-map-result-list')).not.toBeInTheDocument()
+
+    fireEvent.change(citySearchInput, {
+      target: { value: '닛코' },
     })
 
     expect(within(cityMapSection).getByText('일본 1곳 / 전체 6곳')).toBeInTheDocument()
@@ -1319,9 +1358,13 @@ describe('MVP main entry screen', () => {
 
     expect(within(footer).getByText('Lovv')).toBeInTheDocument()
     expect(within(footer).getByText('© 2026 Lovv. All rights reserved.')).toBeInTheDocument()
-    expect(within(footer).getByRole('link', { name: '이용약관' })).toBeInTheDocument()
-    expect(within(footer).getByRole('link', { name: '개인정보처리방침' })).toBeInTheDocument()
-    expect(within(footer).getByRole('link', { name: '문의하기' })).toBeInTheDocument()
+    fireEvent.click(within(footer).getByRole('button', { name: '이용약관' }))
+    expect(screen.getByRole('dialog', { name: '이용약관' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '서비스 이용' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '이용약관 닫기' }))
+
+    expect(within(footer).getByRole('button', { name: '개인정보처리방침' })).toBeInTheDocument()
+    expect(within(footer).getByRole('button', { name: '문의하기' })).toBeInTheDocument()
     expect(within(footer).queryByRole('button', { name: 'Lovv Instagram 열기' })).not.toBeInTheDocument()
     expect(within(footer).queryByRole('button', { name: 'Lovv YouTube 열기' })).not.toBeInTheDocument()
     expect(within(footer).queryByRole('button', { name: 'Lovv Blog 열기' })).not.toBeInTheDocument()

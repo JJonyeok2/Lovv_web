@@ -15,12 +15,14 @@
   --lovv-color-primary-contrast: #ffffff;
   --lovv-color-surface: #fff8f6;
   --lovv-color-surface-container: #fff1eb;
+  --lovv-color-canvas: #fffaf4;
+  --lovv-color-canvas-mist: #edf7f2;
+  --lovv-color-canvas-sky: #eef5ff;
   --lovv-color-theme-mountain: #2D5A27;
   --lovv-color-theme-sea: #1E4D8C;
   --lovv-gradient-theme-festival: linear-gradient(to right, #FF7017, #FFD700, #4CAF50, #2196F3);
   --lovv-font-sans: "Plus Jakarta Sans", sans-serif;
   --lovv-color-text: #33271E;
-  --lovv-color-canvas: var(--lovv-color-surface);
   --lovv-focus-ring: 0 0 0 4px rgb(var(--lovv-rgb-primary) / 0.2);
   --lovv-duration-standard: 220ms;
   --lovv-duration-slow: 1500ms;
@@ -107,14 +109,16 @@ body {
 
 .lovv-auth-left-panel {
   background:
-    linear-gradient(180deg, rgb(255 248 246 / 0.98), rgb(255 241 235 / 0.96)),
-    repeating-linear-gradient(90deg, rgb(var(--lovv-rgb-primary) / 0.024) 0 1px, transparent 1px 72px);
+    linear-gradient(180deg, rgb(255 255 250 / 0.96), rgb(255 239 228 / 0.92)),
+    repeating-linear-gradient(90deg, rgb(73 122 88 / 0.032) 0 1px, transparent 1px 76px),
+    repeating-linear-gradient(0deg, rgb(30 77 140 / 0.026) 0 1px, transparent 1px 84px);
 }
 
 .lovv-auth-story-panel {
   background:
-    linear-gradient(180deg, rgb(255 255 250 / 0.94), rgb(255 248 238 / 0.92)),
-    repeating-linear-gradient(0deg, rgb(243 180 137 / 0.045) 0 1px, transparent 1px 88px);
+    linear-gradient(180deg, rgb(255 255 250 / 0.9), rgb(242 248 241 / 0.88)),
+    repeating-linear-gradient(0deg, rgb(243 180 137 / 0.04) 0 1px, transparent 1px 88px),
+    repeating-linear-gradient(90deg, rgb(30 77 140 / 0.02) 0 1px, transparent 1px 120px);
 }
 
 .lovv-shell-search {
@@ -166,30 +170,34 @@ body {
 
 .lovv-app-shell::before {
   background-image:
-    radial-gradient(ellipse 64vw 48vw at 24% 38%, rgb(255 172 73 / 0.22), rgb(255 138 42 / 0.1) 42%, transparent 72%),
-    radial-gradient(ellipse 44vw 52vw at 78% 34%, rgb(var(--lovv-rgb-primary) / 0.18), rgb(255 214 123 / 0.08) 45%, transparent 76%),
-    linear-gradient(115deg, rgb(207 116 77 / 0.026) 0 1px, transparent 1px 34px),
-    linear-gradient(25deg, rgb(226 176 95 / 0.022) 0 1px, transparent 1px 42px),
-    repeating-linear-gradient(90deg, rgb(207 116 77 / 0.014) 0 1px, transparent 1px 96px);
+    linear-gradient(180deg, rgb(255 250 244 / 0.98) 0%, rgb(252 244 236 / 0.96) 42%, rgb(240 248 244 / 0.9) 100%),
+    linear-gradient(128deg, transparent 0 22%, rgb(238 247 242 / 0.72) 22% 39%, transparent 39% 100%),
+    linear-gradient(32deg, transparent 0 58%, rgb(238 245 255 / 0.72) 58% 75%, transparent 75% 100%),
+    repeating-linear-gradient(90deg, rgb(51 39 30 / 0.032) 0 1px, transparent 1px 96px),
+    repeating-linear-gradient(0deg, rgb(51 39 30 / 0.026) 0 1px, transparent 1px 96px),
+    repeating-linear-gradient(45deg, rgb(243 107 18 / 0.025) 0 1px, transparent 1px 24px);
   background-color: var(--lovv-color-canvas);
   background-position:
-    -3vw -2vh,
-    4vw -3vh,
     0 0,
-    18px 22px,
+    0 0,
+    0 0,
+    0 0,
+    0 0,
     0 0;
   background-repeat:
+    no-repeat,
     no-repeat,
     no-repeat,
     repeat,
     repeat,
     repeat;
   background-size:
-    118% 112%,
-    108% 114%,
-    180px 180px,
-    240px 240px,
-    96px 96px;
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    96px 96px,
+    96px 96px,
+    160px 160px;
   content: "";
   inset: 0;
   pointer-events: none;
@@ -199,6 +207,19 @@ body {
 
 .lovv-ambient-background {
   background-color: var(--lovv-color-canvas);
+}
+
+.lovv-app-shell::after {
+  background-image:
+    linear-gradient(90deg, transparent 0 48%, rgb(255 255 255 / 0.32) 48% 52%, transparent 52% 100%),
+    repeating-linear-gradient(115deg, rgb(255 255 255 / 0.18) 0 1px, transparent 1px 18px);
+  content: "";
+  inset: 0;
+  mix-blend-mode: soft-light;
+  opacity: 0.52;
+  pointer-events: none;
+  position: fixed;
+  z-index: 0;
 }
 
 .lovv-app-content {

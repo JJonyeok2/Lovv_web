@@ -172,6 +172,13 @@ beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
   vi.stubEnv('VITE_LOVV_AUTH_MODE', 'mock')
+  vi.stubEnv('VITE_GOOGLE_OAUTH_CLIENT_ID', '')
+  vi.stubEnv('VITE_KAKAO_OAUTH_CLIENT_ID', '')
+  vi.stubEnv('VITE_COGNITO_DOMAIN', '')
+  vi.stubEnv('VITE_COGNITO_HOSTED_UI_BASE_URL', '')
+  vi.stubEnv('VITE_COGNITO_CLIENT_ID', '')
+  vi.stubEnv('VITE_COGNITO_REDIRECT_URI', '')
+  vi.stubEnv('VITE_COGNITO_LOGOUT_URI', '')
   vi.mocked(requestListSavedPlans).mockResolvedValue({ savedPlans: [], likes: {} })
 })
 

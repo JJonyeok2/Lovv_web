@@ -202,6 +202,68 @@ body {
   border: 1px solid rgb(255 255 255 / 0.72);
 }
 
+.lovv-onboarding-liquid-shell {
+  background:
+    radial-gradient(circle at 12% 18%, rgb(255 224 202 / 0.5), transparent 28%),
+    radial-gradient(circle at 88% 12%, rgb(238 247 242 / 0.7), transparent 32%),
+    linear-gradient(180deg, rgb(255 248 238 / 0.96), rgb(238 247 242 / 0.78) 58%, rgb(255 248 246 / 0.88));
+}
+
+.lovv-onboarding-hero-panel {
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.78), rgb(255 248 238 / 0.48)),
+    linear-gradient(180deg, rgb(255 255 250 / 0.52), rgb(238 247 242 / 0.34));
+}
+
+.lovv-onboarding-country-card,
+.lovv-onboarding-action-bar {
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.76), rgb(255 240 228 / 0.46)),
+    linear-gradient(180deg, rgb(255 255 255 / 0.42), transparent);
+}
+
+.lovv-onboarding-theme-card {
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.78), rgb(255 248 246 / 0.52)),
+    linear-gradient(180deg, rgb(238 247 242 / 0.28), transparent);
+  backdrop-filter: blur(18px) saturate(138%);
+  -webkit-backdrop-filter: blur(18px) saturate(138%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.72),
+    0 16px 36px -30px rgb(51 39 30 / 0.34);
+}
+
+.lovv-onboarding-theme-card-selected {
+  background:
+    linear-gradient(145deg, rgb(255 240 228 / 0.82), rgb(255 255 250 / 0.6)),
+    linear-gradient(180deg, rgb(243 107 18 / 0.12), transparent 68%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.78),
+    0 22px 48px -32px rgb(51 39 30 / 0.48);
+}
+
+.lovv-onboarding-preview-card {
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.72), rgb(255 248 238 / 0.44) 46%, rgb(238 247 242 / 0.42)),
+    linear-gradient(180deg, rgb(255 255 255 / 0.5), transparent);
+}
+
+.lovv-onboarding-preview-media {
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.34), rgb(255 224 202 / 0.22)),
+    rgb(255 240 228 / 0.56);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.62),
+    0 24px 58px -44px rgb(51 39 30 / 0.42);
+}
+
+.lovv-onboarding-route-note {
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.72), rgb(255 240 228 / 0.48)),
+    linear-gradient(180deg, rgb(255 255 255 / 0.34), transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.72);
+}
+
 .lovv-social-button {
   gap: 12px;
   overflow: hidden;

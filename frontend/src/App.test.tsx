@@ -1661,8 +1661,17 @@ describe('MVP main entry screen', () => {
     ].forEach((copy) => {
       expect(screen.getByText(new RegExp(copy.replace('/', '\\/')))).toBeInTheDocument()
     })
+    expect(screen.getByRole('region', { name: '여행의 분위기를 골라주세요' })).toHaveClass(
+      'lovv-onboarding-liquid-shell',
+    )
+    expect(screen.getByTestId('onboarding-hero-panel')).toHaveClass('lovv-liquid-panel')
+    expect(screen.getByTestId('onboarding-country-card')).toHaveClass('lovv-liquid-panel')
     expect(screen.getByTestId('onboarding-content-grid')).toHaveClass('mt-10', 'items-stretch')
     expect(screen.getByTestId('preference-card-grid')).toHaveClass('auto-rows-[212px]')
+    expect(screen.getByRole('button', { name: /온천·휴양/ })).toHaveClass(
+      'lovv-onboarding-theme-card',
+    )
+    expect(screen.getByTestId('onboarding-action-bar')).toHaveClass('lovv-liquid-panel')
     expect(screen.getByText('온양온천 · 스파 휴양 · 지옥 순례')).toHaveClass(
       'mt-auto',
       'w-full',
@@ -1703,6 +1712,8 @@ describe('MVP main entry screen', () => {
 
     expect(screen.getByRole('button', { name: /온천·휴양/ })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByTestId('preference-preview-card')).toHaveClass(
+      'lovv-onboarding-preview-card',
+      'lovv-liquid-panel',
       'top-[220px]',
       'h-fit',
       'max-xl:static',

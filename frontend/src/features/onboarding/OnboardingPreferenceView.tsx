@@ -61,7 +61,7 @@ export function OnboardingPreferenceView({
     <section
               id="onboarding"
               aria-labelledby="onboarding-title"
-              className="mx-auto min-h-dvh max-w-[1440px] px-12 py-9 max-lg:px-8 max-sm:px-5"
+              className="lovv-onboarding-liquid-shell mx-auto min-h-dvh max-w-[1440px] px-12 py-9 max-lg:px-8 max-sm:px-5"
             >
               <div className="min-h-[calc(100dvh-72px)]">
                 <div className="flex items-center justify-between gap-4">
@@ -75,7 +75,10 @@ export function OnboardingPreferenceView({
                   }`}
                 >
                   <div className="min-w-0">
-                    <div className="min-w-0">
+                    <div
+                      data-testid="onboarding-hero-panel"
+                      className="lovv-onboarding-hero-panel lovv-liquid-panel min-w-0 rounded-[28px] border border-white/60 p-7 shadow-[0_24px_70px_-48px_rgba(51,39,30,0.42)] max-sm:p-5"
+                    >
                       <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#33271E]">
                         Lovv City Mood Journal
                       </p>
@@ -90,10 +93,13 @@ export function OnboardingPreferenceView({
                           ? '새 취향은 저장한 뒤 다음 AI 일정부터 반영됩니다.'
                           : '익숙한 대도시 감각을 Lovv가 한국과 일본 소도시 후보로 바꿔둘게요.'}
                       </p>
-                    </div>
+                  </div>
 
                   <section className="mt-9">
-                    <div className="mb-7 rounded-[22px] border border-transparent bg-[#fffffa] p-5 shadow-[0_18px_50px_-34px_rgba(51,39,30,0.24)]">
+                    <div
+                      data-testid="onboarding-country-card"
+                      className="lovv-onboarding-country-card lovv-liquid-panel mb-7 rounded-[22px] border border-white/60 p-5 shadow-[0_18px_50px_-34px_rgba(51,39,30,0.24)]"
+                    >
                       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-5 max-md:grid-cols-1">
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-[#33271E]">Default country</p>
@@ -165,10 +171,10 @@ export function OnboardingPreferenceView({
                             onClick={() => onToggleTheme(theme.id)}
                             className={`flex h-full min-w-0 flex-col overflow-hidden rounded-[22px] border p-5 text-left transition hover:-translate-y-0.5 hover:bg-[#FFF0E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] max-md:min-h-[212px] ${
                               isSelected
-                                ? 'border-[#A92B10] bg-[#FFF0E4] shadow-[0_18px_40px_-28px_rgba(51,39,30,0.55)]'
+                                ? 'lovv-onboarding-theme-card lovv-onboarding-theme-card-selected border-[#A92B10] bg-[#FFF0E4] shadow-[0_18px_40px_-28px_rgba(51,39,30,0.55)]'
                                 : isMaxed
-                                  ? 'border-transparent bg-[#fffffa] opacity-55'
-                                  : 'border-transparent bg-[#fffffa] shadow-[0_10px_28px_-26px_rgba(51,39,30,0.24)]'
+                                  ? 'lovv-onboarding-theme-card border-transparent bg-[#fffffa] opacity-55'
+                                  : 'lovv-onboarding-theme-card border-transparent bg-[#fffffa] shadow-[0_10px_28px_-26px_rgba(51,39,30,0.24)]'
                             }`}
                           >
                             <span className="flex shrink-0 items-center justify-between gap-3">
@@ -197,7 +203,10 @@ export function OnboardingPreferenceView({
                       })}
                     </div>
 
-                    <div className="mt-6 grid grid-cols-[1fr_auto] items-center gap-5 rounded-[22px] border border-transparent bg-[#fffffa] px-5 py-4 shadow-[0_18px_50px_-34px_rgba(51,39,30,0.24)] max-md:grid-cols-1">
+                    <div
+                      data-testid="onboarding-action-bar"
+                      className="lovv-onboarding-action-bar lovv-liquid-panel mt-6 grid grid-cols-[1fr_auto] items-center gap-5 rounded-[22px] border border-white/60 px-5 py-4 shadow-[0_18px_50px_-34px_rgba(51,39,30,0.24)] max-md:grid-cols-1"
+                    >
                       <div className="flex flex-wrap gap-2">
                         {activeThemeLabels.length > 0 ? (
                           activeThemeLabels.map((themeLabel) => (
@@ -249,9 +258,9 @@ export function OnboardingPreferenceView({
                 {hasSelectedCover ? (
                   <aside
                     data-testid="preference-preview-card"
-                    className="sticky top-[220px] h-fit rounded-[28px] border border-transparent bg-[#fffffa] p-5 shadow-[0_24px_70px_-42px_rgba(51,39,30,0.45)] max-xl:static"
+                    className="lovv-onboarding-preview-card lovv-liquid-panel sticky top-[220px] h-fit rounded-[28px] border border-white/60 p-5 shadow-[0_24px_70px_-42px_rgba(51,39,30,0.45)] max-xl:static"
                   >
-                    <div className="group relative overflow-hidden rounded-[24px] border border-transparent bg-[#FFF0E4]">
+                    <div className="lovv-onboarding-preview-media group relative overflow-hidden rounded-[24px] border border-white/50">
                       <div className="absolute left-5 right-5 top-5 z-10 flex items-center justify-between gap-3">
                         <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#33271E]">
                           Selected Theme
@@ -328,7 +337,7 @@ export function OnboardingPreferenceView({
                           .join(' ')}
                       </p>
 
-                      <div className="mt-5 rounded-[18px] border border-transparent bg-[#FFF0E4] p-4">
+                      <div className="lovv-onboarding-route-note mt-5 rounded-[18px] border border-white/55 p-4">
                         <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#33271E]">
                           First route note
                         </p>

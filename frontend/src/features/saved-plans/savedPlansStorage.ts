@@ -93,3 +93,9 @@ export const writeStoredSavedPlanLikes = (likes: SavedPlanLikeMap) => {
   localStorage.setItem(savedPlanLikesStorageKey, JSON.stringify(likes))
   localStorage.removeItem(likedPlanIdsStorageKey)
 }
+
+export const clearStoredSavedPlanState = () => {
+  localStorage.removeItem(savedPlansStorageKey)
+  localStorage.removeItem(savedPlanLikesStorageKey)
+  localStorage.removeItem(likedPlanIdsStorageKey)
+}

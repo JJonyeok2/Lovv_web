@@ -729,6 +729,12 @@ const placeCoordinateOffsetByCategory: Record<SmallCityPlaceCategory, { latitude
   숙소: { latitude: 0.003, longitude: 0.004 },
 }
 
+const createKakaoMapSearchUrl = (queryParts: string[]) => {
+  const query = queryParts.map((part) => part.trim()).filter(Boolean).join(' ')
+
+  return `https://map.kakao.com/link/search/${encodeURIComponent(query)}`
+}
+
 const createStaticPlace = (
   city: SmallCity,
   category: SmallCityPlaceCategory,
@@ -767,7 +773,7 @@ const createStaticPlace = (
     ...placeByCategory[category],
     addressName,
     roadAddressName: addressName,
-    placeUrl: `https://place.map.kakao.com/${encodeURIComponent(`${city.id}-${category}`)}`,
+    placeUrl: createKakaoMapSearchUrl([placeByCategory[category].name, city.nameKo, city.region]),
     latitude,
     longitude,
   }

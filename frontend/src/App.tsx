@@ -89,6 +89,7 @@ import {
 import { PlannerWorkspace, type PlannerStateStep } from './features/planner/PlannerWorkspace'
 import { PlanDetailView } from './features/planner/PlanDetailView'
 import {
+  clearStoredSavedPlanState,
   getNextSavedPlanLike,
   readStoredSavedPlanLikes,
   readStoredSavedPlans,
@@ -249,11 +250,26 @@ function App() {
   const [activeLegalNoticeType, setActiveLegalNoticeType] = useState<LegalNoticeType | null>(null)
   const [preparedAuthRedirectUrls, setPreparedAuthRedirectUrls] =
     useState<PreparedAuthRedirectUrls>({})
-  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() => readStoredSavedPlans())
+  const [savedPlans, setSavedPlans] = useState<SavedPlan[]>(() =>
+    isBackendAuthMode ? [] : readStoredSavedPlans(),
+  )
   const [isSavedPlansRestoring, setIsSavedPlansRestoring] = useState(isBackendAuthMode)
-  const [savedPlanLikes, setSavedPlanLikes] = useState<SavedPlanLikeMap>(() => readStoredSavedPlanLikes())
+  const [savedPlanLikes, setSavedPlanLikes] = useState<SavedPlanLikeMap>(() =>
+    isBackendAuthMode ? {} : readStoredSavedPlanLikes(),
+  )
   const [pendingSavedPlanLikeIds, setPendingSavedPlanLikeIds] = useState<string[]>([])
+  const [pendingSavedPlanDeleteIds, setPendingSavedPlanDeleteIds] = useState<string[]>([])
   const [savedPlanLikeErrors, setSavedPlanLikeErrors] = useState<Record<string, string>>({})
+  const clearSavedPlanUiState = useCallback((clearStorage = false) => {
+    setSavedPlans([])
+    setSavedPlanLikes({})
+    setPendingSavedPlanLikeIds([])
+    setPendingSavedPlanDeleteIds([])
+    setSavedPlanLikeErrors({})
+    if (clearStorage) {
+      clearStoredSavedPlanState()
+    }
+  }, [])
   const commitCurrentUser = useCallback(
     (user: LovvUser | null, fallbackProvider: SocialAuthProvider | null = null) => {
       setCurrentUser(user)
@@ -382,6 +398,7 @@ function App() {
   )
   const getSavedPlanLike = (planId: string): SavedPlanLike => savedPlanLikes[planId] ?? null
   const isSavedPlanLikePending = (planId: string) => pendingSavedPlanLikeIds.includes(planId)
+  const isSavedPlanDeletePending = (planId: string) => pendingSavedPlanDeleteIds.includes(planId)
   const getSavedPlanLikeError = (planId: string) => savedPlanLikeErrors[planId] ?? null
   const savedCurrentPlan = savedPlans.find(
     (plan) => plan.id === currentPlanId || plan.sourceRecommendationId === currentPlanId,
@@ -626,6 +643,7 @@ function App() {
         setAuthAccessToken(null)
         commitCurrentUser(null)
         setHasCompletedPreference(false)
+        clearSavedPlanUiState(true)
       })
       .finally(() => {
         if (isActive) {
@@ -636,7 +654,7 @@ function App() {
     return () => {
       isActive = false
     }
-  }, [authRuntimeMode, commitCurrentUser, isBackendAuthMode])
+  }, [authRuntimeMode, clearSavedPlanUiState, commitCurrentUser, isBackendAuthMode])
 
   useEffect(() => {
     const isAuthEntryPath = location.pathname === '/' || location.pathname === getPathForView('auth')
@@ -736,8 +754,7 @@ function App() {
 
     if (!currentUser || !authAccessToken) {
       queueMicrotask(() => {
-        setSavedPlans([])
-        setSavedPlanLikes({})
+        clearSavedPlanUiState(true)
         setIsSavedPlansRestoring(false)
       })
       return undefined
@@ -807,6 +824,7 @@ function App() {
     }
   }, [
     authAccessToken,
+    clearSavedPlanUiState,
     currentPlanId,
     currentUser,
     isAuthSessionRestoring,
@@ -1188,6 +1206,9 @@ function App() {
   const removeSavedPlanFromLocalState = (planId: string) => {
     const matchedPlan = savedPlans.find((plan) => plan.id === planId || plan.sourceRecommendationId === planId)
     const sourceRecommendationId = matchedPlan?.sourceRecommendationId
+    const savedPlanIdsToRemove = [planId, matchedPlan?.id, sourceRecommendationId].filter(
+      (savedPlanId): savedPlanId is string => Boolean(savedPlanId),
+    )
 
     setSavedPlans((currentPlans) => {
       const nextPlans = currentPlans.filter(
@@ -1213,7 +1234,10 @@ function App() {
       return nextLikes
     })
     setPendingSavedPlanLikeIds((currentPlanIds) =>
-      currentPlanIds.filter((currentPlanId) => currentPlanId !== planId),
+      currentPlanIds.filter((currentPlanId) => !savedPlanIdsToRemove.includes(currentPlanId)),
+    )
+    setPendingSavedPlanDeleteIds((currentPlanIds) =>
+      currentPlanIds.filter((currentPlanId) => !savedPlanIdsToRemove.includes(currentPlanId)),
     )
     setSavedPlanLikeErrors((currentErrors) => {
       const nextErrors = { ...currentErrors }
@@ -1231,16 +1255,37 @@ function App() {
   }
 
   const deleteSavedPlan = async (planId: string, options: { navigateToMyPage?: boolean } = {}) => {
+    const matchedPlan = savedPlans.find((plan) => plan.id === planId || plan.sourceRecommendationId === planId)
+    const pendingPlanIds = getSavedPlanLikeIds(planId, matchedPlan)
+
+    if (pendingPlanIds.some((pendingPlanId) => pendingSavedPlanDeleteIds.includes(pendingPlanId))) {
+      return
+    }
+
+    const deleteTargetTitle = matchedPlan?.title ?? '이 저장 일정'
+    const shouldDelete =
+      typeof window.confirm !== 'function' ||
+      window.confirm(`${deleteTargetTitle}을 삭제할까요? 삭제 후에는 복구할 수 없어요.`)
+
+    if (!shouldDelete) {
+      return
+    }
+
     setSavedPlanNotice(null)
+    setPendingSavedPlanDeleteIds((currentPlanIds) =>
+      Array.from(new Set([...currentPlanIds, ...pendingPlanIds])),
+    )
 
     if (isBackendAuthMode) {
-      const matchedPlan = savedPlans.find((plan) => plan.id === planId || plan.sourceRecommendationId === planId)
       const backendPlanId = matchedPlan?.id ?? planId
 
       try {
         await requestDeleteSavedPlan(backendPlanId, { accessToken: authAccessToken })
       } catch {
         setSavedPlanNotice('저장 일정을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요.')
+        setPendingSavedPlanDeleteIds((currentPlanIds) =>
+          currentPlanIds.filter((currentPlanId) => !pendingPlanIds.includes(currentPlanId)),
+        )
         return
       }
     }
@@ -1467,6 +1512,10 @@ function App() {
     clearPendingOAuthLogins(window.sessionStorage)
     setAuthAccessToken(null)
     commitCurrentUser(null)
+    if (isBackendAuthMode) {
+      clearSavedPlanUiState(true)
+      setIsSavedPlansRestoring(false)
+    }
 
     if (isCognitoAuthMode) {
       try {
@@ -1950,7 +1999,9 @@ function App() {
 
 
   const isAuthCallbackLoading = isBackendAuthMode && shouldHandleAuthCallback
-  const shouldShowAuthLoadingView = isAuthCallbackLoading
+  const isProtectedRouteAuthSessionLoading =
+    isBackendAuthMode && isAuthSessionRestoring && activeView !== 'auth'
+  const shouldShowAuthLoadingView = isAuthCallbackLoading || isProtectedRouteAuthSessionLoading
 
   return (
     <main className="lovv-app-shell lovv-warm-pattern lovv-ambient-background min-h-dvh bg-[#fff8ee] text-[#33271E]">
@@ -2042,8 +2093,10 @@ function App() {
               onSelectSavedPlanLike={selectSavedPlanLike}
               savedPlanLikePending={isSavedPlanLikePending(activePlanDetailId)}
               savedPlanLikeError={getSavedPlanLikeError(activePlanDetailId)}
+              isSavedPlanDetailLoading={isBackendRoutePlanLoading}
               saveGeneratedPlan={saveGeneratedPlan}
               isCurrentPlanSaved={isActivePlanDetailSaved}
+              savedPlanDeletePending={isSavedPlanDeletePending(activePlanDetailId)}
               onDeleteSavedPlan={deleteSavedPlan}
               openMyPage={openMyPage}
               savedPlanNotice={savedPlanNotice}
@@ -2063,6 +2116,7 @@ function App() {
               onSelectSavedPlanLike={selectSavedPlanLike}
               getSavedPlanLikeError={getSavedPlanLikeError}
               isSavedPlanLikePending={isSavedPlanLikePending}
+              isSavedPlanDeletePending={isSavedPlanDeletePending}
               openSavedPlanDetail={openSavedPlanDetail}
               onDeleteSavedPlan={deleteSavedPlan}
               openPreferenceEdit={openPreferenceEdit}

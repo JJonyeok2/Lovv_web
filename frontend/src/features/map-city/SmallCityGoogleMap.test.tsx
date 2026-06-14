@@ -157,6 +157,7 @@ describe('SmallCityGoogleMap', () => {
       expect(mapRegion).toHaveAttribute('data-runtime-status', 'ready')
       expect(markerConstructor).toHaveBeenCalledTimes(2)
     })
+    expect(within(mapRegion).getAllByRole('button', { name: /지도 마커:/ })).toHaveLength(2)
     expect(mapConstructor).toHaveBeenCalledWith(
       expect.any(HTMLElement),
       expect.objectContaining({ mapId: 'test-map-id' }),
@@ -173,8 +174,10 @@ describe('SmallCityGoogleMap', () => {
     )
 
     markerListeners[1]()
+    fireEvent.click(within(mapRegion).getByRole('button', { name: '지도 마커: 경주' }))
 
     expect(onSelectMarker).toHaveBeenCalledWith(markers[1])
+    expect(onSelectMarker).toHaveBeenCalledTimes(2)
   })
 
   it('keeps one map instance and refreshes markers after switching countries', async () => {

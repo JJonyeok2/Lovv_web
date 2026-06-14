@@ -318,6 +318,34 @@ export function SmallCityGoogleMap({
           </div>
         </div>
       ) : null}
+      {runtimeStatus === 'ready' && markers.length > 0 ? (
+        <div
+          role="group"
+          aria-label={`${countryLabel} 지도 마커 키보드 선택`}
+          className="sr-only focus-within:not-sr-only focus-within:absolute focus-within:inset-x-4 focus-within:bottom-4 focus-within:z-10 focus-within:flex focus-within:max-h-28 focus-within:flex-wrap focus-within:gap-2 focus-within:overflow-y-auto focus-within:rounded-[8px] focus-within:bg-white/90 focus-within:p-2 focus-within:shadow-[0_16px_34px_-24px_rgba(51,39,30,0.42)] focus-within:backdrop-blur"
+        >
+          {markers.map((marker) => {
+            const isSelected = marker.cityId === selectedMarkerCityId
+
+            return (
+              <button
+                key={marker.id}
+                type="button"
+                aria-label={`지도 마커: ${marker.label}`}
+                aria-pressed={isSelected}
+                onClick={() => onSelectMarker(marker)}
+                className={`inline-flex min-h-9 items-center justify-center rounded-[8px] border px-3 text-[12px] font-black transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
+                  isSelected
+                    ? 'border-[#A92B10] bg-[#F36B12] text-[#33271E]'
+                    : 'border-[#F3B489] bg-[#fffffa] text-[#33271E] hover:border-[#F36B12] hover:bg-[#FFE0CA]'
+                }`}
+              >
+                {marker.label}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
     </div>
   )
 }

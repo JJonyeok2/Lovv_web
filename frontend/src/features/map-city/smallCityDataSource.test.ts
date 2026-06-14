@@ -78,10 +78,13 @@ describe('small-city data source boundary', () => {
         cityId: gyeongju!.id,
         category,
         categoryName: category,
-        placeUrl: expect.stringContaining('https://place.map.kakao.com/'),
+        placeUrl: expect.stringContaining('https://map.kakao.com/link/search/'),
       })
     })
     expect(state.detail!.placesByCategory['관광지'][0].name).toContain('황리단길')
+    expect(state.detail!.placesByCategory['관광지'][0].placeUrl).toContain(
+      encodeURIComponent('황리단길 중심 산책 경주 경북'),
+    )
     expect(state.detail!.placesByCategory['음식점'][0].name).toContain('경주')
     expect(state.detail!.placesByCategory['카페'][0].name).toContain('경주')
     expect(state.detail!.placesByCategory['숙소'][0].name).toContain('경주')

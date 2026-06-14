@@ -52,7 +52,7 @@ export const legalNoticeContent: Record<LegalNoticeType, LegalNoticeContent> = {
     eyebrow: 'Privacy',
     title: '개인정보 처리방침',
     summary:
-      'Lovv는 로그인, 취향 기반 추천, 저장 일정 확인에 필요한 최소한의 정보를 사용하며, 민감한 인증 비밀값을 프론트 화면에 저장하거나 노출하지 않습니다.',
+      'Lovv는 로그인, 취향 기반 추천, 저장 일정 확인에 필요한 최소한의 정보를 사용하며, 민감한 인증 비밀값을 저장하거나 노출하지 않습니다.',
     sections: [
       {
         heading: '수집 및 이용 항목',

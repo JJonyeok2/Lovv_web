@@ -52,13 +52,13 @@ export function AuthView({
     <section
               aria-labelledby="auth-title"
               aria-busy={isSignInPending || undefined}
-              className={`mx-auto grid min-h-dvh max-w-[1440px] grid-cols-[minmax(360px,440px)_minmax(0,1fr)] transition-opacity lg:h-dvh lg:overflow-hidden max-lg:grid-cols-1 ${
+              className={`lovv-auth-liquid-shell mx-auto grid min-h-dvh max-w-[1440px] grid-cols-[minmax(360px,440px)_minmax(0,1fr)] p-5 transition-opacity lg:h-dvh lg:overflow-hidden max-lg:grid-cols-1 max-lg:p-4 max-sm:p-0 ${
                 isSignInPending ? 'opacity-80' : 'opacity-100'
               }`}
             >
               <div
                 data-testid="auth-fixed-panel"
-                className="lovv-auth-left-panel flex min-h-dvh min-w-0 flex-col justify-between border-r border-[#A92B10]/25 px-16 py-16 max-lg:min-h-0 max-lg:border-b max-lg:border-r-0 max-lg:px-8 max-lg:py-10 max-sm:px-5"
+                className="lovv-auth-left-panel lovv-liquid-panel flex min-h-[calc(100dvh-2.5rem)] min-w-0 flex-col justify-between rounded-l-[32px] border border-white/55 px-16 py-16 shadow-[0_26px_80px_-54px_rgba(51,39,30,0.52)] max-lg:min-h-0 max-lg:rounded-b-none max-lg:rounded-t-[28px] max-lg:px-8 max-lg:py-10 max-sm:rounded-none max-sm:px-5"
               >
                 <div>
                   <img src={logoImage} alt="Lovv" className="h-16 w-[116px] object-contain" />
@@ -82,7 +82,7 @@ export function AuthView({
                   {authExceptionNotice ? (
                     <div
                       role="alert"
-                      className="mt-6 max-w-[340px] rounded-[18px] border border-[#A92B10]/35 bg-[#FFF0E4] px-5 py-4 shadow-[0_16px_34px_-28px_rgba(51,39,30,0.38)]"
+                      className="lovv-liquid-alert mt-6 max-w-[340px] rounded-[18px] border border-[#A92B10]/35 px-5 py-4 shadow-[0_16px_34px_-28px_rgba(51,39,30,0.38)]"
                     >
                       <p className="break-keep text-sm font-black text-[#A92B10]">
                         {authExceptionNotice.title}
@@ -161,10 +161,10 @@ export function AuthView({
 
               <div
                 data-testid="auth-scroll-panel"
-                className="lovv-auth-story-panel min-h-dvh overflow-y-auto px-20 py-20 max-lg:min-h-0 max-lg:overflow-visible max-lg:px-8 max-lg:py-12 max-sm:px-5"
+                className="lovv-auth-story-panel lovv-liquid-panel min-h-[calc(100dvh-2.5rem)] overflow-y-auto rounded-r-[32px] border border-l-0 border-white/55 px-20 py-20 shadow-[0_26px_80px_-54px_rgba(51,39,30,0.42)] max-lg:min-h-0 max-lg:overflow-visible max-lg:rounded-b-[28px] max-lg:rounded-r-none max-lg:border-l max-lg:border-t-0 max-lg:px-8 max-lg:py-12 max-sm:rounded-none max-sm:px-5"
               >
                 <div className="mx-auto max-w-[720px] pb-16">
-                  <div className="inline-flex min-h-[32px] items-center rounded-full bg-[#FFF0E4] px-4 text-[12px] font-black text-[#A92B10]">
+                  <div className="lovv-liquid-pill inline-flex min-h-[32px] items-center rounded-full px-4 text-[12px] font-black text-[#A92B10]">
                     소도시 여행의 새로운 기준
                   </div>
                   <h2 className="mt-8 max-w-[560px] break-keep text-[44px] font-black leading-[54px] text-[#33271E] max-sm:text-[32px] max-sm:leading-10">
@@ -199,9 +199,9 @@ export function AuthView({
                     {authServiceCards.map((card) => (
                       <article
                         key={card.title}
-                        className="min-h-[150px] rounded-[20px] border border-transparent bg-[#FFE4D4] p-6 shadow-[0_18px_40px_-32px_rgba(51,39,30,0.32)]"
+                        className="lovv-liquid-card min-h-[150px] rounded-[20px] border border-white/55 p-6 shadow-[0_18px_40px_-32px_rgba(51,39,30,0.32)]"
                       >
-                        <div className="size-8 rounded-full bg-[#FFF8EE] shadow-[0_8px_18px_-14px_rgba(51,39,30,0.45)]" />
+                        <div className="lovv-liquid-card-mark size-8 rounded-full shadow-[0_8px_18px_-14px_rgba(51,39,30,0.45)]" />
                         <h3 className="mt-4 text-base font-black text-[#33271E]">{card.title}</h3>
                         <p className="mt-2 break-keep text-sm font-semibold leading-6 text-[#33271E]">
                           {card.body}

@@ -7,7 +7,11 @@ describe('AuthView', () => {
     render(<AuthView onSignIn={vi.fn()} />)
 
     const summary = screen.getByTestId('auth-story-summary')
+    const authRegion = screen.getByRole('region', { name: '서울/오사카 말고, 지금은 이곳' })
 
+    expect(authRegion).toHaveClass('lovv-auth-liquid-shell')
+    expect(screen.getByTestId('auth-fixed-panel')).toHaveClass('lovv-liquid-panel')
+    expect(screen.getByTestId('auth-scroll-panel')).toHaveClass('lovv-liquid-panel')
     expect(summary).toHaveTextContent(
       '익숙한 대도시의 화려함 뒤에 숨겨진 진짜 로컬의 매력을 발견하세요. Lovv는 작지만 보석 같은 도시들을 연결하여 당신만의 특별한 여행 이야기를 만들어냅니다.',
     )

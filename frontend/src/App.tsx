@@ -4,10 +4,16 @@
  * @lastModified 2026-06-13
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AuthView } from './features/auth/AuthView'
-import { authStorageKey, readStoredUser } from './features/auth/authModel'
+import {
+  authStorageKey,
+  clearStoredSocialAuthProvider,
+  readStoredSocialAuthProvider,
+  readStoredUser,
+  storeSocialAuthProvider,
+} from './features/auth/authModel'
 import {
   adaptApiAuthSessionSnapshot,
   createMockAuthSessionSnapshot,
@@ -137,6 +143,22 @@ import type {
 
 type PreparedAuthRedirectUrls = Partial<Record<SocialAuthProvider, string>>
 
+const providerLabels: Record<SocialAuthProvider, string> = {
+  google: 'Google',
+  kakao: 'Kakao',
+}
+
+const resolveSocialAuthProvider = (
+  user: LovvUser | null,
+  fallbackProvider: SocialAuthProvider | null,
+): SocialAuthProvider | null => {
+  if (user?.provider === 'google' || user?.provider === 'kakao') {
+    return user.provider
+  }
+
+  return fallbackProvider
+}
+
 function AuthLoadingView() {
   return (
     <section
@@ -180,6 +202,8 @@ function App() {
   const [currentUser, setCurrentUser] = useState<LovvUser | null>(() =>
     isBackendAuthMode ? null : readStoredUser(),
   )
+  const [currentSocialAuthProvider, setCurrentSocialAuthProvider] =
+    useState<SocialAuthProvider | null>(() => (isBackendAuthMode ? readStoredSocialAuthProvider() : null))
   const [authAccessToken, setAuthAccessToken] = useState<string | null>(null)
   const [isAuthSessionRestoring, setIsAuthSessionRestoring] = useState(isBackendAuthMode)
   const [pendingAuthRedirectPath, setPendingAuthRedirectPath] = useState<string | null>(null)
@@ -230,6 +254,25 @@ function App() {
   const [savedPlanLikes, setSavedPlanLikes] = useState<SavedPlanLikeMap>(() => readStoredSavedPlanLikes())
   const [pendingSavedPlanLikeIds, setPendingSavedPlanLikeIds] = useState<string[]>([])
   const [savedPlanLikeErrors, setSavedPlanLikeErrors] = useState<Record<string, string>>({})
+  const commitCurrentUser = useCallback(
+    (user: LovvUser | null, fallbackProvider: SocialAuthProvider | null = null) => {
+      setCurrentUser(user)
+
+      if (!user) {
+        setCurrentSocialAuthProvider(null)
+        clearStoredSocialAuthProvider()
+        return
+      }
+
+      const socialProvider = resolveSocialAuthProvider(user, fallbackProvider)
+
+      if (socialProvider) {
+        setCurrentSocialAuthProvider(socialProvider)
+        storeSocialAuthProvider(socialProvider)
+      }
+    },
+    [],
+  )
   const [plannerPreferenceProfile, setPlannerPreferenceProfile] = useState(() => selectedPreferenceProfile)
   const plannerPreferences = useMemo(
     () => getPreferencesForProfile(plannerPreferenceProfile),
@@ -568,7 +611,7 @@ function App() {
         const session = adaptApiAuthSessionSnapshot(state, authRuntimeMode)
 
         setAuthAccessToken(session.accessToken)
-        setCurrentUser(session.user)
+        commitCurrentUser(session.user, readStoredSocialAuthProvider())
         setHasCompletedPreference(session.onboardingCompleted)
 
         if (session.preferenceProfile) {
@@ -581,7 +624,7 @@ function App() {
         }
 
         setAuthAccessToken(null)
-        setCurrentUser(null)
+        commitCurrentUser(null)
         setHasCompletedPreference(false)
       })
       .finally(() => {
@@ -593,7 +636,7 @@ function App() {
     return () => {
       isActive = false
     }
-  }, [authRuntimeMode, isBackendAuthMode])
+  }, [authRuntimeMode, commitCurrentUser, isBackendAuthMode])
 
   useEffect(() => {
     const isAuthEntryPath = location.pathname === '/' || location.pathname === getPathForView('auth')
@@ -801,7 +844,7 @@ function App() {
 
         clearPendingOAuthLogins(window.sessionStorage)
         setAuthAccessToken(null)
-        setCurrentUser(null)
+        commitCurrentUser(null)
         setHasCompletedPreference(false)
         setAuthFlowNotice(getAuthExceptionNotice(loginRequest.errorCode))
         setIsAuthSessionRestoring(false)
@@ -831,7 +874,7 @@ function App() {
 
         if (!session.user) {
           setAuthAccessToken(null)
-          setCurrentUser(null)
+          commitCurrentUser(null)
           setHasCompletedPreference(false)
           setAuthFlowNotice(getAuthExceptionNotice('UNAUTHORIZED'))
           setIsAuthSessionRestoring(false)
@@ -841,7 +884,7 @@ function App() {
 
         setAuthFlowNotice(null)
         setAuthAccessToken(session.accessToken)
-        setCurrentUser(session.user)
+        commitCurrentUser(session.user, authCallbackProvider)
         setHasCompletedPreference(session.onboardingCompleted)
 
         if (session.preferenceProfile) {
@@ -858,7 +901,7 @@ function App() {
 
         clearPendingOAuthLogins(window.sessionStorage)
         setAuthAccessToken(null)
-        setCurrentUser(null)
+        commitCurrentUser(null)
         setHasCompletedPreference(false)
         setAuthFlowNotice(getAuthExceptionNotice(error))
         setIsAuthSessionRestoring(false)
@@ -868,7 +911,7 @@ function App() {
     return () => {
       isActive = false
     }
-  }, [authCallbackProvider, authRuntimeMode, isApiAuthMode, location.search, navigate])
+  }, [authCallbackProvider, authRuntimeMode, commitCurrentUser, isApiAuthMode, location.search, navigate])
 
   useEffect(() => {
     // Cognito mode exchanges the Hosted UI authorization code first, then bridges the Cognito JWT to Lovv.
@@ -894,7 +937,7 @@ function App() {
 
         clearPendingOAuthLogins(window.sessionStorage)
         setAuthAccessToken(null)
-        setCurrentUser(null)
+        commitCurrentUser(null)
         setHasCompletedPreference(false)
         setAuthFlowNotice(getAuthExceptionNotice(tokenRequest.errorCode))
         setIsAuthSessionRestoring(false)
@@ -938,7 +981,7 @@ function App() {
 
         if (!session.user) {
           setAuthAccessToken(null)
-          setCurrentUser(null)
+          commitCurrentUser(null)
           setHasCompletedPreference(false)
           setAuthFlowNotice(getAuthExceptionNotice('UNAUTHORIZED'))
           setIsAuthSessionRestoring(false)
@@ -948,7 +991,7 @@ function App() {
 
         setAuthFlowNotice(null)
         setAuthAccessToken(session.accessToken)
-        setCurrentUser(session.user)
+        commitCurrentUser(session.user, tokenRequest.provider)
         setHasCompletedPreference(session.onboardingCompleted)
 
         if (session.preferenceProfile) {
@@ -965,7 +1008,7 @@ function App() {
 
         clearPendingOAuthLogins(window.sessionStorage)
         setAuthAccessToken(null)
-        setCurrentUser(null)
+        commitCurrentUser(null)
         setHasCompletedPreference(false)
         setAuthFlowNotice(getAuthExceptionNotice(error))
         setIsAuthSessionRestoring(false)
@@ -975,7 +1018,7 @@ function App() {
     return () => {
       isActive = false
     }
-  }, [authRuntimeMode, location.search, navigate, shouldHandleCognitoAuthCallback])
+  }, [authRuntimeMode, commitCurrentUser, location.search, navigate, shouldHandleCognitoAuthCallback])
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
@@ -1349,7 +1392,7 @@ function App() {
 
     localStorage.setItem(authStorageKey, JSON.stringify(mockUser))
     setAuthAccessToken(null)
-    setCurrentUser(mockUser)
+    commitCurrentUser(mockUser, provider)
     setHasCompletedPreference(hasStoredPreference)
     navigateToView(hasStoredPreference ? 'home' : 'onboarding', { replace: true })
   }
@@ -1423,7 +1466,7 @@ function App() {
     localStorage.removeItem(authStorageKey)
     clearPendingOAuthLogins(window.sessionStorage)
     setAuthAccessToken(null)
-    setCurrentUser(null)
+    commitCurrentUser(null)
 
     if (isCognitoAuthMode) {
       try {
@@ -1474,18 +1517,12 @@ function App() {
     navigateToView('mypage', { replace: true })
   }
 
-  const currentProviderLabel =
-    currentUser?.provider === 'cognito'
-      ? 'Cognito'
-      : currentUser?.provider === 'kakao'
-      ? isBackendAuthMode
-        ? 'Kakao'
-        : 'Kakao'
-      : currentUser?.provider === 'google'
-        ? isBackendAuthMode
-          ? 'Google'
-          : 'Google'
-        : '로그인 세션'
+  const currentSocialProviderForDisplay = resolveSocialAuthProvider(currentUser, currentSocialAuthProvider)
+  const currentProviderLabel = currentUser
+    ? currentSocialProviderForDisplay
+      ? providerLabels[currentSocialProviderForDisplay]
+      : '소셜 로그인'
+    : '로그인 세션'
 
   const authNotice = isBackendAuthMode
     ? isCognitoAuthMode

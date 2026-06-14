@@ -19,6 +19,7 @@ import {
 import { requestUpdatePreference } from './shared/api/preferencesApi'
 import App from './App'
 import { requestCognitoToken } from './features/auth/cognitoAuth'
+import { socialAuthProviderStorageKey } from './features/auth/authModel'
 import { writePendingOAuthLogin } from './features/auth/authRedirect'
 import {
   createSmallCityMapMarkers,
@@ -1391,6 +1392,29 @@ describe('MVP main entry screen', () => {
     expect(screen.getAllByRole('button', { name: '로그아웃' })).toHaveLength(1)
     expect(screen.getByRole('button', { name: '← 이전으로 돌아가기' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '메인으로 돌아가기' })).toBeInTheDocument()
+  })
+
+  it('shows the selected social provider instead of Cognito on restored My Page sessions', async () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'cognito')
+    localStorage.setItem(socialAuthProviderStorageKey, 'kakao')
+    vi.mocked(requestAuthSession).mockResolvedValue({
+      ...restoredGoogleAuthState,
+      user: restoredGoogleAuthState.user
+        ? {
+            ...restoredGoogleAuthState.user,
+            name: 'Restored Social User',
+            provider: 'cognito',
+          }
+        : null,
+    })
+
+    renderApp('/mypage')
+
+    expect(await screen.findByRole('heading', { name: '마이페이지' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '현재 세션: Kakao 메뉴 열기' })).toBeInTheDocument()
+    expect(screen.getAllByText('Kakao').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('Kakao로 로그인되어 있습니다.')).toBeInTheDocument()
+    expect(screen.queryByText('Cognito')).not.toBeInTheDocument()
   })
 
   it('returns from My Page to the home view from the top action', () => {

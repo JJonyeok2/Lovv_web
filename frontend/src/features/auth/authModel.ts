@@ -1,6 +1,7 @@
 import type { AuthProvider, LovvUser, SocialAuthProvider } from '../../shared/types/app'
 
 export const authStorageKey = 'lovv.auth.user'
+export const socialAuthProviderStorageKey = 'lovv.auth.socialProvider'
 
 export const mockAuthUsers: Record<SocialAuthProvider, LovvUser> = {
   google: {
@@ -17,6 +18,20 @@ export const mockAuthUsers: Record<SocialAuthProvider, LovvUser> = {
     avatarInitial: 'K',
     provider: 'kakao',
   },
+}
+
+export const readStoredSocialAuthProvider = (): SocialAuthProvider | null => {
+  const provider = localStorage.getItem(socialAuthProviderStorageKey)
+
+  return provider === 'google' || provider === 'kakao' ? provider : null
+}
+
+export const storeSocialAuthProvider = (provider: SocialAuthProvider) => {
+  localStorage.setItem(socialAuthProviderStorageKey, provider)
+}
+
+export const clearStoredSocialAuthProvider = () => {
+  localStorage.removeItem(socialAuthProviderStorageKey)
 }
 
 export const authServiceBullets = [

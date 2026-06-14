@@ -7,6 +7,12 @@ import {
   getDefaultAuthRuntimeMode,
   resolveAuthRuntimeMode,
 } from './authFlow'
+import {
+  clearStoredSocialAuthProvider,
+  readStoredSocialAuthProvider,
+  socialAuthProviderStorageKey,
+  storeSocialAuthProvider,
+} from './authModel'
 
 describe('auth flow orchestration helpers', () => {
   it('uses Cognito as the production runtime while keeping mock and API modes explicit', () => {
@@ -39,6 +45,21 @@ describe('auth flow orchestration helpers', () => {
       sessionId: null,
       sessionExpiresAt: null,
     })
+  })
+
+  it('stores only the non-sensitive social provider selected before Cognito login', () => {
+    localStorage.clear()
+
+    storeSocialAuthProvider('kakao')
+
+    expect(localStorage.getItem(socialAuthProviderStorageKey)).toBe('kakao')
+    expect(readStoredSocialAuthProvider()).toBe('kakao')
+
+    localStorage.setItem(socialAuthProviderStorageKey, 'cognito')
+    expect(readStoredSocialAuthProvider()).toBeNull()
+
+    clearStoredSocialAuthProvider()
+    expect(localStorage.getItem(socialAuthProviderStorageKey)).toBeNull()
   })
 
   it('adapts authenticated backend auth state into an API session snapshot', () => {

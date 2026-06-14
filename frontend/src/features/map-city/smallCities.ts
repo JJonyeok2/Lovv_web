@@ -39,6 +39,7 @@ export type SmallCityPlace = {
   roadAddressName?: string
   phone?: string
   placeUrl?: string
+  kakaoSearchQuery?: string
   imageUrl?: string
   latitude?: number
   longitude?: number
@@ -749,31 +750,37 @@ const createStaticPlace = (
   const placeByCategory: Record<SmallCityPlaceCategory, Omit<SmallCityPlace, 'id' | 'cityId' | 'category' | 'categoryName' | 'addressName' | 'roadAddressName' | 'phone' | 'placeUrl' | 'latitude' | 'longitude'>> = {
     관광지: {
       name: `${routeSeed} 중심 산책`,
+      kakaoSearchQuery: `${routeSeed} ${city.nameKo}`,
       summary: `${city.nameKo} 선택 후 처음 확인할 관광지 후보입니다. ${highlight} 흐름과 함께 보기 좋습니다.`,
     },
     음식점: {
       name: `${city.nameKo} 로컬 식당`,
+      kakaoSearchQuery: `${city.nameKo} 맛집`,
       summary: `${city.region}의 현지 식사 흐름을 잡기 위한 음식점 후보입니다.`,
     },
     카페: {
       name: `${city.nameKo} 쉬어가는 카페`,
+      kakaoSearchQuery: `${city.nameKo} 카페`,
       summary: `${city.nameKo} 동선 중간에 쉬어가기 좋은 카페 후보입니다.`,
     },
     숙소: {
       name: `${city.nameKo} 베이스 숙소`,
+      kakaoSearchQuery: `${city.nameKo} 숙소`,
       summary: `${city.nameKo} 일정의 이동 부담을 줄이기 위한 숙소 후보입니다.`,
     },
   }
+
+  const place = placeByCategory[category]
 
   return {
     id: `${city.id}-${category}`,
     cityId: city.id,
     category,
     categoryName: category,
-    ...placeByCategory[category],
+    ...place,
     addressName,
     roadAddressName: addressName,
-    placeUrl: createKakaoMapSearchUrl([placeByCategory[category].name, city.nameKo, city.region]),
+    placeUrl: createKakaoMapSearchUrl([place.kakaoSearchQuery ?? place.name]),
     latitude,
     longitude,
   }

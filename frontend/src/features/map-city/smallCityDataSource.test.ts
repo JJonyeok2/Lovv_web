@@ -10,7 +10,7 @@ import {
   loadStaticSmallCityCatalog,
   staticSmallCityCatalogSource,
 } from './smallCityDataSource'
-import { smallCities, smallCityPlaceCategories } from './smallCities'
+import { createSmallCityDetail, smallCities, smallCityPlaceCategories } from './smallCities'
 
 describe('small-city data source boundary', () => {
   it('wraps the static city catalog as API-shaped records', () => {
@@ -67,6 +67,7 @@ describe('small-city data source boundary', () => {
 
     const state = createStaticSmallCityDetailState(gyeongju!.id)
     const loadedState = await loadStaticSmallCityDetail(gyeongju!.id)
+    const staticDetail = createSmallCityDetail(gyeongju!)
 
     expect(state.status).toBe('success')
     expect(loadedState.status).toBe('success')
@@ -83,8 +84,10 @@ describe('small-city data source boundary', () => {
     })
     expect(state.detail!.placesByCategory['관광지'][0].name).toContain('황리단길')
     expect(state.detail!.placesByCategory['관광지'][0].placeUrl).toContain(
-      encodeURIComponent('황리단길 중심 산책 경주 경북'),
+      encodeURIComponent('황리단길 경주'),
     )
+    expect(staticDetail.placesByCategory['관광지'][0].kakaoSearchQuery).toBe('황리단길 경주')
+    expect(staticDetail.placesByCategory['음식점'][0].kakaoSearchQuery).toBe('경주 맛집')
     expect(state.detail!.placesByCategory['음식점'][0].name).toContain('경주')
     expect(state.detail!.placesByCategory['카페'][0].name).toContain('경주')
     expect(state.detail!.placesByCategory['숙소'][0].name).toContain('경주')

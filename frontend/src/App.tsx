@@ -321,6 +321,7 @@ function App() {
   const [planDraft, setPlanDraft] = useState<PlanDraft>(() => createPlanDraft(selectedPreference))
   const [generatedPlanDestinationName, setGeneratedPlanDestinationName] = useState<string | null>(null)
   const [isPlannerLoading, setIsPlannerLoading] = useState(false)
+  const [isSavingPlan, setIsSavingPlan] = useState(false)
   const [smallCityCatalogState] = useState(() => createStaticSmallCityCatalogState())
   const [cityMapCountry, setCityMapCountry] = useState<SmallCityCountry>('KR')
   const [cityMapQuery, setCityMapQuery] = useState('')
@@ -1109,6 +1110,7 @@ function App() {
     setChatMessages(createInitialChatMessages(nextPlannerLabel, cityContext, shouldAskFestival))
     setPlanDraft(createPlanDraft(preference, nextPlannerContextText, nextFestivalThemeChoice, cityContext))
     setSavedPlanNotice(null)
+    setGeneratedPlanDestinationName(null)
   }
 
   const createGeneratedPlanSavePayload = (
@@ -1155,6 +1157,7 @@ function App() {
     }
 
     setSavedPlanNotice(null)
+    setIsSavingPlan(true)
 
     const themeLabels = plannerCityContext
       ? plannerCityContext.themes
@@ -1197,6 +1200,7 @@ function App() {
         }
       } catch {
         setSavedPlanNotice('일정을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.')
+        setIsSavingPlan(false)
         return
       }
     }
@@ -1235,6 +1239,7 @@ function App() {
       })
     }
     setSavedPlanNotice('마이페이지에서 다시 확인할 수 있어요.')
+    setIsSavingPlan(false)
   }
 
   const removeSavedPlanFromLocalState = (planId: string) => {
@@ -2201,6 +2206,7 @@ function App() {
               savedPlanLikeError={getSavedPlanLikeError(activePlanDetailId)}
               isSavedPlanDetailLoading={isBackendRoutePlanLoading}
               saveGeneratedPlan={saveGeneratedPlan}
+              isPlanSaving={isSavingPlan}
               isCurrentPlanSaved={isActivePlanDetailSaved}
               savedPlanDeletePending={isSavedPlanDeletePending(activePlanDetailId)}
               onDeleteSavedPlan={deleteSavedPlan}
@@ -2257,6 +2263,7 @@ function App() {
               toggleGeneratedPlanLike={toggleGeneratedPlanLike}
               resetPlannerFlow={() => resetPlannerFlow()}
               saveGeneratedPlan={saveGeneratedPlan}
+              isPlanSaving={isSavingPlan}
               isCurrentPlanSaved={isCurrentPlanSaved}
               openMyPage={openMyPage}
               savedPlanNotice={savedPlanNotice}

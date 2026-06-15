@@ -2014,15 +2014,14 @@ describe('MVP main entry screen', () => {
     expect(localStorage.getItem('lovv.messages')).toBeNull()
   })
 
-  it('accepts guided duration chips from day trip through four nights five days', async () => {
+  it('accepts guided duration chips from day trip through two nights three days', async () => {
     seedUser()
     seedPreference('경주 · 교토')
     renderApp()
 
     const expectedDurations = [
       ['당일치기', '역사·전통 당일치기 초안'],
-      ['3박 4일', '역사·전통 3박 4일 초안'],
-      ['4박 5일', '역사·전통 4박 5일 초안'],
+      ['2박 3일', '역사·전통 2박 3일 초안'],
     ] as const
 
     fireEvent.click(screen.getByRole('link', { name: 'AI 일정 짜기' }))
@@ -2038,11 +2037,11 @@ describe('MVP main entry screen', () => {
         fireEvent.click(screen.getByRole('button', { name: '일정 다시짜기' }))
       }
     }
-    expect(screen.getByText('5일 구성')).toBeInTheDocument()
+    expect(screen.getByText('3일 구성')).toBeInTheDocument()
     expect(screen.getByRole('list', { name: '일차별 일정 요약' })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: '1일차' })).not.toBeInTheDocument()
-    expect(screen.getByText('5일차 추천 일정')).toBeInTheDocument()
-    expect(screen.getByText('총 15개 코스')).toBeInTheDocument()
+    expect(screen.getByText('3일차 추천 일정')).toBeInTheDocument()
+    expect(screen.getByText('총 9개 코스')).toBeInTheDocument()
     const chatLog = screen.getByRole('log', { name: 'AI 일정 대화' })
 
     expect(within(chatLog).queryByText('일정 기간을 먼저 골라주세요')).not.toBeInTheDocument()

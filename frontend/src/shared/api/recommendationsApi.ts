@@ -115,6 +115,7 @@ export const mapRecommendationToDraft = (apiResponse: RecommendationApiResponse)
         title: item.title || '',
         body: item.body || '',
         reason: item.reason || '',
+        contentId: item.contentId ?? undefined,
       }
     })
 

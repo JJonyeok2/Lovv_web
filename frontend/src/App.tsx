@@ -20,7 +20,6 @@ import {
   getDefaultAuthRuntimeMode,
 } from './features/auth/authFlow'
 import { getAuthExceptionNotice, type AuthExceptionNotice } from './features/auth/authException'
-import { AdminView } from './features/admin/AdminView'
 import {
   clearPendingOAuthLogins,
   createAuthLoginRequestFromCallback,
@@ -108,12 +107,6 @@ import {
   requestAuthSession,
   requestCognitoBridgeSession,
 } from './shared/api/authApi'
-import {
-  AdminApiRequestError,
-  requestAdminUserDetail,
-  requestAdminUsers,
-  type AdminUser,
-} from './shared/api/adminApi'
 import {
   requestCreateSavedPlan,
   requestDeleteSavedPlan,
@@ -257,12 +250,6 @@ function App() {
   const [themeSelectionNotice, setThemeSelectionNotice] = useState<string | null>(null)
   const [isPreferenceSaving, setIsPreferenceSaving] = useState(false)
   const [authFlowNotice, setAuthFlowNotice] = useState<AuthExceptionNotice | null>(null)
-  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
-  const [adminListStatus, setAdminListStatus] =
-    useState<'idle' | 'loading' | 'empty' | 'success' | 'error' | 'unauthorized' | 'forbidden'>('idle')
-  const [selectedAdminUserId, setSelectedAdminUserId] = useState('')
-  const [selectedAdminUser, setSelectedAdminUser] = useState<AdminUser | null>(null)
-  const [adminDetailStatus, setAdminDetailStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [signInPendingProvider, setSignInPendingProvider] = useState<SocialAuthProvider | null>(null)
   const [activeLegalNoticeType, setActiveLegalNoticeType] = useState<LegalNoticeType | null>(null)
   const [preparedAuthRedirectUrls, setPreparedAuthRedirectUrls] =
@@ -417,7 +404,6 @@ function App() {
     ? `${plannerBasisLabel} ${planDraft.durationLabel} 초안`
     : `${plannerBasisLabel} ${planDraft.durationLabel} 초안`
   const routePlanId = getPlanDetailRouteId(location.pathname)
-  const isAdminUser = Boolean(currentUser?.roles?.includes('R-ADMIN'))
   const savedPlanForRoute = useMemo(
     () => (routePlanId ? savedPlans.find((plan) => plan.id === routePlanId) ?? null : null),
     [routePlanId, savedPlans],
@@ -637,108 +623,6 @@ function App() {
     shouldHandleAuthCallback,
   ])
 
-  useEffect(() => {
-    if (activeView !== 'admin' || isAuthSessionRestoring) {
-      return undefined
-    }
-
-    let isActive = true
-
-    if (!currentUser) {
-      queueMicrotask(() => {
-        if (!isActive) {
-          return
-        }
-
-        setAdminUsers([])
-        setSelectedAdminUser(null)
-        setSelectedAdminUserId('')
-        setAdminListStatus('unauthorized')
-      })
-      return () => {
-        isActive = false
-      }
-    }
-
-    if (!isAdminUser) {
-      queueMicrotask(() => {
-        if (!isActive) {
-          return
-        }
-
-        setAdminUsers([])
-        setSelectedAdminUser(null)
-        setSelectedAdminUserId('')
-        setAdminListStatus('forbidden')
-      })
-      return () => {
-        isActive = false
-      }
-    }
-
-    queueMicrotask(() => {
-      if (!isActive) {
-        return
-      }
-
-      setAdminListStatus('loading')
-      setSelectedAdminUser(null)
-      setSelectedAdminUserId('')
-      setAdminDetailStatus('idle')
-    })
-
-    requestAdminUsers({ accessToken: authAccessToken })
-      .then((users) => {
-        if (!isActive) {
-          return
-        }
-
-        setAdminUsers(users)
-        setAdminListStatus(users.length > 0 ? 'success' : 'empty')
-      })
-      .catch((error) => {
-        if (!isActive) {
-          return
-        }
-
-        if (error instanceof AdminApiRequestError && error.statusCode === 401) {
-          setAdminListStatus('unauthorized')
-        } else if (error instanceof AdminApiRequestError && error.statusCode === 403) {
-          setAdminListStatus('forbidden')
-        } else {
-          setAdminListStatus('error')
-        }
-      })
-
-    return () => {
-      isActive = false
-    }
-  }, [activeView, authAccessToken, currentUser, isAdminUser, isAuthSessionRestoring])
-
-  const selectAdminUser = (userId: string) => {
-    if (!isAdminUser) {
-      return
-    }
-
-    setSelectedAdminUserId(userId)
-    setAdminDetailStatus('loading')
-
-    requestAdminUserDetail(userId, { accessToken: authAccessToken })
-      .then((user) => {
-        if (!user) {
-          setSelectedAdminUser(null)
-          setAdminDetailStatus('error')
-          return
-        }
-
-        setSelectedAdminUser(user)
-        setAdminDetailStatus('success')
-      })
-      .catch(() => {
-        setSelectedAdminUser(null)
-        setAdminDetailStatus('error')
-      })
-  }
 
   useEffect(() => {
     // API mode restores the Lovv session from the HttpOnly refresh cookie.
@@ -762,6 +646,15 @@ function App() {
 
         if (session.preferenceProfile) {
           setSelectedPreferenceProfile(session.preferenceProfile)
+          storePreferenceProfile(session.preferenceProfile)
+        } else if (session.onboardingCompleted) {
+          // Backend confirmed onboarding done but returned no preference
+          // (e.g. empty mappedThemes or SameSite cookie issue on prior request).
+          // Fall back to locally cached preference to avoid defaulting to 온천·휴양.
+          const localProfile = readStoredPreferenceProfile()
+          if (localProfile) {
+            setSelectedPreferenceProfile(localProfile)
+          }
         }
       })
       .catch(() => {
@@ -1036,6 +929,12 @@ function App() {
 
         if (session.preferenceProfile) {
           setSelectedPreferenceProfile(session.preferenceProfile)
+          storePreferenceProfile(session.preferenceProfile)
+        } else if (session.onboardingCompleted) {
+          const localProfile = readStoredPreferenceProfile()
+          if (localProfile) {
+            setSelectedPreferenceProfile(localProfile)
+          }
         }
 
         setIsAuthSessionRestoring(false)
@@ -1143,6 +1042,12 @@ function App() {
 
         if (session.preferenceProfile) {
           setSelectedPreferenceProfile(session.preferenceProfile)
+          storePreferenceProfile(session.preferenceProfile)
+        } else if (session.onboardingCompleted) {
+          const localProfile = readStoredPreferenceProfile()
+          if (localProfile) {
+            setSelectedPreferenceProfile(localProfile)
+          }
         }
 
         setIsAuthSessionRestoring(false)
@@ -1215,7 +1120,7 @@ function App() {
     title: plan.title,
     summary: plan.summary,
     destination: {
-      destinationId: plannerCityContext?.cityId ?? sourceRecommendationId,
+      destinationId: plannerCityContext?.agentCoreId ?? plannerCityContext?.cityId ?? sourceRecommendationId,
       name: plannerCityContext?.cityName ?? plannerBasisLabel,
       country: plannerCityContext?.country ?? 'KR',
       region: plannerCityContext?.region ?? plannerBasisLabel,
@@ -2323,15 +2228,6 @@ function App() {
               openPreferenceEdit={openPreferenceEdit}
               signOut={signOut}
             />
-          ) : activeView === 'admin' ? (
-            <AdminView
-              status={adminListStatus === 'idle' ? 'loading' : adminListStatus}
-              users={adminUsers}
-              selectedUser={selectedAdminUser}
-              selectedUserId={selectedAdminUserId}
-              detailStatus={adminDetailStatus}
-              onSelectUser={selectAdminUser}
-            />
           ) : (
             <PlannerWorkspace
               goHome={goHome}
@@ -2365,6 +2261,7 @@ function App() {
               openMyPage={openMyPage}
               savedPlanNotice={savedPlanNotice}
               isPlannerLoading={isPlannerLoading}
+              planDestinationName={plannerCityContext?.cityName ?? generatedPlanDestinationName ?? undefined}
             />
           )}
 

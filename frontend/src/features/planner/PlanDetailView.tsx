@@ -13,8 +13,10 @@ type PlanDetailViewProps = {
   onSelectSavedPlanLike: (planId: string, like: Exclude<SavedPlanLike, null>) => void
   savedPlanLikePending?: boolean
   savedPlanLikeError?: string | null
+  isSavedPlanDetailLoading?: boolean
   saveGeneratedPlan: () => void
   isCurrentPlanSaved: boolean
+  savedPlanDeletePending?: boolean
   onDeleteSavedPlan: (planId: string, options?: { navigateToMyPage?: boolean }) => void
   openMyPage: () => void
   savedPlanNotice: string | null
@@ -32,12 +34,40 @@ export function PlanDetailView({
   onSelectSavedPlanLike,
   savedPlanLikePending = false,
   savedPlanLikeError = null,
+  isSavedPlanDetailLoading = false,
   saveGeneratedPlan,
   isCurrentPlanSaved,
+  savedPlanDeletePending = false,
   onDeleteSavedPlan,
   openMyPage,
   savedPlanNotice,
 }: PlanDetailViewProps) {
+    if (isSavedPlanDetailLoading) {
+      return (
+        <section
+          role="status"
+          aria-live="polite"
+          className="mx-auto min-h-dvh max-w-[1120px] px-16 pb-16 pt-28 max-lg:px-8 max-sm:px-5"
+        >
+          <div className="rounded-[22px] border border-transparent bg-[#fffffa] p-8 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.28)]">
+            <span
+              aria-hidden="true"
+              className="block size-9 animate-spin rounded-full border-4 border-[#F3B489]/45 border-t-[#F36B12]"
+            />
+            <p className="mt-6 text-sm font-black uppercase tracking-[0.18em] text-[#F36B12]">
+              Plan detail
+            </p>
+            <h1 className="mt-4 break-keep text-[36px] font-black leading-[46px] text-[#33271E] max-sm:text-[28px] max-sm:leading-9">
+              저장 일정을 불러오고 있어요
+            </h1>
+            <p className="mt-5 break-keep text-sm font-semibold leading-6 text-[#33271E]">
+              저장된 일정 상세를 확인한 뒤 화면을 열어둘게요.
+            </p>
+          </div>
+        </section>
+      )
+    }
+
     if (!isPlannerReady) {
       return (
         <section className="mx-auto min-h-dvh max-w-[1120px] px-16 pb-16 pt-28 max-lg:px-8 max-sm:px-5">
@@ -225,10 +255,12 @@ export function PlanDetailView({
                 {isCurrentPlanSaved ? (
                   <button
                     type="button"
+                    aria-label="저장 일정 삭제"
                     onClick={() => onDeleteSavedPlan(planId, { navigateToMyPage: true })}
-                    className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-5 text-sm font-black text-[#A92B10] transition hover:border-[#A92B10] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                    disabled={savedPlanDeletePending}
+                    className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-5 text-sm font-black text-[#A92B10] transition hover:border-[#A92B10] hover:bg-[#FFE0CA] disabled:cursor-wait disabled:opacity-65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
                   >
-                    저장 일정 삭제
+                    {savedPlanDeletePending ? '삭제 중' : '저장 일정 삭제'}
                   </button>
                 ) : null}
                 <button

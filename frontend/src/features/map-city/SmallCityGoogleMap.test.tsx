@@ -56,6 +56,7 @@ const clearGoogleMapsScript = () => {
 describe('SmallCityGoogleMap', () => {
   afterEach(() => {
     clearGoogleMapsScript()
+    window.google = undefined
   })
 
   it('renders a visible fallback marker list when the Google Maps API key is absent', () => {
@@ -91,9 +92,9 @@ describe('SmallCityGoogleMap', () => {
     const setZoom = vi.fn()
     const extend = vi.fn()
     const mapConstructor = vi.fn()
-    const markerListeners: Array<() => void> = []
     const markerSetMap = vi.fn()
     const markerConstructor = vi.fn()
+    const markerListeners: Array<() => void> = []
     const onSelectMarker = vi.fn()
 
     class FakeMap {
@@ -156,16 +157,27 @@ describe('SmallCityGoogleMap', () => {
       expect(mapRegion).toHaveAttribute('data-runtime-status', 'ready')
       expect(markerConstructor).toHaveBeenCalledTimes(2)
     })
+    expect(within(mapRegion).getAllByRole('button', { name: /지도 마커:/ })).toHaveLength(2)
     expect(mapConstructor).toHaveBeenCalledWith(
       expect.any(HTMLElement),
       expect.objectContaining({ mapId: 'test-map-id' }),
     )
     expect(fitBounds).toHaveBeenCalled()
     expect(extend).toHaveBeenCalledTimes(2)
+    expect(markerConstructor.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        clickable: true,
+        label: expect.objectContaining({ text: '경주' }),
+        map: expect.any(FakeMap),
+        title: '경주',
+      }),
+    )
 
     markerListeners[1]()
+    fireEvent.click(within(mapRegion).getByRole('button', { name: '지도 마커: 경주' }))
 
     expect(onSelectMarker).toHaveBeenCalledWith(markers[1])
+    expect(onSelectMarker).toHaveBeenCalledTimes(2)
   })
 
   it('keeps one map instance and refreshes markers after switching countries', async () => {
@@ -251,5 +263,6 @@ describe('SmallCityGoogleMap', () => {
     })
 
     expect(mapInstances).toHaveLength(1)
+    expect(markerSetMap).toHaveBeenCalledWith(null)
   })
 })

@@ -16,6 +16,7 @@ type MyPageViewProps = {
   onSelectSavedPlanLike: (planId: string, like: Exclude<SavedPlanLike, null>) => void
   getSavedPlanLikeError: (planId: string) => string | null
   isSavedPlanLikePending: (planId: string) => boolean
+  isSavedPlanDeletePending: (planId: string) => boolean
   openSavedPlanDetail: (planId: string) => void
   onDeleteSavedPlan: (planId: string) => void
   openPreferenceEdit: () => void
@@ -36,6 +37,7 @@ export function MyPageView({
   onSelectSavedPlanLike,
   getSavedPlanLikeError,
   isSavedPlanLikePending,
+  isSavedPlanDeletePending,
   openSavedPlanDetail,
   onDeleteSavedPlan,
   openPreferenceEdit,
@@ -125,6 +127,7 @@ export function MyPageView({
                           <ol className="mt-5 grid gap-3" aria-label="저장 일정 목록">
                             {savedPlans.map((plan) => {
                               const likeTitleId = `saved-plan-like-${plan.id}`
+                              const isDeletePending = isSavedPlanDeletePending(plan.id)
 
                               return (
                                 <li
@@ -154,10 +157,11 @@ export function MyPageView({
                                       <button
                                         type="button"
                                         aria-label={`${plan.title} 삭제`}
+                                        disabled={isDeletePending}
                                         onClick={() => onDeleteSavedPlan(plan.id)}
-                                        className="inline-flex min-h-10 items-center justify-center rounded-[8px] border border-[#F3B489] bg-[#fffffa] px-4 text-sm font-black text-[#A92B10] transition hover:border-[#A92B10] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                                        className="inline-flex min-h-10 items-center justify-center rounded-[8px] border border-[#F3B489] bg-[#fffffa] px-4 text-sm font-black text-[#A92B10] transition hover:border-[#A92B10] hover:bg-[#FFE0CA] disabled:cursor-wait disabled:opacity-65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
                                       >
-                                        삭제
+                                        {isDeletePending ? '삭제 중' : '삭제'}
                                       </button>
                                     </div>
                                   </div>

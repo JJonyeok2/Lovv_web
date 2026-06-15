@@ -81,6 +81,17 @@ const renderApp = (path = '/') => {
   )
 }
 
+const createDeferred = <T,>() => {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+
+  return { promise, resolve, reject }
+}
+
 const themeIdsByCityPair: Record<string, string> = {
   '아산/온양 · 벳푸': 'hot_spring_rest',
   '부산 · 오키나와': 'sea_coast',
@@ -424,6 +435,49 @@ describe('MVP main entry screen', () => {
     })
   })
 
+  it('keeps backend protected routes on auth loading without showing stale saved-plan storage', async () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'api')
+    const authSession = createDeferred<AuthApiState>()
+    vi.mocked(requestAuthSession).mockReturnValue(authSession.promise)
+    localStorage.setItem(
+      'lovv.savedPlans',
+      JSON.stringify([{ ...serverSavedPlan, id: 'stale-plan-1', title: '이전 사용자 저장 일정' }]),
+    )
+    localStorage.setItem('lovv.savedPlanLikes', JSON.stringify({ 'stale-plan-1': 'like' }))
+
+    renderApp('/mypage')
+
+    expect(screen.getByRole('status')).toHaveTextContent('로그인 정보를 확인하고 있어요')
+    expect(screen.queryByText('이전 사용자 저장 일정')).not.toBeInTheDocument()
+
+    authSession.resolve(restoredGoogleAuthState)
+
+    await waitFor(() => {
+      expect(requestListSavedPlans).toHaveBeenCalledWith({
+        accessToken: 'restored-access-token',
+      })
+    })
+    expect(screen.queryByText('이전 사용자 저장 일정')).not.toBeInTheDocument()
+  })
+
+  it('clears backend saved-plan storage when session restore fails', async () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'api')
+    vi.mocked(requestAuthSession).mockRejectedValue(new Error('session expired'))
+    localStorage.setItem(
+      'lovv.savedPlans',
+      JSON.stringify([{ ...serverSavedPlan, id: 'stale-plan-1', title: '이전 사용자 저장 일정' }]),
+    )
+    localStorage.setItem('lovv.savedPlanLikes', JSON.stringify({ 'stale-plan-1': 'like' }))
+
+    renderApp('/mypage')
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/auth')
+    })
+    expect(localStorage.getItem('lovv.savedPlans')).toBeNull()
+    expect(localStorage.getItem('lovv.savedPlanLikes')).toBeNull()
+  })
+
   it('keeps direct saved-plan detail routes open while loading backend detail fallback', async () => {
     vi.stubEnv('VITE_LOVV_AUTH_MODE', 'api')
     vi.mocked(requestAuthSession).mockResolvedValue(restoredGoogleAuthState)
@@ -444,6 +498,30 @@ describe('MVP main entry screen', () => {
     expect(screen.getByRole('region', { name: '세부 일정 상세' })).toBeInTheDocument()
     expect(screen.getByText('서버 저장 일정')).toBeInTheDocument()
     expect(screen.getByText('안목해변')).toBeInTheDocument()
+  })
+
+  it('shows a backend saved-plan detail loading state before direct route detail resolves', async () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'api')
+    const savedPlanDetail = createDeferred<SavedPlan>()
+    vi.mocked(requestAuthSession).mockResolvedValue(restoredGoogleAuthState)
+    vi.mocked(requestListSavedPlans).mockResolvedValue({ savedPlans: [], likes: {} })
+    vi.mocked(requestGetSavedPlan).mockReturnValue(savedPlanDetail.promise)
+
+    renderApp('/plans/server-plan-1')
+
+    await waitFor(() => {
+      expect(requestGetSavedPlan).toHaveBeenCalledWith('server-plan-1', {
+        accessToken: 'restored-access-token',
+      })
+    })
+    expect(screen.getByRole('status')).toHaveTextContent('저장 일정을 불러오고 있어요')
+    expect(screen.queryByText(/아직 확정된 일정 초안이 없어요/)).not.toBeInTheDocument()
+
+    savedPlanDetail.resolve(serverSavedPlan)
+
+    await waitFor(() => {
+      expect(screen.getByText('서버 저장 일정')).toBeInTheDocument()
+    })
   })
 
   it('does not fall back to mock social login when API auth mode lacks OAuth client config', async () => {
@@ -1129,7 +1207,9 @@ describe('MVP main entry screen', () => {
     smallCityPlaceCategories.forEach((category) => {
       expect(within(cityMapSection).getAllByText(category).length).toBeGreaterThan(0)
     })
-    expect(within(cityMapSection).getAllByRole('link', { name: 'Kakao 장소 보기' }).length).toBeGreaterThan(0)
+    const kakaoPlaceLinks = within(cityMapSection).getAllByRole('link', { name: 'Kakao 장소 보기' })
+    expect(kakaoPlaceLinks.length).toBeGreaterThan(0)
+    expect(kakaoPlaceLinks[0]).toHaveAttribute('href', expect.stringContaining('https://map.kakao.com/link/search/'))
     fireEvent.click(within(filteredGoogleMap).getByRole('button', { name: '지도 마커: 닛코' }))
     expect(filteredGoogleMap).toHaveAttribute('data-selected-city-id', '')
     expect(within(cityMapSection).getByTestId('city-map-detail-panel')).toHaveTextContent('표시된 소도시')
@@ -1797,7 +1877,7 @@ describe('MVP main entry screen', () => {
     expect(screen.getByRole('button', { name: '← 이전으로 돌아가기' })).toBeInTheDocument()
     expect(screen.getByTestId('chat-workspace')).toHaveClass('space-y-5')
     expect(screen.getByTestId('chat-planner-summary')).toHaveClass('rounded-[18px]')
-    expect(screen.getByTestId('chat-top-grid')).toHaveClass('grid-cols-[minmax(0,1.25fr)_minmax(420px,0.9fr)]')
+    expect(screen.getByTestId('chat-top-grid')).toHaveClass('grid-cols-[minmax(0,1.6fr)_minmax(360px,0.74fr)]')
     expect(screen.getByRole('region', { name: 'Planner State' })).toBeInTheDocument()
     expect(screen.getByTestId('chat-conversation-panel')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'AI 일정 결과' })).toBeInTheDocument()
@@ -2161,9 +2241,39 @@ describe('MVP main entry screen', () => {
     expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).not.toHaveProperty(savedPlanId)
   })
 
+  it('keeps a saved itinerary when My Page deletion is not confirmed', () => {
+    seedUser()
+    seedPreference('아산/온양 · 벳푸')
+    vi.stubGlobal('confirm', vi.fn(() => false))
+    renderApp('/planner')
+
+    completeGuidedPlanner({
+      festival: '축제 제외',
+      duration: '1박 2일',
+      query: '온천 숙소에 오래 머물고 덜 걷고 싶어요',
+    })
+    fireEvent.click(screen.getByRole('button', { name: '마이페이지에 저장' }))
+
+    const savedPlans = JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')
+    const savedPlanTitle = savedPlans[0]?.title
+
+    openMyPageFromSessionMenu()
+
+    const savedPlanList = screen.getByRole('list', { name: '저장 일정 목록' })
+    const savedPlanCard = within(savedPlanList).getByText(savedPlanTitle).closest('li')
+
+    expect(savedPlanCard).not.toBeNull()
+    fireEvent.click(within(savedPlanCard!).getByRole('button', { name: `${savedPlanTitle} 삭제` }))
+
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining(savedPlanTitle))
+    expect(screen.getByText(savedPlanTitle)).toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')).toHaveLength(1)
+  })
+
   it('deletes a saved itinerary from My Page and clears like storage', () => {
     seedUser()
     seedPreference('아산/온양 · 벳푸')
+    vi.stubGlobal('confirm', vi.fn(() => true))
     renderApp('/planner')
 
     completeGuidedPlanner({
@@ -2201,8 +2311,10 @@ describe('MVP main entry screen', () => {
     expect(localStorage.getItem('lovv.likedPlanIds')).toBeNull()
   })
 
-  it('calls the backend saved itinerary delete API before clearing API-mode state', async () => {
+  it('calls the backend saved itinerary delete API once and disables repeated deletion while pending', async () => {
     vi.stubEnv('VITE_LOVV_AUTH_MODE', 'api')
+    vi.stubGlobal('confirm', vi.fn(() => true))
+    const deleteRequest = createDeferred<boolean>()
     vi.mocked(requestAuthSession).mockResolvedValue(restoredGoogleAuthState)
     vi.mocked(requestCreateSavedPlan).mockResolvedValue({
       itineraryId: 'server-plan-1',
@@ -2210,7 +2322,7 @@ describe('MVP main entry screen', () => {
       savedAt: '2026-06-13T00:00:00Z',
       duplicate: false,
     })
-    vi.mocked(requestDeleteSavedPlan).mockResolvedValue(true)
+    vi.mocked(requestDeleteSavedPlan).mockReturnValue(deleteRequest.promise)
 
     renderApp('/planner')
 
@@ -2258,7 +2370,16 @@ describe('MVP main entry screen', () => {
 
     expect(savedPlanCard).not.toBeNull()
 
-    fireEvent.click(within(savedPlanCard!).getByRole('button', { name: `${savedPlanTitle} 삭제` }))
+    const deleteButton = within(savedPlanCard!).getByRole('button', { name: `${savedPlanTitle} 삭제` })
+
+    fireEvent.click(deleteButton)
+    fireEvent.click(deleteButton)
+
+    expect(deleteButton).toBeDisabled()
+    expect(deleteButton).toHaveTextContent('삭제 중')
+    expect(requestDeleteSavedPlan).toHaveBeenCalledTimes(1)
+
+    deleteRequest.resolve(true)
 
     await waitFor(() => {
       expect(requestDeleteSavedPlan).toHaveBeenCalledWith('server-plan-1', {
@@ -2344,6 +2465,7 @@ describe('MVP main entry screen', () => {
 
   it('keeps a saved itinerary visible when API-mode backend deletion fails', async () => {
     vi.stubEnv('VITE_LOVV_AUTH_MODE', 'api')
+    vi.stubGlobal('confirm', vi.fn(() => true))
     vi.mocked(requestAuthSession).mockResolvedValue(restoredGoogleAuthState)
     vi.mocked(requestCreateSavedPlan).mockResolvedValue({
       itineraryId: 'server-plan-1',
@@ -2401,6 +2523,7 @@ describe('MVP main entry screen', () => {
   it('deletes a saved itinerary from detail and returns safely to My Page', () => {
     seedUser()
     seedPreference('아산/온양 · 벳푸')
+    vi.stubGlobal('confirm', vi.fn(() => true))
     renderApp('/planner')
 
     completeGuidedPlanner({

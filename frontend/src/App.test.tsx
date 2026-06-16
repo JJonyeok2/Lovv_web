@@ -17,6 +17,7 @@ import {
   requestUnlikeSavedPlan,
 } from './shared/api/savedPlansApi'
 import { requestUpdatePreference } from './shared/api/preferencesApi'
+import { requestCreateRecommendation } from './shared/api/recommendationsApi'
 import App from './App'
 import { requestCognitoToken } from './features/auth/cognitoAuth'
 import { socialAuthProviderStorageKey } from './features/auth/authModel'
@@ -61,6 +62,15 @@ vi.mock('./shared/api/preferencesApi', async (importOriginal) => {
   return {
     ...actual,
     requestUpdatePreference: vi.fn(),
+  }
+})
+
+vi.mock('./shared/api/recommendationsApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./shared/api/recommendationsApi')>()
+
+  return {
+    ...actual,
+    requestCreateRecommendation: vi.fn().mockRejectedValue(new Error('fetch not available in test')),
   }
 })
 
@@ -2049,6 +2059,63 @@ describe('MVP main entry screen', () => {
       expect(within(chatLog).queryByRole('button', { name: duration })).not.toBeInTheDocument()
     })
     expect(screen.getByPlaceholderText('추가로 원하는 조건을 입력해 주세요')).toBeInTheDocument()
+  })
+
+  it('renders API-response plan draft when requestCreateRecommendation succeeds', async () => {
+    seedUser()
+    seedPreference('아산/온양 · 벳푸')
+    vi.mocked(requestCreateRecommendation).mockResolvedValue({
+      itinerary: {
+        tripType: '2d1n',
+        title: '아산 온천 힐링 여행',
+        summary: 'API에서 받은 온천 일정 요약입니다.',
+        durationLabel: '1박 2일',
+        days: [
+          {
+            day: 1,
+            title: '1일차 온천 힐링',
+            summary: '온천과 휴식',
+            items: [
+              { itemId: 'i1', sortOrder: 1, timeOfDay: 'morning', title: '신정호 관광지', body: '아름다운 호수 산책', reason: '온천 테마', moveMinutes: 10 },
+              { itemId: 'i2', sortOrder: 2, timeOfDay: 'afternoon', title: '아산 온천', body: '온천욕으로 피로 해소', reason: '힐링 테마', moveMinutes: 15 },
+              { itemId: 'i3', sortOrder: 3, timeOfDay: 'evening', title: '외암민속마을', body: '전통 마을 산책', reason: '문화 체험', moveMinutes: 20 },
+            ],
+          },
+          {
+            day: 2,
+            title: '2일차 문화 탐방',
+            summary: '역사와 자연',
+            items: [
+              { itemId: 'i4', sortOrder: 1, timeOfDay: 'morning', title: '현충사', body: '이순신 장군 기념관', reason: '역사 테마', moveMinutes: 12 },
+              { itemId: 'i5', sortOrder: 2, timeOfDay: 'afternoon', title: '파라다이스 스파 도고', body: '온천 스파', reason: '힐링 테마', moveMinutes: 8 },
+              { itemId: 'i6', sortOrder: 3, timeOfDay: 'evening', title: '온양전통시장', body: '로컬 시장 탐방', reason: '미식 테마', moveMinutes: 5 },
+            ],
+          },
+        ],
+      },
+    })
+    renderApp()
+
+    fireEvent.click(screen.getByRole('link', { name: 'AI 일정 짜기' }))
+    await completeGuidedPlanner({
+      festival: '축제 제외',
+      duration: '1박 2일',
+      query: '온천 위주로 쉬고 싶어요',
+    })
+
+    expect(requestCreateRecommendation).toHaveBeenCalledTimes(1)
+    expect(requestCreateRecommendation).toHaveBeenCalledWith(
+      expect.objectContaining({ entryType: 'chat', tripType: '2d1n' }),
+    )
+    // API 응답 기반 채팅 메시지 확인
+    const chatLog = screen.getByRole('log', { name: 'AI 일정 대화' })
+    expect(within(chatLog).getByText(/API에서 받은 온천 일정 요약입니다/)).toBeInTheDocument()
+    // API 응답 기반 일정 초안 확인 (fallback local stops 아님)
+    expect(screen.getByText('신정호 관광지')).toBeInTheDocument()
+    expect(screen.getByText('아산 온천')).toBeInTheDocument()
+    expect(screen.getByText('현충사')).toBeInTheDocument()
+    expect(screen.getByText('2일 구성')).toBeInTheDocument()
+    expect(screen.getByText('총 6개 코스')).toBeInTheDocument()
   })
 
   it('saves and likes a generated itinerary without duplicate mock storage records', async () => {

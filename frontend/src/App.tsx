@@ -88,6 +88,7 @@ import {
 } from './features/planner/plannerModel'
 import { PlannerWorkspace, type PlannerStateStep } from './features/planner/PlannerWorkspace'
 import { PlanDetailView } from './features/planner/PlanDetailView'
+import { ErrorBoundary } from './shared/components/ErrorBoundary'
 import {
   clearStoredSavedPlanState,
   getNextSavedPlanLike,
@@ -2028,7 +2029,7 @@ function App() {
         {
           id: createMessageId('assistant', currentMessages.length),
           role: 'assistant',
-          content: `${response.itinerary?.summary || '일정이 성공적으로 생성되었습니다.'} 지도를 참고하여 일정을 둘러보세요.${userNoticeText}`,
+          content: `${response.itinerary?.summary || '일정이 성공적으로 생성되었습니다.'} 우측에 생성된 일정을 둘러보세요.${userNoticeText}`,
         },
       ])
 
@@ -2190,29 +2191,31 @@ function App() {
           ) : activeView === 'themeDetail' ? (
             <ThemeDetailView recommendation={activeMonthlyRecommendation} goHome={goHome} openMonthlyRecommendationPlan={openMonthlyRecommendationPlan} />
           ) : activeView === 'planDetail' ? (
-            <PlanDetailView
-              isPlannerReady={isActivePlanDetailReady}
-              shouldAskFestivalTheme={shouldAskFestivalTheme}
-              returnToChatWorkspace={returnToChatWorkspace}
-              currentPlanTitle={activePlanDetailTitle}
-              planDraft={activePlanDetailDraft}
-              plannerBasisLabel={activePlanDetailBasisLabel}
-              cityImageUrl={plannerCityContext?.imageUrl ?? undefined}
-              destinationName={plannerCityContext?.cityName ?? generatedPlanDestinationName ?? undefined}
-              planId={activePlanDetailId}
-              planLike={activeSavedPlanDetailLike}
-              onSelectSavedPlanLike={selectSavedPlanLike}
-              savedPlanLikePending={isSavedPlanLikePending(activePlanDetailId)}
-              savedPlanLikeError={getSavedPlanLikeError(activePlanDetailId)}
-              isSavedPlanDetailLoading={isBackendRoutePlanLoading}
-              saveGeneratedPlan={saveGeneratedPlan}
-              isPlanSaving={isSavingPlan}
-              isCurrentPlanSaved={isActivePlanDetailSaved}
-              savedPlanDeletePending={isSavedPlanDeletePending(activePlanDetailId)}
-              onDeleteSavedPlan={deleteSavedPlan}
-              openMyPage={openMyPage}
-              savedPlanNotice={savedPlanNotice}
-            />
+            <ErrorBoundary>
+              <PlanDetailView
+                isPlannerReady={isActivePlanDetailReady}
+                shouldAskFestivalTheme={shouldAskFestivalTheme}
+                returnToChatWorkspace={returnToChatWorkspace}
+                currentPlanTitle={activePlanDetailTitle}
+                planDraft={activePlanDetailDraft}
+                plannerBasisLabel={activePlanDetailBasisLabel}
+                cityImageUrl={plannerCityContext?.imageUrl ?? undefined}
+                destinationName={plannerCityContext?.cityName ?? generatedPlanDestinationName ?? undefined}
+                planId={activePlanDetailId}
+                planLike={activeSavedPlanDetailLike}
+                onSelectSavedPlanLike={selectSavedPlanLike}
+                savedPlanLikePending={isSavedPlanLikePending(activePlanDetailId)}
+                savedPlanLikeError={getSavedPlanLikeError(activePlanDetailId)}
+                isSavedPlanDetailLoading={isBackendRoutePlanLoading}
+                saveGeneratedPlan={saveGeneratedPlan}
+                isPlanSaving={isSavingPlan}
+                isCurrentPlanSaved={isActivePlanDetailSaved}
+                savedPlanDeletePending={isSavedPlanDeletePending(activePlanDetailId)}
+                onDeleteSavedPlan={deleteSavedPlan}
+                openMyPage={openMyPage}
+                savedPlanNotice={savedPlanNotice}
+              />
+            </ErrorBoundary>
           ) : activeView === 'mypage' ? (
             <MyPageView
               goHome={goHome}
@@ -2235,41 +2238,43 @@ function App() {
               signOut={signOut}
             />
           ) : (
-            <PlannerWorkspace
-              goHome={goHome}
-              plannerCityContext={plannerCityContext}
-              shouldAskFestivalTheme={shouldAskFestivalTheme}
-              plannerPreferenceLabel={plannerPreferenceLabel}
-              plannerStateSteps={plannerStateSteps}
-              chatMessages={chatMessages}
-              shouldShowFestivalPrompt={shouldShowFestivalPrompt}
-              festivalThemeChoice={festivalThemeChoice}
-              submitChatMessage={submitChatMessage}
-              shouldShowDurationPrompt={shouldShowDurationPrompt}
-              shouldShowTravelMonthPrompt={shouldShowTravelMonthPrompt}
-              isPlannerReady={isPlannerReady}
-              planDraft={planDraft}
-              plannerConditionExtraction={plannerConditionExtraction}
-              chatInput={chatInput}
-              setChatInput={setChatInput}
-              selectedTravelMonth={selectedTravelMonth}
-              hasGuidedPlannerChoices={hasGuidedPlannerChoices}
-              canSubmitChatInput={canSubmitChatInput}
-              submitChatForm={submitChatForm}
-              currentPlanTitle={currentPlanTitle}
-              plannerPreferenceProfile={plannerPreferenceProfile}
-              openPlanDetailView={openPlanDetailView}
-              isCurrentPlanLiked={isCurrentPlanLiked}
-              toggleGeneratedPlanLike={toggleGeneratedPlanLike}
-              resetPlannerFlow={() => resetPlannerFlow()}
-              saveGeneratedPlan={saveGeneratedPlan}
-              isPlanSaving={isSavingPlan}
-              isCurrentPlanSaved={isCurrentPlanSaved}
-              openMyPage={openMyPage}
-              savedPlanNotice={savedPlanNotice}
-              isPlannerLoading={isPlannerLoading}
-              planDestinationName={plannerCityContext?.cityName ?? generatedPlanDestinationName ?? undefined}
-            />
+            <ErrorBoundary>
+              <PlannerWorkspace
+                goHome={goHome}
+                plannerCityContext={plannerCityContext}
+                shouldAskFestivalTheme={shouldAskFestivalTheme}
+                plannerPreferenceLabel={plannerPreferenceLabel}
+                plannerStateSteps={plannerStateSteps}
+                chatMessages={chatMessages}
+                shouldShowFestivalPrompt={shouldShowFestivalPrompt}
+                festivalThemeChoice={festivalThemeChoice}
+                submitChatMessage={submitChatMessage}
+                shouldShowDurationPrompt={shouldShowDurationPrompt}
+                shouldShowTravelMonthPrompt={shouldShowTravelMonthPrompt}
+                isPlannerReady={isPlannerReady}
+                planDraft={planDraft}
+                plannerConditionExtraction={plannerConditionExtraction}
+                chatInput={chatInput}
+                setChatInput={setChatInput}
+                selectedTravelMonth={selectedTravelMonth}
+                hasGuidedPlannerChoices={hasGuidedPlannerChoices}
+                canSubmitChatInput={canSubmitChatInput}
+                submitChatForm={submitChatForm}
+                currentPlanTitle={currentPlanTitle}
+                plannerPreferenceProfile={plannerPreferenceProfile}
+                openPlanDetailView={openPlanDetailView}
+                isCurrentPlanLiked={isCurrentPlanLiked}
+                toggleGeneratedPlanLike={toggleGeneratedPlanLike}
+                resetPlannerFlow={() => resetPlannerFlow()}
+                saveGeneratedPlan={saveGeneratedPlan}
+                isPlanSaving={isSavingPlan}
+                isCurrentPlanSaved={isCurrentPlanSaved}
+                openMyPage={openMyPage}
+                savedPlanNotice={savedPlanNotice}
+                isPlannerLoading={isPlannerLoading}
+                planDestinationName={plannerCityContext?.cityName ?? generatedPlanDestinationName ?? undefined}
+              />
+            </ErrorBoundary>
           )}
 
           <Footer onOpenLegalNotice={setActiveLegalNoticeType} />

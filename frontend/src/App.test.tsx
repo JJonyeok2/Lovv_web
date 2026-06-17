@@ -439,7 +439,7 @@ describe('MVP main entry screen', () => {
     expect(
       await screen.findByRole('button', { name: '현재 세션: Google 메뉴 열기' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('처음엔 작게, 추천은 명확하게')).toBeInTheDocument()
+    expect(screen.getByText('붐비는 유명지 대신, 취향에 맞는 소도시')).toBeInTheDocument()
   })
 
   it('loads backend saved itineraries into My Page after API-mode session restore', async () => {
@@ -956,14 +956,14 @@ describe('MVP main entry screen', () => {
     })
     expect(screen.queryByText('부산 · 오키나와 감성으로 시작합니다')).not.toBeInTheDocument()
     expect(screen.queryByText('Next action')).not.toBeInTheDocument()
-    const proofHeading = screen.getByText('처음엔 작게, 추천은 명확하게')
+    const proofHeading = screen.getByText('붐비는 유명지 대신, 취향에 맞는 소도시')
     const proofSummaryPanel = screen.getByTestId('proof-summary-panel')
     const recommendationBasis = screen.getByRole('list', { name: '추천 근거 해시태그' })
     const monthlyHeading = screen.getByRole('heading', { name: '이번 달 추천 소도시' })
 
     expect(proofSummaryPanel).toHaveClass('border')
     expect(proofSummaryPanel).toHaveClass('border-white/60')
-    expect(screen.getByText(/선택한 기준 테마를 먼저 보고/)).toBeInTheDocument()
+    expect(screen.getByText(/어디로 갈지 못정했어도 괜찮아요/)).toBeInTheDocument()
     expect(within(recommendationBasis).getAllByRole('listitem')).toHaveLength(2)
     ;['#바다', '#해안'].forEach((tag) => {
       expect(within(recommendationBasis).getByText(tag)).toBeInTheDocument()
@@ -1006,7 +1006,7 @@ describe('MVP main entry screen', () => {
     expect(screen.getByRole('button', { name: '빠른 이동 메뉴 열기' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: '여행지 찾아보기' })).toHaveAttribute('href', '/map')
     expect(screen.getByRole('link', { name: 'AI 일정 짜기' })).toHaveAttribute('href', '/planner')
-    expect(screen.getByText('처음엔 작게, 추천은 명확하게')).toBeInTheDocument()
+    expect(screen.getByText('붐비는 유명지 대신, 취향에 맞는 소도시')).toBeInTheDocument()
   })
 
   it('keeps route changes in browser history for back navigation', async () => {

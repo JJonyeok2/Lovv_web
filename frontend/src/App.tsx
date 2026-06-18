@@ -2430,6 +2430,12 @@ function App() {
       setPlannerConditionExtraction(nextExtraction)
       setPlanDraft(fallbackDraft)
       setSavedPlanNotice(null)
+      // Keep the optimistically-shown city name on mock fallback when we know it
+      // (selected-city flow). Preference-only flows have no city until the API
+      // responds, so there is nothing to preserve here — leave the default.
+      if (plannerCityContext) {
+        setGeneratedPlanDestinationName(plannerCityContext.cityName)
+      }
     } finally {
       setIsPlannerLoading(false)
     }

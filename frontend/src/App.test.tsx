@@ -2180,6 +2180,9 @@ describe('MVP main entry screen', () => {
     fireEvent.click(screen.getByRole('button', { name: '세부 일정 보기' }))
     expect(screen.getByText('신정호 관광지')).toBeInTheDocument()
     expect(screen.getByText('아산 온천')).toBeInTheDocument()
+    // 현충사 is a day-2 stop — now behind the 2일차 tab instead of one long scroll.
+    expect(screen.queryByText('현충사')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('tab', { name: '2일차' }))
     expect(screen.getByText('현충사')).toBeInTheDocument()
   })
 
@@ -2254,14 +2257,21 @@ describe('MVP main entry screen', () => {
     expect(within(detailView).getByText('2박 3일')).toBeInTheDocument()
     expect(within(detailView).queryByText('축제 포함')).not.toBeInTheDocument()
     expect(within(detailView).getByText('덜 걷는 일정')).toBeInTheDocument()
+    // Day 1 is shown by default; days 2-3 live behind day tabs (no long scroll).
     expect(within(detailView).getByText('1일차 추천 일정')).toBeInTheDocument()
-    expect(within(detailView).getByText('2일차 추천 일정')).toBeInTheDocument()
-    expect(within(detailView).getByText('3일차 추천 일정')).toBeInTheDocument()
     expect(within(detailView).getByText('가볍게 도착하고 가까운 동네부터 보기')).toBeInTheDocument()
     expect(within(detailView).getByText('취향에 맞는 핵심 장소 둘러보기')).toBeInTheDocument()
     expect(within(detailView).getByText('무리하지 않는 마무리 동선')).toBeInTheDocument()
-    expect(within(detailView).getAllByText('추천 이유')).toHaveLength(9)
+    expect(within(detailView).getAllByText('추천 이유')).toHaveLength(3)
     expect(within(detailView).getAllByText('다음 장소까지 12분').length).toBeGreaterThanOrEqual(1)
+    expect(within(detailView).queryByText('2일차 추천 일정')).not.toBeInTheDocument()
+    expect(within(detailView).queryByText('3일차 추천 일정')).not.toBeInTheDocument()
+
+    fireEvent.click(within(detailView).getByRole('tab', { name: '2일차' }))
+    expect(within(detailView).getByText('2일차 추천 일정')).toBeInTheDocument()
+    fireEvent.click(within(detailView).getByRole('tab', { name: '3일차' }))
+    expect(within(detailView).getByText('3일차 추천 일정')).toBeInTheDocument()
+    fireEvent.click(within(detailView).getByRole('tab', { name: '1일차' }))
 
     fireEvent.click(within(detailView).getByRole('button', { name: '좋아요' }))
     fireEvent.click(within(detailView).getByRole('button', { name: '마이페이지에 저장' }))

@@ -6,10 +6,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 import { useAuth } from './features/auth/useAuth'
 import { usePreferences } from './features/onboarding/usePreferences'
 import { usePlanner } from './features/planner/usePlanner'
+import { useCityMap } from './features/map-city/useCityMap'
 import { AuthView } from './features/auth/AuthView'
 import { heroRotationIntervalMs, heroThemes, monthlyRecommendations } from './features/home/homeContent'
 import { HomeView } from './features/home/HomeView'
@@ -17,26 +17,12 @@ import { ThemeDetailView } from './features/home/ThemeDetailView'
 import { RecommendationView } from './features/recommendation/RecommendationView'
 import { CityMapDiscoverySection } from './features/map-city/CityMapDiscoverySection'
 import {
-  createSmallCityMapMarkers,
-  filterSmallCities,
   createPlannerCityContext,
   type SmallCity,
-  type SmallCityCountry,
-  type SmallCityTheme,
-  type SmallCityMapMarker,
 } from './features/map-city/smallCities'
-import {
-  createSmallCityCatalogStateFromQueryResult,
-  createSmallCityDetailEmptyState,
-  createStaticSmallCityDetailState,
-} from './features/map-city/smallCityDataSource'
 import { MyPageView } from './features/my-page/MyPageView'
 import { OnboardingPreferenceView } from './features/onboarding/OnboardingPreferenceView'
-import {
-  getPreferenceByThemeId,
-  getThemeLabels,
-} from './features/onboarding/preferenceModel'
-import { getThemeHashtags, getRecommendationBasisHashtags, getPreferenceProfileLabel } from './features/planner/plannerModel'
+import { getRecommendationBasisHashtags, getPreferenceProfileLabel } from './features/planner/plannerModel'
 import { PlannerWorkspace } from './features/planner/PlannerWorkspace'
 import { PlanDetailView } from './features/planner/PlanDetailView'
 import { ErrorBoundary } from './shared/components/ErrorBoundary'
@@ -44,7 +30,6 @@ import { AppHeader } from './shared/components/AppHeader'
 import { Footer } from './shared/components/Footer'
 import { LegalNoticeDialog } from './shared/components/LegalNoticeDialog'
 import { useUiToggleStore } from './shared/store/uiToggleStore'
-import { defaultSmallCityApiPageSize, requestListSmallCities, createSmallCityApiQuery } from './shared/api/smallCityApi'
 import {
   getCanonicalViewFromPath,
   getGuardRedirectPath,
@@ -115,8 +100,19 @@ function App() {
     isPlannerReady: false,
   })
 
+  // Coordinator state variables
+  const [activeMonthlyRecommendation, setActiveMonthlyRecommendation] = useState(monthlyRecommendations[0])
+  const [activeViewOverride, setActiveViewOverride] = useState<View | null>(null)
+
+  const routedView = getCanonicalViewFromPath(location.pathname) ?? 'auth'
+  const activeView =
+    activeViewOverride && location.pathname === getPathForView(activeViewOverride)
+      ? activeViewOverride
+      : routedView
+
   // Hook Calls
   const auth = useAuth({ plannerRef })
+  const map = useCityMap()
 
   const navigateToView = (view: View, options: { replace?: boolean } = {}) => {
     const nextView: View =
@@ -141,6 +137,7 @@ function App() {
     setHasCompletedPreference: auth.setHasCompletedPreference,
     resetPlannerFlow: (...args) => planner.resetPlannerFlow(...args),
     navigateToView,
+    activeView,
   })
 
   const planner = usePlanner({
@@ -173,83 +170,9 @@ function App() {
     }
   }, [planner.currentPlanId, planner.isPlannerReady])
 
-  // Coordinator state variables
-  const [activeMonthlyRecommendation, setActiveMonthlyRecommendation] = useState(monthlyRecommendations[0])
-  const [activeViewOverride, setActiveViewOverride] = useState<View | null>(null)
-  
-  const routedView = getCanonicalViewFromPath(location.pathname) ?? 'auth'
-  const activeView =
-    activeViewOverride && location.pathname === getPathForView(activeViewOverride)
-      ? activeViewOverride
-      : routedView
-
-  // Map state variables
-  const [cityMapCountry, setCityMapCountry] = useState<SmallCityCountry>('KR')
-  const [cityMapQuery, setCityMapQuery] = useState('')
-  const [selectedSmallCityThemes, setSelectedSmallCityThemes] = useState<SmallCityTheme[]>([])
-  const [cityMapPanelMode, setCityMapPanelMode] = useState<'list' | 'detail'>('list')
-  const [selectedSmallCityId, setSelectedSmallCityId] = useState('')
   const [currentHeroThemeIndex, setCurrentHeroThemeIndex] = useState(0)
-
-  // Small cities Catalog Query (keeps statically available discovery map catalogs)
-  const smallCityCatalogQueryKey = createSmallCityApiQuery({ pageSize: defaultSmallCityApiPageSize })
-  const smallCityCatalogQuery = useQuery({
-    queryKey: ['smallCityCatalog', smallCityCatalogQueryKey],
-    queryFn: () => requestListSmallCities({ pageSize: defaultSmallCityApiPageSize }),
-  })
-  const smallCityCatalogState = createSmallCityCatalogStateFromQueryResult(
-    smallCityCatalogQuery,
-    smallCityCatalogQueryKey,
-  )
-
-  // Derived preference details
-  const isPreferenceEditView = preferences.isPreferenceEditView(activeView)
-  const activePreferenceProfile = isPreferenceEditView ? preferences.pendingPreferenceProfile : auth.selectedPreferenceProfile
-  const activeCountryTrack = activePreferenceProfile.countryTrack
-  const activeThemeIds = preferences.getActiveThemeIds(activeView)
-  const activeThemeLabels = getThemeLabels(activeThemeIds)
-  const activeThemePreferences = activeThemeIds.map(getPreferenceByThemeId)
-  const hasValidThemeSelection = preferences.hasValidThemeSelection(activeView)
-  
-  const fallbackPreferenceSelection = isPreferenceEditView
-    ? preferences.pendingPreferences[0] ?? preferences.selectedPreference
-    : preferences.selectedPreference
-
-  const selectedPreviewImages = (
-    activeThemePreferences.length > 0 ? activeThemePreferences : [fallbackPreferenceSelection]
-  ).flatMap((preference, preferenceIndex) =>
-    preference.coverImages.map((coverImage, coverImageIndex) => ({
-      ...coverImage,
-      key: `${preference.themeId}-${coverImageIndex}-${coverImage.city}`,
-      tag: preference.tag,
-      themeIndex: preferenceIndex,
-    })),
-  )
-  const selectedPreviewPrimaryImage =
-    selectedPreviewImages.find((previewImage) => previewImage.key === preferences.selectedPreviewImageKey) ??
-    selectedPreviewImages[0] ??
-    {
-      ...fallbackPreferenceSelection.coverImages[0],
-      key: `${fallbackPreferenceSelection.themeId}-0-fallback`,
-      tag: fallbackPreferenceSelection.tag,
-      themeIndex: 0,
-    }
-  const selectedPreviewImageIndex = Math.max(
-    selectedPreviewImages.findIndex((previewImage) => previewImage.key === selectedPreviewPrimaryImage.key),
-    0,
-  )
-  const selectedPreviewThumbnails = selectedPreviewImages.filter(
-    (previewImage) => previewImage.key !== selectedPreviewPrimaryImage.key,
-  )
-  const selectedPreviewTrayCover = selectedPreviewThumbnails[0]
-  const selectedPreviewThemePosition =
-    selectedPreviewImages.length > 0 ? `${selectedPreviewImageIndex + 1} / ${selectedPreviewImages.length}` : '1 / 1'
-  const selectedPreviewPreference =
-    activeThemePreferences[selectedPreviewPrimaryImage.themeIndex] ?? activeThemePreferences[0] ?? fallbackPreferenceSelection
-
-  const selectedThemeHashtags = getThemeHashtags(auth.selectedPreferenceProfile)
-  const recommendationBasisHashtags = getRecommendationBasisHashtags(auth.selectedPreferenceProfile)
   const currentHeroTheme = heroThemes[currentHeroThemeIndex]
+  const recommendationBasisHashtags = getRecommendationBasisHashtags(auth.selectedPreferenceProfile)
 
   const routePlanId = getPlanDetailRouteId(location.pathname)
   const savedPlanForRoute = useMemo(
@@ -312,36 +235,7 @@ function App() {
   const activeSavedPlanDetailLike = planner.getSavedPlanLike(activePlanDetailId)
   const isActivePlanDetailSaved = isRouteCurrentGeneratedPlan ? planner.isCurrentPlanSaved : Boolean(savedPlanForRoute)
 
-  const activeCountrySmallCities = useMemo(
-    () => smallCityCatalogState.cities.filter((city) => city.country === cityMapCountry),
-    [cityMapCountry, smallCityCatalogState.cities],
-  )
-  const filteredSmallCities = useMemo(
-    () =>
-      filterSmallCities(activeCountrySmallCities, cityMapQuery, selectedSmallCityThemes, {
-        includeDiscoveryText: false,
-      }),
-    [activeCountrySmallCities, cityMapQuery, selectedSmallCityThemes],
-  )
-  const visibleSmallCityMapMarkers = useMemo(
-    () => createSmallCityMapMarkers(filteredSmallCities),
-    [filteredSmallCities],
-  )
-  const selectedSmallCity = useMemo(() => {
-    if (!selectedSmallCityId || filteredSmallCities.length === 0) {
-      return null
-    }
 
-    return filteredSmallCities.find((city) => city.id === selectedSmallCityId) ?? null
-  }, [filteredSmallCities, selectedSmallCityId])
-  
-  const selectedSmallCityDetailState = useMemo(() => {
-    if (!selectedSmallCity) {
-      return createSmallCityDetailEmptyState(selectedSmallCityId)
-    }
-
-    return createStaticSmallCityDetailState(selectedSmallCity.id, smallCityCatalogState.cities)
-  }, [selectedSmallCity, selectedSmallCityId, smallCityCatalogState.cities])
 
   // Redirection dependencies destructured for stable dependency tracking
   const {
@@ -447,24 +341,7 @@ function App() {
     navigateToView('mypage')
   }
 
-  const openPreferenceEdit = () => {
-    preferences.setPendingPreferenceProfile(auth.selectedPreferenceProfile)
-    preferences.setSelectedPreviewImageKey(null)
-    preferences.setIsPreviewTrayOpen(false)
-    preferences.setHasSelectedCover(true)
-    preferences.setPreferenceNotice(null)
-    preferences.setThemeSelectionNotice(null)
-    navigateToView('preferences')
-  }
 
-  const cancelPreferenceEdit = () => {
-    preferences.setPendingPreferenceProfile(auth.selectedPreferenceProfile)
-    preferences.setSelectedPreviewImageKey(null)
-    preferences.setIsPreviewTrayOpen(false)
-    preferences.setHasSelectedCover(false)
-    preferences.setThemeSelectionNotice(null)
-    navigateToView('mypage', { replace: true })
-  }
 
   const currentSocialProviderForDisplay = resolveSocialAuthProvider(auth.currentUser, auth.currentSocialAuthProvider)
   const currentProviderLabel = auth.currentUser
@@ -529,12 +406,6 @@ function App() {
     navigateToView('planner')
   }
 
-  const selectCityMapCountry = (country: SmallCityCountry) => {
-    setCityMapCountry(country)
-    setSelectedSmallCityId('')
-    setCityMapPanelMode('list')
-  }
-
   const openSavedPlanDetail = (planId: string) => {
     auth.setSavedPlanNotice(null)
     navigate(`/plans/${encodeURIComponent(planId)}`)
@@ -553,31 +424,15 @@ function App() {
     navigateToView('planner', { replace: true })
   }
 
-  const toggleSmallCityThemeFilter = (theme: SmallCityTheme) => {
-    setSelectedSmallCityThemes((currentThemes) =>
-      currentThemes.includes(theme)
-        ? currentThemes.filter((currentTheme) => currentTheme !== theme)
-        : [...currentThemes, theme],
-    )
-    setCityMapPanelMode('list')
-  }
-
-  const clearSmallCityFilters = () => {
-    setCityMapQuery('')
-    setSelectedSmallCityThemes([])
-    setSelectedSmallCityId('')
-    setCityMapPanelMode('list')
-  }
-
   const selectSmallCityFromList = (city: SmallCity) => {
-    if (selectedSmallCityId === city.id) {
-      setSelectedSmallCityId('')
-      setCityMapPanelMode('list')
+    if (map.selectedSmallCityId === city.id) {
+      map.setSelectedSmallCityId('')
+      map.setCityMapPanelMode('list')
       return
     }
 
-    setSelectedSmallCityId(city.id)
-    setCityMapPanelMode('detail')
+    map.setSelectedSmallCityId(city.id)
+    map.setCityMapPanelMode('detail')
 
     window.setTimeout(() => {
       if (
@@ -592,21 +447,10 @@ function App() {
     }, 0)
   }
 
-  const selectSmallCityMapMarker = (marker: SmallCityMapMarker) => {
-    if (selectedSmallCityId === marker.cityId) {
-      setSelectedSmallCityId('')
-      setCityMapPanelMode('list')
-      return
-    }
-
-    setSelectedSmallCityId(marker.cityId)
-    setCityMapPanelMode('detail')
-  }
-
   const openSmallCityPlanner = (city: SmallCity) => {
     const selectedDetail =
-      selectedSmallCityDetailState.status === 'success' && selectedSmallCityDetailState.detail.city.id === city.id
-        ? selectedSmallCityDetailState.detail
+      map.selectedSmallCityDetailState.status === 'success' && map.selectedSmallCityDetailState.detail.city.id === city.id
+        ? map.selectedSmallCityDetailState.detail
         : null
     
     const cityContext = createPlannerCityContext(city, selectedDetail)
@@ -619,27 +463,27 @@ function App() {
   const renderCityMapDiscoverySection = () => (
     <CityMapDiscoverySection
       cityMapDetailPanelRef={cityMapDetailPanelRef}
-      cityMapCountry={cityMapCountry}
-      cityMapQuery={cityMapQuery}
-      selectedSmallCityThemes={selectedSmallCityThemes}
+      cityMapCountry={map.cityMapCountry}
+      cityMapQuery={map.cityMapQuery}
+      selectedSmallCityThemes={map.selectedSmallCityThemes}
       selectedPreferenceProfile={auth.selectedPreferenceProfile}
-      smallCityCatalogState={smallCityCatalogState}
-      activeCountrySmallCities={activeCountrySmallCities}
-      filteredSmallCities={filteredSmallCities}
-      visibleSmallCityMapMarkers={visibleSmallCityMapMarkers}
-      selectedSmallCity={selectedSmallCity}
-      selectedSmallCityDetailState={selectedSmallCityDetailState}
-      cityMapPanelMode={cityMapPanelMode}
-      onSelectCountry={selectCityMapCountry}
+      smallCityCatalogState={map.smallCityCatalogState}
+      activeCountrySmallCities={map.activeCountrySmallCities}
+      filteredSmallCities={map.filteredSmallCities}
+      visibleSmallCityMapMarkers={map.visibleSmallCityMapMarkers}
+      selectedSmallCity={map.selectedSmallCity}
+      selectedSmallCityDetailState={map.selectedSmallCityDetailState}
+      cityMapPanelMode={map.cityMapPanelMode}
+      onSelectCountry={map.selectCityMapCountry}
       onQueryChange={(query) => {
-        setCityMapQuery(query)
-        setCityMapPanelMode('list')
+        map.setCityMapQuery(query)
+        map.setCityMapPanelMode('list')
       }}
-      onClearFilters={clearSmallCityFilters}
-      onToggleThemeFilter={toggleSmallCityThemeFilter}
+      onClearFilters={map.clearSmallCityFilters}
+      onToggleThemeFilter={map.toggleSmallCityThemeFilter}
       onSelectCityFromList={selectSmallCityFromList}
-      onSelectMapMarker={selectSmallCityMapMarker}
-      onSetPanelMode={setCityMapPanelMode}
+      onSelectMapMarker={map.selectSmallCityMapMarker}
+      onSetPanelMode={map.setCityMapPanelMode}
       onOpenPlanner={openSmallCityPlanner}
     />
   )
@@ -668,28 +512,28 @@ function App() {
                 : auth.signInWithMockProvider
           }
         />
-      ) : activeView === 'onboarding' || isPreferenceEditView ? (
+      ) : activeView === 'onboarding' || preferences.isPreferenceEditView ? (
         <OnboardingPreferenceView
-          isPreferenceEditView={isPreferenceEditView}
+          isPreferenceEditView={preferences.isPreferenceEditView}
           hasSelectedCover={preferences.hasSelectedCover}
-          activeThemeIds={activeThemeIds}
-          activeThemeLabels={activeThemeLabels}
-          activeThemePreferences={activeThemePreferences}
-          activeCountryTrack={activeCountryTrack}
-          hasValidThemeSelection={hasValidThemeSelection}
+          activeThemeIds={preferences.activeThemeIds}
+          activeThemeLabels={preferences.activeThemeLabels}
+          activeThemePreferences={preferences.activeThemePreferences}
+          activeCountryTrack={preferences.activeCountryTrack}
+          hasValidThemeSelection={preferences.hasValidThemeSelection}
           themeSelectionNotice={preferences.themeSelectionNotice}
           isPreferenceSaving={preferences.isPreferenceSaving}
-          selectedPreviewThemePosition={selectedPreviewThemePosition}
-          selectedPreviewPreference={selectedPreviewPreference}
-          selectedPreviewPrimaryImage={selectedPreviewPrimaryImage}
-          selectedPreviewTrayCover={selectedPreviewTrayCover}
-          selectedPreviewThumbnails={selectedPreviewThumbnails}
+          selectedPreviewThemePosition={preferences.selectedPreviewThemePosition}
+          selectedPreviewPreference={preferences.selectedPreviewPreference}
+          selectedPreviewPrimaryImage={preferences.selectedPreviewPrimaryImage}
+          selectedPreviewTrayCover={preferences.selectedPreviewTrayCover}
+          selectedPreviewThumbnails={preferences.selectedPreviewThumbnails}
           isPreviewTrayOpen={preferences.isPreviewTrayOpen}
-          onToggleTheme={(themeId) => preferences.togglePreferenceTheme(themeId, activeView)}
-          onSelectCountryTrack={(countryTrack) => preferences.selectPreferenceCountryTrack(countryTrack, activeView)}
-          onCancelPreferenceEdit={cancelPreferenceEdit}
-          onSavePreferenceEdit={() => preferences.savePreferenceEdit(activeView)}
-          onEnterMainWithPreference={() => preferences.enterMainWithPreference(activeView)}
+          onToggleTheme={preferences.togglePreferenceTheme}
+          onSelectCountryTrack={preferences.selectPreferenceCountryTrack}
+          onCancelPreferenceEdit={preferences.cancelPreferenceEdit}
+          onSavePreferenceEdit={preferences.savePreferenceEdit}
+          onEnterMainWithPreference={preferences.enterMainWithPreference}
           onPreviewTrayOpenChange={preferences.setIsPreviewTrayOpen}
           onSelectPreviewImage={preferences.selectPreviewImage}
         />
@@ -711,7 +555,7 @@ function App() {
             <HomeView
               currentHeroTheme={currentHeroTheme}
               selectedPreferenceProfile={auth.selectedPreferenceProfile}
-              selectedThemeHashtags={selectedThemeHashtags}
+              selectedThemeHashtags={preferences.selectedThemeHashtags}
               recommendationBasisHashtags={recommendationBasisHashtags}
               openChat={openChat}
               openMap={openMap}
@@ -776,7 +620,7 @@ function App() {
               isSavedPlanDeletePending={planner.isSavedPlanDeletePending}
               openSavedPlanDetail={openSavedPlanDetail}
               onDeleteSavedPlan={planner.deleteSavedPlan}
-              openPreferenceEdit={openPreferenceEdit}
+              openPreferenceEdit={preferences.enterPreferenceEdit}
               signOut={auth.signOut}
               canLinkSocialAccounts={auth.isApiAuthMode}
               socialAccounts={auth.socialAccounts}

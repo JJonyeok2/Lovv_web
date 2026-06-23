@@ -6,6 +6,8 @@ import {
   getPrimaryPreference,
   preferences,
   storePreferenceProfile,
+  getThemeLabels,
+  getPreferenceByThemeId,
 } from './preferenceModel'
 import { requestUpdatePreference } from '../../shared/api/preferencesApi'
 import type {
@@ -17,6 +19,8 @@ import type {
 } from '../../shared/types/app'
 import type { PlannerCityContext } from '../map-city/smallCities'
 
+import { getThemeHashtags } from '../planner/plannerModel'
+
 export interface UsePreferencesOptions {
   authAccessToken: string | null
   isBackendAuthMode: boolean
@@ -26,6 +30,7 @@ export interface UsePreferencesOptions {
   setHasCompletedPreference: React.Dispatch<React.SetStateAction<boolean>>
   resetPlannerFlow: (preference: Preference, cityContext: PlannerCityContext | null, profile: PreferenceProfile) => void
   navigateToView: (view: View, options?: { replace?: boolean }) => void
+  activeView: View
 }
 
 export function usePreferences({
@@ -37,6 +42,7 @@ export function usePreferences({
   setHasCompletedPreference,
   resetPlannerFlow,
   navigateToView,
+  activeView,
 }: UsePreferencesOptions) {
   const [pendingPreferenceProfile, setPendingPreferenceProfile] = useState(() => selectedPreferenceProfile)
   const [selectedPreviewImageKey, setSelectedPreviewImageKey] = useState<string | null>(null)
@@ -58,26 +64,83 @@ export function usePreferences({
     [pendingPreferenceProfile],
   )
 
-  const isPreferenceEditView = (activeView: View) => activeView === 'preferences' || activeView === 'preferenceEdit'
+  const isPreferenceEditView = activeView === 'preferences' || activeView === 'preferenceEdit'
 
   const updatePreferenceMutation = useMutation({
     mutationFn: (profile: PreferenceProfile) =>
       requestUpdatePreference(profile, { accessToken: authAccessToken }),
   })
 
-  const getActiveThemeIds = (activeView: View) => {
-    const isEdit = isPreferenceEditView(activeView)
-    const activeProfile = isEdit ? pendingPreferenceProfile : selectedPreferenceProfile
-    return isEdit || hasSelectedCover ? activeProfile.selectedThemeIds : []
+  const getActiveThemeIds = () => {
+    const activeProfile = isPreferenceEditView ? pendingPreferenceProfile : selectedPreferenceProfile
+    return isPreferenceEditView || hasSelectedCover ? activeProfile.selectedThemeIds : []
   }
 
-  const hasValidThemeSelection = (activeView: View) => {
-    const themeIds = getActiveThemeIds(activeView)
-    return themeIds.length > 0 && themeIds.length <= 3
-  }
+  const activeThemeIds = getActiveThemeIds()
+  const activeThemeLabels = useMemo(() => getThemeLabels(activeThemeIds), [activeThemeIds])
+  const activeThemePreferences = useMemo(() => activeThemeIds.map(getPreferenceByThemeId), [activeThemeIds])
+  const activeCountryTrack = (isPreferenceEditView ? pendingPreferenceProfile : selectedPreferenceProfile).countryTrack
 
-  const enterMainWithPreference = async (activeView: View) => {
-    if (!hasValidThemeSelection(activeView)) {
+  const hasValidThemeSelection = activeThemeIds.length > 0 && activeThemeIds.length <= 3
+
+  const fallbackPreferenceSelection = isPreferenceEditView
+    ? pendingPreferences[0] ?? selectedPreference
+    : selectedPreference
+
+  const selectedPreviewImages = useMemo(() => {
+    const prefs = activeThemePreferences.length > 0 ? activeThemePreferences : [fallbackPreferenceSelection]
+    return prefs.flatMap((preference: Preference, preferenceIndex: number) =>
+      preference.coverImages.map((coverImage: { city: string; image: string }, coverImageIndex: number) => ({
+        ...coverImage,
+        key: `${preference.themeId}-${coverImageIndex}-${coverImage.city}`,
+        tag: preference.tag,
+        themeIndex: preferenceIndex,
+      })),
+    )
+  }, [activeThemePreferences, fallbackPreferenceSelection])
+
+  const selectedPreviewPrimaryImage = useMemo(() => {
+    return (
+      selectedPreviewImages.find((previewImage) => previewImage.key === selectedPreviewImageKey) ??
+      selectedPreviewImages[0] ??
+      {
+        ...fallbackPreferenceSelection.coverImages[0],
+        key: `${fallbackPreferenceSelection.themeId}-0-fallback`,
+        tag: fallbackPreferenceSelection.tag,
+        themeIndex: 0,
+      }
+    )
+  }, [selectedPreviewImages, selectedPreviewImageKey, fallbackPreferenceSelection])
+
+  const selectedPreviewImageIndex = useMemo(() => {
+    return Math.max(
+      selectedPreviewImages.findIndex((previewImage) => previewImage.key === selectedPreviewPrimaryImage.key),
+      0,
+    )
+  }, [selectedPreviewImages, selectedPreviewPrimaryImage])
+
+  const selectedPreviewThumbnails = useMemo(() => {
+    return selectedPreviewImages.filter(
+      (previewImage) => previewImage.key !== selectedPreviewPrimaryImage.key,
+    )
+  }, [selectedPreviewImages, selectedPreviewPrimaryImage])
+
+  const selectedPreviewTrayCover = selectedPreviewThumbnails[0]
+
+  const selectedPreviewThemePosition = useMemo(() => {
+    return selectedPreviewImages.length > 0
+      ? `${selectedPreviewImageIndex + 1} / ${selectedPreviewImages.length}`
+      : '1 / 1'
+  }, [selectedPreviewImages, selectedPreviewImageIndex])
+
+  const selectedPreviewPreference = useMemo(() => {
+    return activeThemePreferences[selectedPreviewPrimaryImage.themeIndex] ?? activeThemePreferences[0] ?? fallbackPreferenceSelection
+  }, [activeThemePreferences, selectedPreviewPrimaryImage.themeIndex, fallbackPreferenceSelection])
+
+  const selectedThemeHashtags = useMemo(() => getThemeHashtags(selectedPreferenceProfile), [selectedPreferenceProfile])
+
+  const enterMainWithPreference = async () => {
+    if (!hasValidThemeSelection) {
       setThemeSelectionNotice('원하는 테마를 1개 이상 선택해 주세요.')
       return
     }
@@ -101,8 +164,8 @@ export function usePreferences({
     }
   }
 
-  const savePreferenceEdit = async (activeView: View) => {
-    if (!hasValidThemeSelection(activeView)) {
+  const savePreferenceEdit = async () => {
+    if (!hasValidThemeSelection) {
       setThemeSelectionNotice('원하는 테마를 1개 이상 선택해 주세요.')
       return
     }
@@ -131,26 +194,24 @@ export function usePreferences({
     }
   }
 
-  const selectPreferenceCountryTrack = (countryTrack: CountryTrack, activeView: View) => {
-    const isEdit = isPreferenceEditView(activeView)
-    const activeProfile = isEdit ? pendingPreferenceProfile : selectedPreferenceProfile
+  const selectPreferenceCountryTrack = (countryTrack: CountryTrack) => {
+    const activeProfile = isPreferenceEditView ? pendingPreferenceProfile : selectedPreferenceProfile
     const nextProfile = {
       ...activeProfile,
       countryTrack,
       updatedAt: new Date().toISOString(),
     }
 
-    if (isEdit) {
+    if (isPreferenceEditView) {
       setPendingPreferenceProfile(nextProfile)
     } else {
       setSelectedPreferenceProfile(nextProfile)
     }
   }
 
-  const togglePreferenceTheme = (themeId: ThemeId, activeView: View) => {
-    const isEdit = isPreferenceEditView(activeView)
-    const source = isEdit ? 'preference_edit' : 'onboarding'
-    const themeIds = getActiveThemeIds(activeView)
+  const togglePreferenceTheme = (themeId: ThemeId) => {
+    const source = isPreferenceEditView ? 'preference_edit' : 'onboarding'
+    const themeIds = activeThemeIds
     const isSelected = themeIds.includes(themeId)
     const nextThemeIds = isSelected
       ? themeIds.filter((currentThemeId) => currentThemeId !== themeId)
@@ -163,10 +224,10 @@ export function usePreferences({
       return
     }
 
-    const activeProfile = isEdit ? pendingPreferenceProfile : selectedPreferenceProfile
+    const activeProfile = isPreferenceEditView ? pendingPreferenceProfile : selectedPreferenceProfile
     const nextProfile = createPreferenceProfile(nextThemeIds, source, activeProfile.countryTrack)
 
-    if (isEdit) {
+    if (isPreferenceEditView) {
       setPendingPreferenceProfile(nextProfile)
     } else {
       setSelectedPreferenceProfile(nextProfile)
@@ -185,6 +246,21 @@ export function usePreferences({
   const selectPreviewImage = (imageKey: string) => {
     setSelectedPreviewImageKey(imageKey)
     setIsPreviewTrayOpen(false)
+  }
+
+  const enterPreferenceEdit = () => {
+    setPreferenceNotice(null)
+    setThemeSelectionNotice(null)
+    navigateToView('preferences')
+  }
+
+  const cancelPreferenceEdit = () => {
+    setPendingPreferenceProfile(selectedPreferenceProfile)
+    setSelectedPreviewImageKey(null)
+    setIsPreviewTrayOpen(false)
+    setHasSelectedCover(false)
+    setThemeSelectionNotice(null)
+    navigateToView('mypage', { replace: true })
   }
 
   return {
@@ -216,5 +292,19 @@ export function usePreferences({
     isPreferenceEditView,
     getActiveThemeIds,
     hasValidThemeSelection,
+    activeThemeIds,
+    activeThemeLabels,
+    activeThemePreferences,
+    activeCountryTrack,
+    selectedPreviewImages,
+    selectedPreviewPrimaryImage,
+    selectedPreviewImageIndex,
+    selectedPreviewThumbnails,
+    selectedPreviewTrayCover,
+    selectedPreviewThemePosition,
+    selectedPreviewPreference,
+    selectedThemeHashtags,
+    enterPreferenceEdit,
+    cancelPreferenceEdit,
   }
 }

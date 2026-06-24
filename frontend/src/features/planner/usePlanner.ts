@@ -127,6 +127,7 @@ export function usePlanner({
   )
   const [planDraft, setPlanDraft] = useState<PlanDraft>(() => createPlanDraft(selectedPreference))
   const [generatedPlanDestinationName, setGeneratedPlanDestinationName] = useState<string | null>(null)
+  const [generatedPlanDestinationId, setGeneratedPlanDestinationId] = useState<string | null>(null)
   const [isPlannerLoading, setIsPlannerLoading] = useState(false)
   const [isSavingPlan, setIsSavingPlan] = useState(false)
 
@@ -251,6 +252,7 @@ export function usePlanner({
     setPlanDraft(createPlanDraft(preference, nextPlannerContextText, nextFestivalThemeChoice, cityContext))
     setSavedPlanNotice(null)
     setGeneratedPlanDestinationName(null)
+    setGeneratedPlanDestinationId(null)
   }, [
     plannerCityContext,
     selectedPreferenceProfile,
@@ -837,6 +839,10 @@ export function usePlanner({
       if (destName && !String(destName).toLowerCase().includes('mock')) {
         setGeneratedPlanDestinationName(destName)
       }
+      const destId = response.destination?.cityId || response.destination?.destinationId
+      if (destId) {
+        setGeneratedPlanDestinationId(destId)
+      }
     } catch (err) {
       log.error('PLAN', 'Recommendation API failed, falling back to mock logic', err)
 
@@ -863,6 +869,7 @@ export function usePlanner({
       setSavedPlanNotice(null)
       if (plannerCityContext) {
         setGeneratedPlanDestinationName(plannerCityContext.cityName)
+        setGeneratedPlanDestinationId(plannerCityContext.cityId)
       }
     } finally {
       setIsPlannerLoading(false)
@@ -954,6 +961,8 @@ export function usePlanner({
     setPlanDraft,
     generatedPlanDestinationName,
     setGeneratedPlanDestinationName,
+    generatedPlanDestinationId,
+    setGeneratedPlanDestinationId,
     isPlannerLoading,
     setIsPlannerLoading,
     isSavingPlan,

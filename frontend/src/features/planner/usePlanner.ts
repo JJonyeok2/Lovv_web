@@ -130,17 +130,18 @@ export function usePlanner({
   const [isPlannerLoading, setIsPlannerLoading] = useState(false)
   const [isSavingPlan, setIsSavingPlan] = useState(false)
 
-  // Keep plannerPreferenceProfile in sync when the global profile changes (e.g. after session restore).
-  // Only sync when the planner is idle (no city context and no stops generated yet).
   useEffect(() => {
     if (isAuthSessionRestoring) return
     if (!plannerCityContext && planDraft.stops.length === 0) {
       if (selectedPreferenceProfile) {
         setPlannerPreferenceProfile(selectedPreferenceProfile)
+        const nextPlannerLabel = getPreferenceProfileLabel(selectedPreferenceProfile)
+        setChatMessages(createInitialChatMessages(nextPlannerLabel, null, false))
+        setPlanDraft(createPlanDraft(selectedPreference, '', 'exclude', null))
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPreferenceProfile, isAuthSessionRestoring])
+  }, [selectedPreferenceProfile, isAuthSessionRestoring, selectedPreference])
 
   // Save active planner preference profile to sessionStorage to persist across page reloads
   useEffect(() => {

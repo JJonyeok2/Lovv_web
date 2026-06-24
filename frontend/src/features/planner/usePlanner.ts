@@ -44,6 +44,7 @@ import {
   mapRecommendationToDraft,
   type RecommendationApiResponse,
 } from '../../shared/api/recommendationsApi'
+import { applyPlanDayReplacement, applyPlanStopReplacement } from './plannerEditModel'
 import {
   writeStoredSavedPlanLikes,
   writeStoredSavedPlans,
@@ -53,7 +54,9 @@ import { log } from '../../shared/logger'
 import type {
   PreferenceProfile,
   ChatMessage,
+  PlanDay,
   PlanDraft,
+  PlanStop,
   SavedPlan,
   SavedPlanLike,
   FestivalThemeChoice,
@@ -599,6 +602,32 @@ export function usePlanner({
     selectSavedPlanLike(currentPlanId, 'like')
   }
 
+  const replacePlanStop = useCallback((dayNumber: number, stopIndex: number, replacement: PlanStop) => {
+    setPlanDraft((currentDraft) => {
+      const nextDays = applyPlanStopReplacement(currentDraft.days, dayNumber, stopIndex, replacement)
+
+      return {
+        ...currentDraft,
+        days: nextDays,
+        stops: nextDays.flatMap((day) => day.stops),
+      }
+    })
+    setSavedPlanNotice('선택한 일정 카드만 대체 후보로 바꿨어요. 저장하면 변경 내용이 반영됩니다.')
+  }, [setSavedPlanNotice])
+
+  const replacePlanDay = useCallback((dayNumber: number, replacement: PlanDay) => {
+    setPlanDraft((currentDraft) => {
+      const nextDays = applyPlanDayReplacement(currentDraft.days, dayNumber, replacement)
+
+      return {
+        ...currentDraft,
+        days: nextDays,
+        stops: nextDays.flatMap((day) => day.stops),
+      }
+    })
+    setSavedPlanNotice('선택한 일차만 대체 일정으로 바꿨어요. 저장하면 변경 내용이 반영됩니다.')
+  }, [setSavedPlanNotice])
+
   const getNextSavedPlanLike = (currentLike: SavedPlanLike, selectedLike: SavedPlanLike): SavedPlanLike => {
     return currentLike === selectedLike ? null : selectedLike
   }
@@ -964,6 +993,8 @@ export function usePlanner({
     deleteSavedPlan,
     selectSavedPlanLike,
     toggleGeneratedPlanLike,
+    replacePlanStop,
+    replacePlanDay,
     submitChatMessage,
     submitChatForm,
     plannerStateSteps,

@@ -606,6 +606,9 @@ function App() {
                 onDeleteSavedPlan={planner.deleteSavedPlan}
                 openMyPage={openMyPage}
                 savedPlanNotice={auth.savedPlanNotice}
+                chatMessages={planner.chatMessages}
+                onReplacePlanStop={isRouteCurrentGeneratedPlan ? planner.replacePlanStop : undefined}
+                onReplacePlanDay={isRouteCurrentGeneratedPlan ? planner.replacePlanDay : undefined}
               />
             </ErrorBoundary>
           ) : activeView === 'mypage' ? (

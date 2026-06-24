@@ -60,13 +60,23 @@ const romanizeKorean = (text: string): string => {
  */
 const buildAttractionImageUrl = (cityEnglishName: string, title: string): string => {
   if (!IMAGE_CDN_BASE || !cityEnglishName || !title) return ''
-  const romanized = romanizeKorean(title)
-    .replace(/\s+/g, '')        // strip spaces
-    .replace(/[^a-z0-9]/g, '')  // keep alphanumerics only
-  // S3 naming convention: first letter capitalized, no city prefix
-  // e.g. images/KR/Uiseong/Bianhyanggyo_1.jpg
-  const romanizedCapitalized = romanized.charAt(0).toUpperCase() + romanized.slice(1)
-  const key = `images/KR/${cityEnglishName}/${romanizedCapitalized}_1.jpg`
+
+  // S3 naming: each space-separated Korean word is independently romanized and
+  // capitalized (PascalCase), then concatenated.
+  // e.g. "봉화 북지리 마애여래좌상" → Bonghwa + Bukjiri + Maeyeoraejwasang
+  //       "범바위 전망대"           → Beombawi + Jeonmangdae
+  //       "백천계곡"               → Baekcheongyegok
+  const romanized = title
+    .split(/\s+/)
+    .map((word) => {
+      const r = romanizeKorean(word).replace(/[^a-z0-9]/g, '')
+      return r ? r.charAt(0).toUpperCase() + r.slice(1) : ''
+    })
+    .join('')
+
+  if (!romanized) return ''
+
+  const key = `images/KR/${cityEnglishName}/${romanized}_1.jpg`
   return `${IMAGE_CDN_BASE}/${key}`
 }
 

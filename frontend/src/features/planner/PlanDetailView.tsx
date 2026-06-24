@@ -1116,19 +1116,33 @@ export function PlanDetailView({
                       ))}
                   </div>
                   {recentChatMessages.length > 0 ? (
-                    <div className="mt-4 space-y-2" aria-label="최근 대화">
-                      {recentChatMessages.map((message) => (
-                        <p
-                          key={message.id}
-                          className={`break-keep rounded-[14px] px-3 py-2 text-[12px] font-semibold leading-5 ${
-                            message.role === 'assistant'
-                              ? 'bg-[#FFF0E4] text-[#33271E]'
-                              : 'bg-[#F36B12] text-[#33271E]'
-                          }`}
-                        >
-                          {message.content}
-                        </p>
-                      ))}
+                    <div className="mt-4 space-y-3" aria-label="최근 대화">
+                      {recentChatMessages.map((message) => {
+                        const isAssistantMessage = message.role === 'assistant'
+
+                        return (
+                          <div
+                            key={message.id}
+                            className={`flex ${isAssistantMessage ? 'justify-start' : 'justify-end'}`}
+                          >
+                            <p
+                              className={`relative max-w-[74%] break-keep rounded-[16px] px-3 py-2 text-[12px] font-semibold leading-5 shadow-[0_10px_24px_-20px_rgba(51,39,30,0.35)] ${
+                                isAssistantMessage
+                                  ? 'rounded-bl-[6px] bg-[#FFF0E4] text-[#33271E]'
+                                  : 'rounded-br-[6px] bg-[#F36B12] text-[#33271E]'
+                              }`}
+                            >
+                              <span
+                                aria-hidden="true"
+                                className={`absolute bottom-2 size-3 rotate-45 ${
+                                  isAssistantMessage ? '-left-1 bg-[#FFF0E4]' : '-right-1 bg-[#F36B12]'
+                                }`}
+                              />
+                              <span className="relative">{message.content}</span>
+                            </p>
+                          </div>
+                        )
+                      })}
                     </div>
                   ) : null}
                   {floatingChatNotice ? (

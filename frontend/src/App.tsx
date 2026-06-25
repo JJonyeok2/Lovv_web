@@ -522,7 +522,6 @@ function App() {
           activeThemeIds={preferences.activeThemeIds}
           activeThemeLabels={preferences.activeThemeLabels}
           activeThemePreferences={preferences.activeThemePreferences}
-          activeCountryTrack={preferences.activeCountryTrack}
           hasValidThemeSelection={preferences.hasValidThemeSelection}
           themeSelectionNotice={preferences.themeSelectionNotice}
           isPreferenceSaving={preferences.isPreferenceSaving}
@@ -533,7 +532,6 @@ function App() {
           selectedPreviewThumbnails={preferences.selectedPreviewThumbnails}
           isPreviewTrayOpen={preferences.isPreviewTrayOpen}
           onToggleTheme={preferences.togglePreferenceTheme}
-          onSelectCountryTrack={preferences.selectPreferenceCountryTrack}
           onCancelPreferenceEdit={preferences.cancelPreferenceEdit}
           onSavePreferenceEdit={preferences.savePreferenceEdit}
           onEnterMainWithPreference={preferences.enterMainWithPreference}

@@ -107,13 +107,16 @@ export function usePreferences({
   // Generate previews list for selected themes
   const selectedPreviewImages = useMemo(() => {
     const prefs = activeThemePreferences.length > 0 ? activeThemePreferences : [fallbackPreferenceSelection]
+    const japaneseCities = ['벳푸', '오키나와', '교토', '오사카', '닛코', '가나자와']
     return prefs.flatMap((preference: Preference, preferenceIndex: number) =>
-      preference.coverImages.map((coverImage: { city: string; image: string }, coverImageIndex: number) => ({
-        ...coverImage,
-        key: `${preference.themeId}-${coverImageIndex}-${coverImage.city}`,
-        tag: preference.tag,
-        themeIndex: preferenceIndex,
-      })),
+      preference.coverImages
+        .filter((coverImage) => !japaneseCities.includes(coverImage.city))
+        .map((coverImage: { city: string; image: string }, coverImageIndex: number) => ({
+          ...coverImage,
+          key: `${preference.themeId}-${coverImageIndex}-${coverImage.city}`,
+          tag: preference.tag,
+          themeIndex: preferenceIndex,
+        })),
     )
   }, [activeThemePreferences, fallbackPreferenceSelection])
 

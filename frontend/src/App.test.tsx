@@ -887,13 +887,12 @@ describe('MVP main entry screen', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: /바다·해안/ }))
-    fireEvent.click(screen.getByRole('button', { name: '일본 기본 추천' }))
     fireEvent.click(screen.getByRole('button', { name: '이 취향으로 Lovv 시작하기' }))
 
     await waitFor(() => {
       expect(requestUpdatePreference).toHaveBeenCalledWith(
         expect.objectContaining({
-          countryTrack: 'JP',
+          countryTrack: 'KR',
           selectedThemeIds: ['sea_coast'],
         }),
         { accessToken: 'new-cognito-access-token' },
@@ -902,7 +901,7 @@ describe('MVP main entry screen', () => {
     await waitFor(() => {
       expect(window.location.pathname).toBe('/home')
     })
-    expectStoredThemeIds(['sea_coast'], 'JP')
+    expectStoredThemeIds(['sea_coast'], 'KR')
   })
 
   it('rejects invalid Cognito callback state without falling back to mock auth', async () => {
@@ -1889,7 +1888,6 @@ describe('MVP main entry screen', () => {
       'lovv-onboarding-liquid-shell',
     )
     expect(screen.getByTestId('onboarding-hero-panel')).toHaveClass('lovv-liquid-panel')
-    expect(screen.getByTestId('onboarding-country-card')).toHaveClass('lovv-liquid-panel')
     expect(screen.getByTestId('onboarding-content-grid')).toHaveClass('mt-10', 'items-stretch')
     expect(screen.getByTestId('preference-card-grid')).toHaveClass('auto-rows-[212px]')
     expect(screen.getByRole('button', { name: /온천·휴양/ })).toHaveClass(
@@ -1943,48 +1941,41 @@ describe('MVP main entry screen', () => {
       'max-xl:static',
     )
     expect(screen.getByRole('img', { name: '아산/온양 대표 이미지' })).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: '벳푸 썸네일 이미지' })).toBeInTheDocument()
     expect(screen.getByText('현재 표시: 아산/온양')).toBeInTheDocument()
-    expect(screen.getByText('1 / 2 · 온천·휴양')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '벳푸 +1 이미지 목록 펼치기' })).toBeInTheDocument()
-    expect(screen.queryByRole('group', { name: '선택한 테마 이미지 목록' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '다음 선택 테마 보기' })).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: '벳푸 +1 이미지 목록 펼치기' }))
-    expect(screen.getByRole('group', { name: '선택한 테마 이미지 목록' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: '벳푸 이미지로 크게 보기' }))
-
-    expect(screen.getByRole('img', { name: '벳푸 대표 이미지' })).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: '아산/온양 썸네일 이미지' })).toBeInTheDocument()
-    expect(screen.getByText('현재 표시: 벳푸')).toBeInTheDocument()
-    expect(screen.getByText('2 / 2 · 온천·휴양')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '아산/온양 +1 이미지 목록 펼치기' })).toBeInTheDocument()
+    expect(screen.getByText('1 / 1 · 온천·휴양')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /이미지 목록 펼치기/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('group', { name: '선택한 테마 이미지 목록' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /미식·노포/ }))
 
-    expect(screen.getByText('1 / 4 · 온천·휴양')).toBeInTheDocument()
+    expect(screen.getByText('1 / 2 · 온천·휴양')).toBeInTheDocument()
     expect(screen.getByText('현재 표시: 아산/온양')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '벳푸 +3 이미지 목록 펼치기' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '다음 선택 테마 보기' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '전주 +1 이미지 목록 펼치기' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '전주 +1 이미지 목록 펼치기' }))
+    expect(screen.getByRole('group', { name: '선택한 테마 이미지 목록' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '전주 이미지로 크게 보기' }))
+
+    expect(screen.getByRole('img', { name: '전주 대표 이미지' })).toBeInTheDocument()
+    expect(screen.getByText('현재 표시: 전주')).toBeInTheDocument()
+    expect(screen.getByText('2 / 2 · 미식·노포')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '아산/온양 +1 이미지 목록 펼치기' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /자연·트레킹/ }))
 
-    expect(screen.getByText('1 / 6 · 온천·휴양')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '벳푸 +5 이미지 목록 펼치기' })).toBeInTheDocument()
-    expect(screen.queryByRole('img', { name: '제주 썸네일 이미지' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: '벳푸 +5 이미지 목록 펼치기' }))
+    expect(screen.getByText('1 / 3 · 온천·휴양')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '전주 +2 이미지 목록 펼치기' })).toBeInTheDocument()
 
-    expect(screen.getAllByRole('button', { name: /이미지로 크게 보기/ })).toHaveLength(5)
+    fireEvent.click(screen.getByRole('button', { name: '전주 +2 이미지 목록 펼치기' }))
+
+    expect(screen.getAllByRole('button', { name: /이미지로 크게 보기/ })).toHaveLength(2)
     expect(screen.getByRole('img', { name: '제주 썸네일 이미지' })).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: '닛코 썸네일 이미지' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '닛코 이미지로 크게 보기' }))
+    fireEvent.click(screen.getByRole('button', { name: '제주 이미지로 크게 보기' }))
 
-    expect(screen.getByRole('img', { name: '닛코 대표 이미지' })).toBeInTheDocument()
-    expect(screen.getByText('6 / 6 · 자연·트레킹')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '아산/온양 +5 이미지 목록 펼치기' })).toBeInTheDocument()
-    expect(screen.queryByRole('group', { name: '선택한 테마 이미지 목록' })).not.toBeInTheDocument()
+    expect(screen.getByRole('img', { name: '제주 대표 이미지' })).toBeInTheDocument()
+    expect(screen.getByText('3 / 3 · 자연·트레킹')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '아산/온양 +2 이미지 목록 펼치기' })).toBeInTheDocument()
     expect(screen.getByText('오늘의 취향 여정')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '온천·휴양 · 미식·노포 · 자연·트레킹' })).toBeInTheDocument()
   })

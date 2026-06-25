@@ -92,11 +92,29 @@ export type PlanStop = {
   imageUrl?: string
 }
 
+export type RoutePathCoordinate = [number, number]
+
+export type PlanRoute = {
+  provider?: string
+  profile?: string
+  geometry?: {
+    type?: string
+    coordinates?: RoutePathCoordinate[]
+  }
+  distanceMeters?: number
+  durationSeconds?: number
+  segments?: Array<{
+    distanceMeters?: number
+    durationSeconds?: number
+  }>
+}
+
 export type PlanDay = {
   day: number
   title: string
   summary: string
   stops: PlanStop[]
+  route?: PlanRoute
 }
 
 export type PlanDraft = {

@@ -5,7 +5,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { PlanStop } from '../../shared/types/app'
+import type { PlanStop, RoutePathCoordinate } from '../../shared/types/app'
 import { smallCityMapBounds, type SmallCityCountry } from '../map-city/smallCities'
 
 type PlanDetailGoogleMapProps = {
@@ -16,6 +16,7 @@ type PlanDetailGoogleMapProps = {
   onSelectStopIndex?: (index: number) => void
   googleMapsApiKey?: string
   googleMapsMapId?: string
+  routePath?: RoutePathCoordinate[]
 }
 
 type GoogleMapInstance = {
@@ -66,6 +67,19 @@ const getCountryCenter = (country: SmallCityCountry): GoogleLatLngLiteral => {
     lat: (bounds.minLat + bounds.maxLat) / 2,
     lng: (bounds.minLng + bounds.maxLng) / 2,
   }
+}
+
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value)
+
+const routePathToLatLng = (routePath?: RoutePathCoordinate[]) => {
+  if (!Array.isArray(routePath)) {
+    return []
+  }
+
+  return routePath
+    .map(([lng, lat]) => (isFiniteNumber(lat) && isFiniteNumber(lng) ? { lat, lng } : null))
+    .filter((point): point is GoogleLatLngLiteral => point !== null)
 }
 
 const loadGoogleMapsRuntime = (apiKey: string) => {
@@ -133,6 +147,7 @@ export function PlanDetailGoogleMap({
   onSelectStopIndex,
   googleMapsApiKey = defaultGoogleMapsApiKey,
   googleMapsMapId = defaultGoogleMapsMapId,
+  routePath,
 }: PlanDetailGoogleMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<GoogleMapInstance | null>(null)
@@ -155,6 +170,11 @@ export function PlanDetailGoogleMap({
       })
       .filter((pt): pt is { index: number; stop: PlanStop; coords: GoogleLatLngLiteral } => pt !== null)
   }, [stops, nameToCoords])
+
+  const routeLinePath = useMemo(() => {
+    const routeCoordinates = routePathToLatLng(routePath)
+    return routeCoordinates.length > 1 ? routeCoordinates : validPoints.map((pt) => pt.coords)
+  }, [routePath, validPoints])
 
   useEffect(() => {
     if (!googleMapsApiKey || typeof window === 'undefined') {
@@ -207,21 +227,22 @@ export function PlanDetailGoogleMap({
 
     if (!map || !maps || runtimeStatus !== 'ready') return
 
-    if (validPoints.length === 0) {
+    const boundsPath = routeLinePath.length > 0 ? routeLinePath : validPoints.map((pt) => pt.coords)
+
+    if (boundsPath.length === 0) {
       map.setCenter(getCountryCenter(countryCode))
       map.setZoom(10)
       return
     }
 
     const bounds = new maps.LatLngBounds()
-    validPoints.forEach((pt) => {
-      bounds.extend(pt.coords)
+    boundsPath.forEach((point) => {
+      bounds.extend(point)
     })
 
     // Padding prevents markers from getting cut off at edge of sticky screen
     map.fitBounds(bounds, 64)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [countryCode, validPoints, runtimeStatus, mapInstanceVersion])
+  }, [countryCode, routeLinePath, validPoints, runtimeStatus, mapInstanceVersion])
 
   // Render markers and polyline paths
   useEffect(() => {
@@ -276,9 +297,7 @@ export function PlanDetailGoogleMap({
     })
 
     // 4. Render Dashed Polyline Path connecting stops in order
-    if (GooglePolyline && validPoints.length > 1) {
-      const pathCoordinates = validPoints.map((pt) => pt.coords)
-      
+    if (GooglePolyline && routeLinePath.length > 1) {
       const lineSymbol = {
         path: 'M 0,-1 0,1',
         strokeOpacity: 1,
@@ -287,7 +306,7 @@ export function PlanDetailGoogleMap({
       }
 
       polylineInstanceRef.current = new GooglePolyline({
-        path: pathCoordinates,
+        path: routeLinePath,
         strokeOpacity: 0,
         icons: [
           {
@@ -300,7 +319,7 @@ export function PlanDetailGoogleMap({
       })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [validPoints, activeStopIndex, runtimeStatus, mapInstanceVersion])
+  }, [validPoints, routeLinePath, activeStopIndex, runtimeStatus, mapInstanceVersion])
 
   return (
     <div

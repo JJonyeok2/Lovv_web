@@ -3,7 +3,7 @@
  * @description Frontend adapter for calling the recommendation API and mapping the response.
  */
 
-import type { ThemeId, PlanDraft, PlanDay, PlanStop } from '../types/app'
+import type { ThemeId, PlanDraft, PlanDay, PlanRoute, PlanStop } from '../types/app'
 
 export const recommendationsApiEndpoints = {
   create: '/api/v1/recommendations',
@@ -48,6 +48,7 @@ export type RecommendationApiResponse = {
       day: number
       title: string
       summary: string
+      route?: PlanRoute
       items: Array<{
         itemId: string
         contentId?: string
@@ -147,6 +148,7 @@ export const mapRecommendationToDraft = (apiResponse: RecommendationApiResponse)
       title: fallbackTitle,
       summary: fallbackSummary,
       stops,
+      route: d.route,
     }
   })
 

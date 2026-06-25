@@ -29,6 +29,7 @@ import {
   requestGetSmallCityPlaces,
   type SmallCityApiPlaceGroups,
 } from './shared/api/smallCityApi'
+import './i18n'
 import App from './App'
 import { requestCognitoToken } from './features/auth/cognitoAuth'
 import { socialAuthProviderStorageKey } from './features/auth/authModel'
@@ -1864,7 +1865,7 @@ describe('MVP main entry screen', () => {
     expect(screen.queryByRole('heading', { name: /나만 아는 여행 앱, Lovv/i })).not.toBeInTheDocument()
     expect(screen.getByText('Lovv City Mood Journal')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '여행의 분위기를 골라주세요' })).toBeInTheDocument()
-    expect(screen.getByText(/익숙한 대도시 감각을 Lovv가 한국과 일본 소도시 후보로 바꿔둘게요/)).toBeInTheDocument()
+    expect(screen.getByText(/익숙한 대도시 감각을 Lovv가 한국 소도시 후보로 바꿔둘게요/)).toBeInTheDocument()
     expect(screen.queryByText(/이번 선택으로 AI 일정의 말투와 지도 후보/)).not.toBeInTheDocument()
     expect(screen.queryByText(/도시 이름을 고르는 게 아니라/)).not.toBeInTheDocument()
     expect(screen.queryByText('First Issue')).not.toBeInTheDocument()

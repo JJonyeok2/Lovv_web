@@ -865,6 +865,7 @@ export function PlanDetailView({
                   countryCode={countryCode}
                   activeStopIndex={activeStopIndex}
                   onSelectStopIndex={setActiveStopIndex}
+                  routePath={activeDay?.route?.geometry?.coordinates}
                 />
               </div>
 

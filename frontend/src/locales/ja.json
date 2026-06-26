@@ -95,5 +95,19 @@
       "routeHint": "安목ビーチ · 正東津",
       "editorialNote": "カフェや海辺、工芸や庭園の雰囲気をゆっくりと眺め、記録する旅です。"
     }
+  },
+  "feedback": {
+    "title": "この日程、どのような点が良かったですか？",
+    "chip_healing": "静かでよかったです",
+    "chip_nature": "自然中心でよかったです",
+    "chip_tradition": "動線が便利です",
+    "chip_food": "日程が充実しています",
+    "chip_negative": "この日程には興味ありません",
+    "guide_note": "タップ ➔ 好み追加 · もう一度タップ ➔ 解除 · 「興味ありません」 ➔ テーマ露出 ↓, アカウントに保存",
+    "like_label": "いいね (保存ト글)",
+    "like_active_label": "いいね取り消し",
+    "notice_positive": "フィードバックが反映され、好みの雰囲気に追加されました！",
+    "notice_toggled_off": "好みから解除されました。",
+    "notice_negative": "否定的なフィードバックが反映され、該当テーマの露出頻度が下がります。"
   }
 }

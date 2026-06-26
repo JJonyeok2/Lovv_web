@@ -95,5 +95,19 @@
       "routeHint": "안목해변 · 정동진",
       "editorialNote": "카페와 해변, 공예와 정원의 분위기를 천천히 보고 기록하는 여행이에요."
     }
+  },
+  "feedback": {
+    "title": "이 일정, 어떤 점이 좋았나요?",
+    "chip_healing": "한적해서 좋았어요",
+    "chip_nature": "사진이 잘 나와요",
+    "chip_tradition": "동선이 편해요",
+    "chip_food": "일정이 알차요",
+    "chip_negative": "이 일정은 별로에요",
+    "guide_note": "받은 피드백은, 다음 일정에 반영해드려요",
+    "like_label": "좋아요 (저장 토글)",
+    "like_active_label": "좋아요 취소",
+    "notice_positive": "피드백이 반영되어 내 선호 분위기에 추가되었습니다!",
+    "notice_toggled_off": "선호에서 해제되었습니다.",
+    "notice_negative": "부정 피드백이 반영되어 해당 테마의 노출 빈도가 낮아집니다."
   }
 }

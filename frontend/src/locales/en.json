@@ -95,5 +95,19 @@
       "routeHint": "Anmok Beach · Jeongdongjin",
       "editorialNote": "A journey to slowly view and capture the atmosphere of cafes, beaches, and gardens."
     }
+  },
+  "feedback": {
+    "title": "What did you like about this itinerary?",
+    "chip_healing": "Liked the quietness",
+    "chip_nature": "Preferred nature-focus",
+    "chip_tradition": "Smooth route/transport",
+    "chip_food": "Rich itinerary stops",
+    "chip_negative": "Not interested in this trip",
+    "guide_note": "Tap ➔ add preference · Tap again ➔ remove · \"Not interested\" ➔ lowers theme exposure, saved to account",
+    "like_label": "Like (Toggle save)",
+    "like_active_label": "Unlike",
+    "notice_positive": "Feedback applied! Vibe added to your preferences.",
+    "notice_toggled_off": "Removed from preferences.",
+    "notice_negative": "Negative feedback recorded! Theme exposure will be lowered."
   }
 }

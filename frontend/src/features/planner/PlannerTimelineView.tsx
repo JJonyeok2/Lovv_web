@@ -4,8 +4,10 @@
  * @lastModified 2026-06-23
  */
 
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { PlannerCityContext } from '../map-city/smallCities'
-import type { PlanDraft, PreferenceProfile } from '../../shared/types/app'
+import type { PlanDraft, PreferenceProfile, ThemeId } from '../../shared/types/app'
 
 type PlannerTimelineViewProps = {
   planResultPanelRef: React.RefObject<HTMLElement | null>
@@ -31,6 +33,9 @@ type PlannerTimelineViewProps = {
   resetPlannerFlow: () => void
   shouldShowFestivalPrompt: boolean
   shouldShowDurationPrompt: boolean
+  activeThemeIds?: ThemeId[]
+  onAddThemePreference?: (themeId: ThemeId) => void
+  onRemoveThemePreferences?: (themeIdsToRemove: ThemeId[]) => void
 }
 
 export function PlannerTimelineView({
@@ -57,7 +62,36 @@ export function PlannerTimelineView({
   resetPlannerFlow,
   shouldShowFestivalPrompt,
   shouldShowDurationPrompt,
+  activeThemeIds = [],
+  onAddThemePreference,
+  onRemoveThemePreferences,
 }: PlannerTimelineViewProps) {
+
+  const { t } = useTranslation()
+  const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null)
+
+  const feedbackChips = [
+    { id: 'healing_rest', label: t('feedback.chip_healing') },
+    { id: 'nature_trekking', label: t('feedback.chip_nature') },
+    { id: 'history_tradition', label: t('feedback.chip_tradition') },
+    { id: 'food_local', label: t('feedback.chip_food') },
+  ]
+
+  const handleChipClick = (themeId: ThemeId) => {
+    if (onAddThemePreference) {
+      onAddThemePreference(themeId)
+      setFeedbackNotice(t('feedback.notice_positive'))
+      setTimeout(() => setFeedbackNotice(null), 3000)
+    }
+  }
+
+  const handleNegativeClick = () => {
+    if (onRemoveThemePreferences && activeThemeIds) {
+      onRemoveThemePreferences(activeThemeIds)
+      setFeedbackNotice(t('feedback.notice_negative'))
+      setTimeout(() => setFeedbackNotice(null), 3000)
+    }
+  }
 
   const renderSkeletonItineraryPanel = () => (
     <section
@@ -104,21 +138,7 @@ export function PlannerTimelineView({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-        <div className="grid grid-cols-[1fr_auto] items-start gap-4 max-md:grid-cols-1">
-          <div>
-            <p className="text-sm font-bold text-[#33271E]">추천 흐름 요약</p>
-            <h4 className="mt-2 break-keep text-xl font-bold leading-7 text-[#33271E] max-sm:text-lg max-sm:leading-6">
-              {currentPlanTitle}
-            </h4>
-            <p className="mt-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
-              AI가 코스를 정리하는 중이에요. 잠시만 기다려 주세요.
-            </p>
-          </div>
-          <span
-            className="h-9 w-20 rounded-full bg-[#F3B489]/30"
-            style={{ animation: 'lovv-pulse 1.6s ease-in-out infinite' }}
-          />
-        </div>
+        <h4 className="sr-only break-keep max-sm:text-lg max-sm:leading-6">{currentPlanTitle}</h4>
 
         <div className="mt-4 rounded-[16px] border border-white/40 bg-[#FFF8F6]/75 p-4 shadow-sm backdrop-blur-sm">
           <p className="text-[12px] font-black uppercase tracking-[0.12em] text-[#A92B10]">핵심 추천 기준</p>
@@ -217,9 +237,7 @@ export function PlannerTimelineView({
             >
               {planDestinationName ?? '생성된 일정 요약'}
             </h3>
-            <p className="mt-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
-              챗봇에서 정리된 조건을 바탕으로, 핵심 흐름만 압축해서 보여줍니다.
-            </p>
+            <p className="sr-only break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">챗봇에서 정리된 조건을 바탕으로, 핵심 흐름만 압축해서 보여줍니다.</p>
           </div>
           <span className="inline-flex h-10 items-center justify-center rounded-full border border-white/40 bg-gradient-to-tr from-[#F36B12] to-[#FF8A2A] px-5 text-[12px] font-bold text-[#33271E] shadow-sm">
             {planDraft.dayCount}일 구성
@@ -253,20 +271,8 @@ export function PlannerTimelineView({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-        <div className="grid grid-cols-[1fr_auto] items-start gap-4 max-md:grid-cols-1">
-          <div>
-            <p className="text-sm font-bold text-[#33271E]">추천 흐름 요약</p>
-            <h4 className="mt-2 break-keep text-xl font-bold leading-7 text-[#33271E] max-sm:text-lg max-sm:leading-6">
-              {currentPlanTitle}
-            </h4>
-            <p className="mt-2 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
-              여기서는 코스를 빠르게 확인하고, 추천 이유는 세부 일정에서 확인합니다.
-            </p>
-          </div>
-          <span className="rounded-full border border-white/60 bg-[#fffffa]/80 px-4 py-2 text-[12px] font-bold text-[#33271E] shadow-sm">
-            총 {planDraft.stops.length}개 코스
-          </span>
-        </div>
+        <h4 className="sr-only break-keep max-sm:text-lg max-sm:leading-6">{currentPlanTitle}</h4>
+        <span className="sr-only">총 {planDraft.stops.length}개 코스</span>
 
         <div className="mt-4 rounded-[16px] border border-white/40 bg-[#FFF8F6]/75 p-4 shadow-sm backdrop-blur-sm">
           <p className="text-[12px] font-black uppercase tracking-[0.12em] text-[#A92B10]">
@@ -334,62 +340,107 @@ export function PlannerTimelineView({
           </p>
         </section>
 
-        <div className="mt-5 grid grid-cols-2 gap-3 max-md:grid-cols-1">
-          <button
-            type="button"
-            aria-pressed={isCurrentPlanLiked}
-            onClick={toggleGeneratedPlanLike}
-            className={`inline-flex min-h-12 items-center justify-center rounded-full border px-5 text-sm font-bold text-[#33271E] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
-              isCurrentPlanLiked
-                ? 'border-white/40 bg-gradient-to-tr from-[#F36B12] to-[#FF8A2A] text-[#33271E] shadow-sm hover:scale-[1.01]'
-                : 'border-white/60 bg-[#fffffa]/80 hover:border-[#F36B12] hover:bg-[#FFE0CA] shadow-sm hover:scale-[1.01]'
-            }`}
-          >
-            {isCurrentPlanLiked ? '좋아요 취소' : '좋아요'}
-          </button>
-          <button
-            type="button"
-            onClick={saveGeneratedPlan}
-            disabled={isCurrentPlanSaved || isPlanSaving}
-            className={`inline-flex min-h-12 items-center justify-center rounded-full border border-white/40 bg-gradient-to-tr from-[#F36B12] to-[#FF8A2A] px-5 text-sm font-black text-[#33271E] shadow-sm transition hover:scale-[1.01] hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
-              isCurrentPlanSaved
-                ? 'disabled:cursor-default disabled:opacity-85'
-                : isPlanSaving
-                ? 'disabled:cursor-wait disabled:opacity-75'
-                : ''
-            }`}
-          >
-            {isPlanSaving && (
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-[#33271E]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+        <div className="sr-only">
+          {/* Feedback Card */}
+          <div className="mt-6 rounded-[20px] border border-white/50 bg-[#FFF7F0]/70 p-5 backdrop-blur-sm">
+            <p className="break-keep text-sm font-black text-[#33271E]">
+              {t('feedback.title')}
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2 max-sm:grid-cols-1">
+              {feedbackChips.map((chip) => {
+                const isSelected = activeThemeIds?.includes(chip.id as ThemeId)
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => handleChipClick(chip.id as ThemeId)}
+                    className={`inline-flex min-h-10 items-center justify-center rounded-[8px] border px-3 text-[12px] font-bold transition focus-visible:outline focus-visible:outline-2 ${
+                      isSelected
+                        ? 'border-[#F36B12] bg-[#FFE0CA] text-[#33271E] shadow-sm'
+                        : 'border-[#F3B489] bg-[#fffffa] text-[#33271E]/80 hover:bg-[#FFE0CA] shadow-sm'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={handleNegativeClick}
+                className="inline-flex min-h-10 w-full items-center justify-center rounded-[8px] border border-gray-200 bg-[#fffffa] px-3 text-[12px] font-bold text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition focus-visible:outline focus-visible:outline-2"
+              >
+                {t('feedback.chip_negative')}
+              </button>
+            </div>
+            <p className="mt-2 break-keep text-[10px] font-semibold leading-4 text-[#6E5A50]">
+              {t('feedback.guide_note')}
+            </p>
+            {feedbackNotice && (
+              <p aria-live="polite" className="mt-2 text-[11px] font-bold text-[#A92B10]">
+                {feedbackNotice}
+              </p>
             )}
-            {isCurrentPlanSaved ? '마이페이지에 저장됨' : isPlanSaving ? '저장 중...' : '마이페이지에 저장'}
-          </button>
-          <button
-            type="button"
-            onClick={() => resetPlannerFlow()}
-            className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/60 bg-[#fffffa]/80 px-5 text-sm font-bold text-[#33271E] shadow-sm transition hover:border-[#F36B12] hover:bg-[#FFE0CA] hover:scale-[1.01] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] max-md:col-span-1 md:col-span-2"
-          >
-            일정 다시짜기
-          </button>
-        </div>
+          </div>
 
-        {isCurrentPlanSaved ? (
-          <button
-            type="button"
-            onClick={openMyPage}
-            className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-white/60 bg-[#fffffa]/80 px-4 text-sm font-bold text-[#33271E] shadow-sm transition hover:border-[#F36B12] hover:bg-[#FFE0CA] hover:scale-[1.01] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
-          >
-            마이페이지 보기
-          </button>
-        ) : null}
-        {savedPlanNotice ? (
-          <p aria-live="polite" className="mt-4 break-keep text-sm font-bold leading-6 text-[#33271E]">
-            {savedPlanNotice}
-          </p>
-        ) : null}
+          <div className="mt-5 grid grid-cols-2 gap-3 max-md:grid-cols-1">
+            <button
+              type="button"
+              aria-pressed={isCurrentPlanLiked}
+              onClick={toggleGeneratedPlanLike}
+              className={`inline-flex min-h-12 items-center justify-center rounded-full border px-5 text-sm font-bold text-[#33271E] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
+                isCurrentPlanLiked
+                  ? 'border-white/40 bg-gradient-to-tr from-[#F36B12] to-[#FF8A2A] text-[#33271E] shadow-sm hover:scale-[1.01]'
+                  : 'border-white/60 bg-[#fffffa]/80 hover:border-[#F36B12] hover:bg-[#FFE0CA] shadow-sm hover:scale-[1.01]'
+              }`}
+            >
+              {isCurrentPlanLiked ? '좋아요 취소' : '좋아요'}
+            </button>
+            <button
+              type="button"
+              onClick={saveGeneratedPlan}
+              disabled={isCurrentPlanSaved || isPlanSaving}
+              className={`inline-flex min-h-12 items-center justify-center rounded-full border border-white/40 bg-gradient-to-tr from-[#F36B12] to-[#FF8A2A] px-5 text-sm font-black text-[#33271E] shadow-sm transition hover:scale-[1.01] hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
+                isCurrentPlanSaved
+                  ? 'disabled:cursor-default disabled:opacity-85'
+                  : isPlanSaving
+                  ? 'disabled:cursor-wait disabled:opacity-75'
+                  : ''
+              }`}
+            >
+              {isPlanSaving && (
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-[#33271E]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              )}
+              {isCurrentPlanSaved ? '마이페이지에 저장됨' : isPlanSaving ? '저장 중...' : '마이페이지에 저장'}
+            </button>
+            <button
+              type="button"
+              onClick={() => resetPlannerFlow()}
+              className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/60 bg-[#fffffa]/80 px-5 text-sm font-bold text-[#33271E] shadow-sm transition hover:border-[#F36B12] hover:bg-[#FFE0CA] hover:scale-[1.01] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] max-md:col-span-1 md:col-span-2"
+            >
+              일정 다시짜기
+            </button>
+          </div>
+
+          {isCurrentPlanSaved ? (
+            <button
+              type="button"
+              onClick={openMyPage}
+              className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-white/60 bg-[#fffffa]/80 px-4 text-sm font-bold text-[#33271E] shadow-sm transition hover:border-[#F36B12] hover:bg-[#FFE0CA] hover:scale-[1.01] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+            >
+              마이페이지 보기
+            </button>
+          ) : null}
+          {savedPlanNotice ? (
+            <p aria-live="polite" className="mt-4 break-keep text-sm font-bold leading-6 text-[#33271E]">
+              {savedPlanNotice}
+            </p>
+          ) : null}
+        </div>
       </div>
     </section>
   )

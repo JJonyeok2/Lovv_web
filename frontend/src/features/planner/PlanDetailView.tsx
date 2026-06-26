@@ -1,28 +1,35 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import type { ChatMessage, PlanDay, PlanDraft, PlanStop, SavedPlanLike } from '../../shared/types/app'
+import { useNavigate } from 'react-router-dom'
+import type { ChatMessage, PlanDay, PlanDraft, PlanStop, RoutePathCoordinate, ThemeId, LovvUser, SelectedMealPlace } from '../../shared/types/app'
+import { useTranslation } from 'react-i18next'
 import type { SmallCityCountry } from '../map-city/smallCities'
 import { requestGetSmallCityPlaces } from '../../shared/api/smallCityApi'
 import { PlanDetailGoogleMap } from './PlanDetailGoogleMap'
-import { SavedPlanLikeControls } from '../saved-plans/SavedPlanLikeControls'
 import {
   createDayReplacementCandidate,
   createStopReplacementCandidate,
   parsePlannerEditCommand,
 } from './plannerEditModel'
+import { isMealPlaceholderStop } from './plannerModel'
 import { searchKakaoMealPlaces } from './kakaoMealSearch'
 import {
   createKakaoMapSearchUrl,
-  createMealSlotDescriptors,
-  type MealSlotDescriptor,
-  type SelectedMealPlace,
 } from './plannerMealModel'
 import { buildAttractionImageUrl as buildAttractionImageUrlFromModel } from './plannerImageModel'
+import { getPlanRouteCoordinates, requestOpenRouteServicePath } from './plannerRouteModel'
 
 // ---------------------------------------------------------------------------
 // Image URL helpers (Task 13 – S3 / CloudFront integration)
 // ---------------------------------------------------------------------------
 
 const IMAGE_CDN_BASE = (import.meta.env.VITE_IMAGE_CDN_BASE_URL as string | undefined)?.trim().replace(/\/+$/, '') ?? ''
+const OPEN_ROUTE_SERVICE_API_KEY = (import.meta.env.VITE_OPENROUTESERVICE_API_KEY as string | undefined)?.trim() ?? ''
+let rainyMessageIdSequence = 0
+
+const createRainyMessageId = (prefix: string) => {
+  rainyMessageIdSequence += 1
+  return `${prefix}-${Date.now()}-${rainyMessageIdSequence}`
+}
 
 /**
  * Build the CloudFront URL for an attraction image.
@@ -190,6 +197,38 @@ const resolveStopImageUrl = (
   return buildAttractionImageUrl(cityEnglishName, stop.title)
 }
 
+const getDropTargetTimeLabel = (stops: PlanStop[], targetIndex: number): PlanStop['time'] => {
+  const previousStop = stops
+    .slice(0, targetIndex)
+    .reverse()
+    .find((stop) => !isMealPlaceholderStop(stop))
+
+  if (previousStop) {
+    return previousStop.time
+  }
+
+  const nextStop = stops
+    .slice(targetIndex)
+    .find((stop) => !isMealPlaceholderStop(stop))
+
+  return nextStop?.time ?? '점심'
+}
+
+const serializeRouteCoordinates = (coordinates: RoutePathCoordinate[]) =>
+  coordinates.map(([lng, lat]) => `${lng.toFixed(6)},${lat.toFixed(6)}`).join('|')
+
+const parseRouteCoordinateKey = (coordinateKey: string): RoutePathCoordinate[] =>
+  coordinateKey
+    .split('|')
+    .filter(Boolean)
+    .map((pair) => {
+      const [lng, lat] = pair.split(',').map(Number)
+      return Number.isFinite(lng) && Number.isFinite(lat)
+        ? ([lng, lat] as RoutePathCoordinate)
+        : null
+    })
+    .filter((coordinate): coordinate is RoutePathCoordinate => coordinate !== null)
+
 // ---------------------------------------------------------------------------
 // PlanDetailView component
 // ---------------------------------------------------------------------------
@@ -206,10 +245,6 @@ type PlanDetailViewProps = {
   /** destinationId is used to fetch place images from SmallCity API / S3. */
   destinationId?: string
   planId: string
-  planLike: SavedPlanLike
-  onSelectSavedPlanLike: (planId: string, like: Exclude<SavedPlanLike, null>) => void
-  savedPlanLikePending?: boolean
-  savedPlanLikeError?: string | null
   isSavedPlanDetailLoading?: boolean
   saveGeneratedPlan: () => void
   isCurrentPlanSaved: boolean
@@ -221,6 +256,20 @@ type PlanDetailViewProps = {
   chatMessages?: ChatMessage[]
   onReplacePlanStop?: (dayNumber: number, stopIndex: number, replacement: PlanStop) => void
   onReplacePlanDay?: (dayNumber: number, replacement: PlanDay) => void
+  activeThemeIds?: ThemeId[]
+  onAddThemePreference?: (themeId: ThemeId) => void
+  onRemoveThemePreferences?: (themeIdsToRemove: ThemeId[]) => void
+  selectedTravelMonth?: number | null
+  currentUser?: LovvUser | null
+  ownerId?: string
+  isPublic?: boolean
+  isPlanCloning?: boolean
+  cloneSavedPlan?: (planId: string) => Promise<void>
+  isShareStatusUpdating?: boolean
+  toggleSavedPlanShareStatus?: (planId: string, isPublic: boolean) => Promise<unknown>
+  setPendingAuthRedirectPath?: (path: string | null) => void
+  addWishlistRestaurant?: (restaurant: SelectedMealPlace) => void
+  removeWishlistRestaurant?: (restaurantId: string) => void
 }
 
 type PendingPlanEdit =
@@ -240,13 +289,6 @@ type PendingPlanEdit =
       candidate: PlanDay
     }
 
-type MealSearchPanelState = {
-  slot: MealSlotDescriptor
-  query: string
-  status: 'idle' | 'loading' | 'ready' | 'missing-key' | 'unavailable' | 'zero-result'
-  places: SelectedMealPlace[]
-}
-
 export function PlanDetailView({
   isPlannerReady,
   shouldAskFestivalTheme,
@@ -258,10 +300,6 @@ export function PlanDetailView({
   destinationName,
   destinationId,
   planId,
-  planLike,
-  onSelectSavedPlanLike,
-  savedPlanLikePending = false,
-  savedPlanLikeError = null,
   isSavedPlanDetailLoading = false,
   saveGeneratedPlan,
   isCurrentPlanSaved,
@@ -273,7 +311,23 @@ export function PlanDetailView({
   chatMessages = [],
   onReplacePlanStop,
   onReplacePlanDay,
+  activeThemeIds = [],
+  onAddThemePreference,
+  onRemoveThemePreferences,
+  selectedTravelMonth = null,
+  currentUser = null,
+  ownerId,
+  isPublic = false,
+  isPlanCloning = false,
+  cloneSavedPlan,
+  isShareStatusUpdating = false,
+  toggleSavedPlanShareStatus,
+  setPendingAuthRedirectPath,
+  addWishlistRestaurant,
+  removeWishlistRestaurant,
 }: PlanDetailViewProps) {
+  const navigate = useNavigate()
+
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' })
   }, [])
@@ -285,8 +339,102 @@ export function PlanDetailView({
   const [floatingChatOpen, setFloatingChatOpen] = useState(false)
   const [floatingChatInput, setFloatingChatInput] = useState('')
   const [floatingChatNotice, setFloatingChatNotice] = useState<string | null>(null)
-  const [selectedMealPlaces, setSelectedMealPlaces] = useState<Record<string, SelectedMealPlace>>({})
-  const [mealSearchPanel, setMealSearchPanel] = useState<MealSearchPanelState | null>(null)
+  const [collapsedStops, setCollapsedStops] = useState<Record<string, boolean>>({})
+  const [isDragging, setIsDragging] = useState(false)
+  const [restaurantSearchOpen, setRestaurantSearchOpen] = useState(false)
+  const [restaurantSearchQuery, setRestaurantSearchQuery] = useState('')
+  const [restaurantSearchStatus, setRestaurantSearchStatus] = useState<'idle' | 'loading' | 'ready' | 'missing-key' | 'unavailable' | 'zero-result'>('idle')
+  const [restaurantSearchResults, setRestaurantSearchResults] = useState<SelectedMealPlace[]>([])
+
+  const toggleStopCollapse = (dayNumber: number, stopIndex: number) => {
+    const key = `${dayNumber}-${stopIndex}`
+    setCollapsedStops((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }))
+  }
+
+  const { t } = useTranslation()
+  const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null)
+
+  // --- Rainy season alert & indoor alternative state ---
+  const isRainySeason = selectedTravelMonth !== null && [6, 7, 8].includes(selectedTravelMonth)
+  const [hasRainyAlertDismissed, setHasRainyAlertDismissed] = useState(false)
+  const [showRainyOptions, setShowRainyOptions] = useState(false)
+  const [localChatMessages, setLocalChatMessages] = useState<ChatMessage[]>([])
+
+  const feedbackChips = [
+    { id: 'healing_rest', label: t('feedback.chip_healing') },
+    { id: 'nature_trekking', label: t('feedback.chip_nature') },
+    { id: 'history_tradition', label: t('feedback.chip_tradition') },
+    { id: 'food_local', label: t('feedback.chip_food') },
+  ]
+
+  const handleChipClick = (themeId: ThemeId) => {
+    const isCurrentlySelected = activeThemeIds?.includes(themeId)
+    if (isCurrentlySelected && onRemoveThemePreferences) {
+      onRemoveThemePreferences([themeId])
+      setFeedbackNotice(t('feedback.notice_toggled_off'))
+    } else if (onAddThemePreference) {
+      onAddThemePreference(themeId)
+      setFeedbackNotice(t('feedback.notice_positive'))
+    }
+    setTimeout(() => setFeedbackNotice(null), 3000)
+  }
+
+  const handleNegativeClick = () => {
+    if (onRemoveThemePreferences && activeThemeIds) {
+      onRemoveThemePreferences(activeThemeIds)
+      setFeedbackNotice(t('feedback.notice_negative'))
+      setTimeout(() => setFeedbackNotice(null), 3000)
+    }
+  }
+
+  // --- Indoor alternative itinerary helpers ---
+  const convertToIndoorDay = (day: PlanDay): PlanDay => {
+    const indoorStops = day.stops.map((stop) => {
+      const isOutdoor = /해변|바다|해수욕|공원|산|계곡|폭포|올레|트레킹|등산|해안/.test(`${stop.title} ${stop.body}`)
+      if (!isOutdoor) return stop
+      return {
+        ...stop,
+        title: stop.title.replace(/해변|바다|해수욕장?/g, '실내 전시·체험관').replace(/공원|산|계곡|폭포/g, '문화·예술 공간'),
+        body: '비를 피할 수 있는 실내 공간에서 여유롭게 즐길 수 있는 코스입니다.',
+        reason: '우천 시에도 편하게 방문할 수 있는 실내형 대체 코스입니다.',
+      }
+    })
+    return { ...day, stops: indoorStops, title: `${day.title} (실내 대체)`, summary: '비를 피할 수 있는 실내 코스로 구성한 일정입니다.' }
+  }
+
+  const handleRainyAlertClick = () => {
+    setHasRainyAlertDismissed(true)
+    setFloatingChatOpen(true)
+    const assistantMsg: ChatMessage = {
+      id: createRainyMessageId('rain-prompt'),
+      role: 'assistant',
+      content: '실내 대체 일정을 생성할 수 있어요. 생성해드릴까요?',
+    }
+    setLocalChatMessages((prev) => [...prev, assistantMsg])
+    setShowRainyOptions(true)
+  }
+
+  const handleRainyOptionYes = () => {
+    const userMsg: ChatMessage = { id: createRainyMessageId('rain-yes'), role: 'user', content: '네' }
+    const replyMsg: ChatMessage = { id: createRainyMessageId('rain-yes-reply'), role: 'assistant', content: '비를 피할 수 있는 실내 코스로 일정을 변경했어요! 저장하면 마이페이지에 반영됩니다.' }
+    setLocalChatMessages((prev) => [...prev, userMsg, replyMsg])
+    setShowRainyOptions(false)
+    if (onReplacePlanDay) {
+      days.forEach((day) => {
+        onReplacePlanDay(day.day, convertToIndoorDay(day))
+      })
+    }
+  }
+
+  const handleRainyOptionNo = () => {
+    const userMsg: ChatMessage = { id: createRainyMessageId('rain-no'), role: 'user', content: '아니오' }
+    const replyMsg: ChatMessage = { id: createRainyMessageId('rain-no-reply'), role: 'assistant', content: '알겠습니다. 기존 일정을 그대로 유지할게요.' }
+    setLocalChatMessages((prev) => [...prev, userMsg, replyMsg])
+    setShowRainyOptions(false)
+  }
 
   // Reset active stop when day changes
   useEffect(() => {
@@ -303,6 +451,89 @@ export function PlanDetailView({
 
   // Fetch place data map (images & coords) for the current destination
   const { cityEnglishName, nameToImageUrl, nameToCoords, countryCode } = usePlaceDataMap(destinationId)
+  const days = planDraft.days
+  const safeDayIndex = Math.min(activeDayIndex, Math.max(0, days.length - 1))
+  const activeDay = days[safeDayIndex]
+  const activeMapStops = (activeDay?.stops ?? []).filter((stop) => !isMealPlaceholderStop(stop))
+  const activeRouteCoordinates = getPlanRouteCoordinates(activeMapStops, nameToCoords)
+  const activeRouteCoordinateKey = serializeRouteCoordinates(activeRouteCoordinates)
+  const hasUserAddedWishlistStop = activeMapStops.some((stop) => stop.wishlistRestaurantId || stop.source === 'wishlist')
+  const [openRouteResult, setOpenRouteResult] = useState<{
+    key: string
+    path: RoutePathCoordinate[] | null
+    status: 'ready' | 'fallback'
+  } | null>(null)
+  const currentOpenRouteResult = openRouteResult?.key === activeRouteCoordinateKey ? openRouteResult : null
+  const openRoutePath = currentOpenRouteResult?.status === 'ready' ? currentOpenRouteResult.path : null
+  const openRouteStatus: 'idle' | 'loading' | 'ready' | 'fallback' =
+    activeRouteCoordinates.length < 2
+      ? 'idle'
+      : !OPEN_ROUTE_SERVICE_API_KEY
+        ? 'fallback'
+        : currentOpenRouteResult?.status ?? 'loading'
+
+  useEffect(() => {
+    let isCancelled = false
+
+    if (!activeRouteCoordinateKey || !OPEN_ROUTE_SERVICE_API_KEY) {
+      return () => {
+        isCancelled = true
+      }
+    }
+
+    const coordinates = parseRouteCoordinateKey(activeRouteCoordinateKey)
+
+    if (coordinates.length < 2) {
+      return () => {
+        isCancelled = true
+      }
+    }
+
+    requestOpenRouteServicePath(coordinates, OPEN_ROUTE_SERVICE_API_KEY)
+      .then((routePath) => {
+        if (isCancelled) {
+          return
+        }
+
+        if (routePath && routePath.length > 1) {
+          setOpenRouteResult({
+            key: activeRouteCoordinateKey,
+            path: routePath,
+            status: 'ready',
+          })
+          return
+        }
+
+        setOpenRouteResult({
+          key: activeRouteCoordinateKey,
+          path: null,
+          status: 'fallback',
+        })
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setOpenRouteResult({
+            key: activeRouteCoordinateKey,
+            path: null,
+            status: 'fallback',
+          })
+        }
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [activeRouteCoordinateKey])
+
+  const displayedRoutePath = openRoutePath ?? (hasUserAddedWishlistStop ? undefined : activeDay?.route?.geometry?.coordinates)
+  const routeStatusLabel =
+    openRouteStatus === 'loading'
+      ? '실제 도로 동선 계산 중'
+      : openRouteStatus === 'ready'
+        ? '실제 도로 동선'
+        : activeRouteCoordinates.length > 1
+          ? '직선 동선 표시'
+          : null
 
   if (isSavedPlanDetailLoading) {
       return (
@@ -360,14 +591,12 @@ export function PlanDetailView({
       )
     }
 
-    const days = planDraft.days
-    const safeDayIndex = Math.min(activeDayIndex, Math.max(0, days.length - 1))
-    const activeDay = days[safeDayIndex]
     const dayTabLabel = (dayNumber: number) => (days.length <= 1 ? '당일' : `${dayNumber}일차`)
     const displayDestinationName = destinationName ?? plannerBasisLabel
-    const canEditGeneratedPlan = Boolean(onReplacePlanStop && onReplacePlanDay)
+    const isReadOnly = Boolean(isCurrentPlanSaved && ownerId && ownerId !== currentUser?.id)
+    const canEditGeneratedPlan = !isReadOnly && Boolean(onReplacePlanStop && onReplacePlanDay)
     const recentChatMessages = chatMessages.slice(-4)
-    const selectedMealCount = Object.keys(selectedMealPlaces).length
+    const selectedMealCount = (planDraft.selectedRestaurants ?? []).length
 
     const openStopReplacement = (day: PlanDay, stopIndex: number) => {
       setPendingEdit({
@@ -417,62 +646,96 @@ export function PlanDetailView({
       setPendingEdit(null)
     }
 
-    const openMealSearchPanel = (slot: MealSlotDescriptor) => {
-      setMealSearchPanel({
-        slot,
-        query: slot.query,
-        status: 'idle',
-        places: [],
-      })
+    const openRestaurantSearch = () => {
+      setRestaurantSearchQuery(`${displayDestinationName} 맛집`)
+      setRestaurantSearchStatus('idle')
+      setRestaurantSearchResults([])
+      setRestaurantSearchOpen(true)
     }
 
-    const runMealSearch = async (panel = mealSearchPanel) => {
-      if (!panel) {
-        return
-      }
-
-      const query = panel.query.trim()
-
+    const runRestaurantSearch = async () => {
+      const query = restaurantSearchQuery.trim()
       if (!query) {
-        setMealSearchPanel({
-          ...panel,
-          status: 'zero-result',
-          places: [],
-        })
+        setRestaurantSearchStatus('zero-result')
+        setRestaurantSearchResults([])
         return
       }
 
-      setMealSearchPanel({
-        ...panel,
-        status: 'loading',
-      })
-
+      setRestaurantSearchStatus('loading')
       const result = await searchKakaoMealPlaces(query)
-
-      setMealSearchPanel({
-        ...panel,
-        status: result.status,
-        places: result.places,
-      })
+      setRestaurantSearchStatus(result.status)
+      setRestaurantSearchResults(result.places)
     }
 
-    const selectMealPlace = (slotId: string, place: SelectedMealPlace) => {
-      setSelectedMealPlaces((currentPlaces) => ({
-        ...currentPlaces,
-        [slotId]: place,
-      }))
-      setMealSearchPanel(null)
-      setFloatingChatNotice('선택한 식사 장소를 세부 일정에 추가했어요. 아직 이 화면 안에서만 반영됩니다.')
+    const selectRestaurant = (place: SelectedMealPlace) => {
+      addWishlistRestaurant?.(place)
+      setRestaurantSearchOpen(false)
     }
 
-    const removeMealPlace = (slotId: string) => {
-      setSelectedMealPlaces((currentPlaces) => {
-        const nextPlaces = { ...currentPlaces }
+    const handleDropRestaurant = (restaurant: SelectedMealPlace, targetIndex: number) => {
+      if (!activeDay || !onReplacePlanDay) return
 
-        delete nextPlaces[slotId]
+      const newStop: PlanStop = {
+        time: getDropTargetTimeLabel(activeDay.stops, targetIndex),
+        title: restaurant.placeName,
+        body: restaurant.roadAddressName ?? restaurant.addressName ?? '주소 정보 없음',
+        reason: restaurant.phone
+          ? `나의 위시리스트에서 드래그하여 추가한 맛집입니다. 전화번호: ${restaurant.phone}`
+          : '나의 위시리스트에서 드래그하여 추가한 맛집입니다.',
+        source: 'wishlist',
+        lockLevel: 'user_added',
+        wishlistRestaurantId: restaurant.id,
+        imageUrl: '',
+        latitude: restaurant.lat ?? null,
+        longitude: restaurant.lng ?? null,
+        move: '도보 5분',
+      }
 
-        return nextPlaces
-      })
+      const currentStops = [...activeDay.stops]
+      currentStops.splice(targetIndex, 0, newStop)
+
+      const updatedDay: PlanDay = {
+        ...activeDay,
+        stops: currentStops,
+      }
+
+      onReplacePlanDay(activeDay.day, updatedDay)
+      setFloatingChatNotice('선택한 맛집을 일정 코스 사이에 추가했습니다. 저장하면 반영됩니다.')
+    }
+
+    const renderDropZone = (dropIndex: number) => {
+      return (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault()
+            e.currentTarget.classList.add('border-[#F36B12]', 'bg-[#FFF0E4]/30')
+          }}
+          onDragLeave={(e) => {
+            e.currentTarget.classList.remove('border-[#F36B12]', 'bg-[#FFF0E4]/30')
+          }}
+          onDrop={(e) => {
+            e.preventDefault()
+            e.currentTarget.classList.remove('border-[#F36B12]', 'bg-[#FFF0E4]/30')
+            try {
+              const data = e.dataTransfer.getData('text/plain')
+              if (!data) return
+              const restaurant = JSON.parse(data) as SelectedMealPlace
+              if (restaurant && restaurant.id) {
+                handleDropRestaurant(restaurant, dropIndex)
+              }
+            } catch (err) {
+              console.error('Drop handling failed:', err)
+            }
+          }}
+          className={`h-4 my-1 flex items-center justify-center border border-dashed rounded-[10px] transition-all duration-200 ${
+            isDragging ? 'border-[#F3B489] bg-[#FFF7F0]/40' : 'border-transparent'
+          }`}
+        >
+          <span className={`text-[10px] font-black text-[#F36B12] transition-opacity duration-200 ${isDragging ? 'opacity-100' : 'opacity-0'}`}>
+             여기에 드롭하여 코스 추가
+          </span>
+        </div>
+      )
     }
 
     const handleFloatingChatSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -511,7 +774,7 @@ export function PlanDetailView({
         <div
           role="region"
           aria-labelledby="plan-detail-title"
-          className="overflow-hidden rounded-[24px] border border-transparent bg-[#fffffa] shadow-[0_18px_48px_-32px_rgba(51,39,30,0.35)]"
+          className="rounded-[24px] border border-transparent bg-[#fffffa] shadow-[0_18px_48px_-32px_rgba(51,39,30,0.35)]"
         >
           {cityImageUrl && (
             <div className="relative h-52 w-full overflow-hidden max-sm:h-36">
@@ -730,123 +993,88 @@ export function PlanDetailView({
                     </div>
                   ) : null}
 
-                  <div className="mt-4 space-y-4">
-                    {activeDay.stops.map((item, index) => {
+                  <div className="mt-4 space-y-2">
+                    {/* Render Dropzone before the first stop */}
+                    {renderDropZone(Math.max(0, activeDay.stops.findIndex((s) => !isMealPlaceholderStop(s))))}
+
+                    {/* Filter out meal placeholder stops from the numbered list */}
+                    {activeDay.stops.filter((s) => !isMealPlaceholderStop(s)).map((item, index) => {
                       const imageUrl = resolveStopImageUrl(item, nameToImageUrl, cityEnglishName)
-                      const mealSlot = createMealSlotDescriptors(activeDay).find((slot) => slot.afterStopIndex === index)
-                      const selectedMealPlace = mealSlot ? selectedMealPlaces[mealSlot.id] : null
                       const isStopActive = index === activeStopIndex
+                      const isStopCollapsed = collapsedStops[`${activeDay.day}-${index}`] === true
 
                       return (
-                        <div
-                          key={`${activeDay.day}-${item.time}-${item.title}`}
-                          className={`space-y-3 p-2 rounded-[22px] transition-all duration-200 ${
-                            isStopActive ? 'ring-2 ring-[#F36B12]/40 bg-[#FFF7F0]/40 shadow-sm' : ''
-                          }`}
-                          onMouseEnter={() => setActiveStopIndex(index)}
-                        >
-                          <article className="grid grid-cols-[42px_minmax(0,1fr)] gap-4">
-                            <div className="flex flex-col items-center">
-                              <span className="flex size-10 items-center justify-center rounded-full bg-[#F36B12] text-sm font-black text-[#33271E] shadow-[0_8px_18px_-14px_rgba(51,39,30,0.5)]">
-                                {index + 1}
-                              </span>
-                              {index < activeDay.stops.length - 1 ? (
-                                <span className="mt-2 h-full min-h-8 w-px bg-[#F3B489]/45" />
-                              ) : null}
-                            </div>
-                            <div className="min-w-0 overflow-hidden rounded-[20px] border border-transparent bg-[#FFF0E4]">
-                              {/* Attraction image */}
-                              <div className="relative h-40 w-full overflow-hidden max-sm:h-32">
-                                <AttractionImage src={imageUrl} alt={item.title} />
+                        <div key={`${activeDay.day}-${item.time}-${item.title}`}>
+                          <div
+                            className={`space-y-3 p-2 rounded-[22px] transition-all duration-200 ${
+                              isStopActive ? 'ring-2 ring-[#F36B12]/40 bg-[#FFF7F0]/40 shadow-sm' : ''
+                            }`}
+                            onMouseEnter={() => setActiveStopIndex(index)}
+                          >
+                            <article className="grid grid-cols-[42px_minmax(0,1fr)] gap-4">
+                              <div className="flex flex-col items-center">
+                                <span className="flex size-10 items-center justify-center rounded-full bg-[#F36B12] text-sm font-black text-[#33271E] shadow-[0_8px_18px_-14px_rgba(51,39,30,0.5)]">
+                                  {index + 1}
+                                </span>
+                                {index < activeDay.stops.length - 1 ? (
+                                  <span className="mt-2 h-full min-h-8 w-px bg-[#F3B489]/45" />
+                                ) : null}
                               </div>
+                              <div className="min-w-0 overflow-hidden rounded-[20px] border border-transparent bg-[#FFF0E4]">
+                                {/* Attraction image */}
+                                {!isStopCollapsed && (
+                                  <div className="relative h-40 w-full overflow-hidden max-sm:h-32">
+                                    <AttractionImage src={imageUrl} alt={item.title} />
+                                  </div>
+                                )}
 
-                              <div className="p-5">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-black leading-4 text-[#33271E]">
-                                    {item.time}
-                                  </span>
-                                  <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-bold leading-4 text-[#33271E]">
-                                    다음 장소까지 {item.move}
-                                  </span>
-                                  {canEditGeneratedPlan ? (
+                                <div className="p-5">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-black leading-4 text-[#33271E]">
+                                      {item.time}
+                                    </span>
+                                    <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-bold leading-4 text-[#33271E]">
+                                      다음 장소까지 {item.move}
+                                    </span>
                                     <button
                                       type="button"
-                                      onClick={() => openStopReplacement(activeDay, index)}
-                                      className="inline-flex min-h-8 items-center rounded-full border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-black leading-4 text-[#A92B10] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                                      onClick={() => toggleStopCollapse(activeDay.day, index)}
+                                      className="inline-flex min-h-8 items-center rounded-full border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-black leading-4 text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
                                     >
-                                      이 장소만 바꾸기
+                                      {isStopCollapsed ? '펼치기 ▼' : '접기 ▲'}
                                     </button>
-                                  ) : null}
-                                </div>
-                                <h4 className="mt-4 break-keep text-xl font-black leading-8 text-[#33271E] max-sm:text-lg max-sm:leading-7">
-                                  {item.title}
-                                </h4>
-                                <p className="mt-2 break-keep text-sm font-semibold leading-7 text-[#33271E]">
-                                  {item.body}
-                                </p>
-                                <div className="mt-4 rounded-[16px] border border-transparent bg-[#fffffa] px-4 py-3">
-                                  <p className="text-[12px] font-black text-[#A92B10]">추천 이유</p>
-                                  <p className="mt-1 break-keep text-sm font-semibold leading-6 text-[#33271E]">
-                                    {item.reason}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          </article>
-                          {mealSlot ? (
-                            <div className="ml-[58px] rounded-[18px] border border-dashed border-[#F3B489] bg-[#fffffa] p-4">
-                              <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                  <p className="text-[12px] font-black text-[#A92B10]">{mealSlot.label}</p>
-                                  {selectedMealPlace ? (
+                                    {canEditGeneratedPlan ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => openStopReplacement(activeDay, index)}
+                                        className="inline-flex min-h-8 items-center rounded-full border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-black leading-4 text-[#A92B10] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                                      >
+                                        이 장소만 바꾸기
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                  <h4 className="mt-4 break-keep text-xl font-black leading-8 text-[#33271E] max-sm:text-lg max-sm:leading-7">
+                                    {item.title}
+                                  </h4>
+                                  {!isStopCollapsed && (
                                     <>
-                                      <h5 className="mt-2 break-keep text-base font-black leading-6 text-[#33271E]">
-                                        {selectedMealPlace.placeName}
-                                      </h5>
-                                      <p className="mt-1 break-keep text-[12px] font-semibold leading-5 text-[#6E5A50]">
-                                        {selectedMealPlace.roadAddressName ?? selectedMealPlace.addressName ?? '주소 정보 없음'}
+                                      <p className="mt-2 break-keep text-sm font-semibold leading-7 text-[#33271E]">
+                                        {item.body}
                                       </p>
-                                      <p className="mt-1 break-keep text-[12px] font-semibold leading-5 text-[#6E5A50]">
-                                        {selectedMealPlace.phone ? `전화 ${selectedMealPlace.phone}` : '영업 정보는 카카오맵 상세에서 확인해 주세요.'}
-                                      </p>
-                                      {selectedMealPlace.placeUrl ? (
-                                        <a
-                                          href={selectedMealPlace.placeUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="mt-2 inline-flex text-[12px] font-black text-[#A92B10] underline-offset-4 hover:underline"
-                                        >
-                                          카카오맵 상세 보기
-                                        </a>
-                                      ) : null}
+                                      <div className="mt-4 rounded-[16px] border border-transparent bg-[#fffffa] px-4 py-3">
+                                        <p className="text-[12px] font-black text-[#A92B10]">추천 이유</p>
+                                        <p className="mt-1 break-keep text-sm font-semibold leading-6 text-[#33271E]">
+                                          {item.reason}
+                                        </p>
+                                      </div>
                                     </>
-                                  ) : (
-                                    <p className="mt-1 break-keep text-[12px] font-semibold leading-5 text-[#6E5A50]">
-                                      {mealSlot.query}으로 음식점을 고르면 이 구간에만 반영됩니다.
-                                    </p>
                                   )}
                                 </div>
-                                <div className="flex flex-wrap gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => openMealSearchPanel(mealSlot)}
-                                    className="inline-flex min-h-9 items-center rounded-full border border-[#F3B489] bg-[#FFF8F6] px-4 text-[12px] font-black text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
-                                  >
-                                    {selectedMealPlace ? '다시 고르기' : '식사 장소 고르기'}
-                                  </button>
-                                  {selectedMealPlace ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => removeMealPlace(mealSlot.id)}
-                                      className="inline-flex min-h-9 items-center rounded-full border border-[#F3B489] bg-[#fffffa] px-4 text-[12px] font-black text-[#A92B10] transition hover:border-[#A92B10] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
-                                    >
-                                      제거
-                                    </button>
-                                  ) : null}
-                                </div>
                               </div>
-                            </div>
-                          ) : null}
+                            </article>
+                          </div>
+                          {/* Render Dropzone after this stop */}
+                          {renderDropZone(activeDay.stops.indexOf(item) + 1)}
                         </div>
                       )
                     })}
@@ -855,76 +1083,159 @@ export function PlanDetailView({
               ) : null}
             </div>
 
-            {/* Right Column: Sticky Sidebar containing Interactive Map & Actions */}
-            <div className="space-y-6 lg:sticky lg:top-[96px] lg:h-[calc(100dvh-9rem)] lg:min-h-[640px] flex flex-col min-w-0 max-lg:h-auto max-lg:min-h-0">
-              {/* Interactive Route Map Panel */}
-              <div className="flex-1 min-h-[380px] overflow-hidden rounded-[24px] border border-white/50 bg-[#fffffa]/30 shadow-[0_16px_42px_-28px_rgba(51,39,30,0.2)] backdrop-blur-sm max-lg:h-[420px]">
-                <PlanDetailGoogleMap
-                  stops={activeDay?.stops ?? []}
-                  nameToCoords={nameToCoords}
-                  countryCode={countryCode}
-                  activeStopIndex={activeStopIndex}
-                  onSelectStopIndex={setActiveStopIndex}
-                  routePath={activeDay?.route?.geometry?.coordinates}
-                />
-              </div>
-
+            {/* Right Column: actions stay at the top of the detail card; map and wishlist are sticky inside the card. */}
+            <div className="flex min-w-0 flex-col gap-5">
               {/* Itinerary Actions Panel */}
-              <aside className="rounded-[20px] border border-transparent bg-[#FFF0E4] p-5 shrink-0">
+              <aside className="shrink-0 rounded-[20px] border border-transparent bg-[#FFF0E4] p-5 shadow-[0_16px_42px_-30px_rgba(51,39,30,0.22)] lg:max-h-[34dvh] lg:overflow-y-auto">
                 <p className="text-sm font-black text-[#33271E]">일정 액션</p>
                 <p className="mt-2 break-keep text-sm font-semibold leading-6 text-[#33271E]/80">
-                  일정을 살펴본 뒤 피드백을 남기거나 마이페이지에 저장해 다시 확인할 수 있습니다.
+                  피드백을 남기거나 마이페이지에 저장해 다시 확인할 수 있습니다.
                 </p>
                 <div className="mt-5 rounded-[14px] border border-transparent bg-[#fffffa] p-4">
-                  <p id="plan-detail-like-title" className="break-keep text-sm font-black text-[#33271E]">
-                    이 일정은 어땠나요?
+                  <p className="break-keep text-sm font-black text-[#33271E]">
+                    {t('feedback.title')}
                   </p>
-                  <p className="mt-1 break-keep text-[12px] font-bold leading-5 text-[#6E5A50]">
-                    좋아요를 누르면 저장되고, 다시 누르면 해제됩니다.
-                  </p>
-                  <div className="mt-3">
-                    <SavedPlanLikeControls
-                      planId={planId}
-                      like={planLike}
-                      onSelectLike={onSelectSavedPlanLike}
-                      pending={savedPlanLikePending}
-                      errorMessage={savedPlanLikeError}
-                      labelledBy="plan-detail-like-title"
-                    />
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {feedbackChips.map((chip) => {
+                      const isSelected = activeThemeIds?.includes(chip.id as ThemeId)
+                      return (
+                        <button
+                          key={chip.id}
+                          type="button"
+                          onClick={() => handleChipClick(chip.id as ThemeId)}
+                          className={`inline-flex min-h-10 items-center justify-center rounded-[8px] border px-3 text-[12px] font-bold transition focus-visible:outline focus-visible:outline-2 ${
+                            isSelected
+                              ? 'border-[#F36B12] bg-[#FFE0CA] text-[#33271E]'
+                              : 'border-[#F3B489] bg-[#fffffa] text-[#33271E]/80 hover:bg-[#FFE0CA]'
+                          }`}
+                        >
+                          {chip.label}
+                        </button>
+                      )
+                    })}
                   </div>
-                </div>
-                <div className="mt-5 grid gap-3">
-                  <button
-                    type="button"
-                    onClick={saveGeneratedPlan}
-                    disabled={isCurrentPlanSaved || isPlanSaving}
-                    className={`inline-flex min-h-12 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-5 text-sm font-black text-[#33271E] transition hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
-                      isCurrentPlanSaved
-                        ? 'disabled:cursor-default disabled:bg-[#FF8A2A]'
-                        : isPlanSaving
-                        ? 'disabled:cursor-wait disabled:opacity-75'
-                        : ''
-                    }`}
-                  >
-                    {isPlanSaving && (
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-[#33271E]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    )}
-                    {isCurrentPlanSaved ? '마이페이지에 저장됨' : isPlanSaving ? '저장 중...' : '마이페이지에 저장'}
-                  </button>
-                  {isCurrentPlanSaved ? (
+                  <div className="mt-2">
                     <button
                       type="button"
-                      aria-label="저장 일정 삭제"
-                      onClick={() => onDeleteSavedPlan(planId, { navigateToMyPage: true })}
-                      disabled={savedPlanDeletePending}
-                      className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-5 text-sm font-black text-[#A92B10] transition hover:border-[#A92B10] hover:bg-[#FFE0CA] disabled:cursor-wait disabled:opacity-65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                      onClick={handleNegativeClick}
+                      className="inline-flex min-h-10 w-full items-center justify-center rounded-[8px] border border-gray-200 bg-[#fffffa] px-3 text-[12px] font-bold text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition focus-visible:outline focus-visible:outline-2"
                     >
-                      {savedPlanDeletePending ? '삭제 중' : '저장 일정 삭제'}
+                      {t('feedback.chip_negative')}
                     </button>
-                  ) : null}
+                  </div>
+                  <p className="mt-2 break-keep text-[10px] font-semibold leading-4 text-[#6E5A50]">
+                    {t('feedback.guide_note')}
+                  </p>
+                  {feedbackNotice && (
+                    <p aria-live="polite" className="mt-2 text-[11px] font-bold text-[#A92B10]">
+                      {feedbackNotice}
+                    </p>
+                  )}
+                </div>
+                <div className="mt-5 grid gap-3">
+                  {isReadOnly ? (
+                    /* 타인의 공유 일정을 보고 있는 읽기 전용 상태: 내 일정으로 담기 버튼 제공 */
+                    <button
+                      type="button"
+                      disabled={isPlanCloning}
+                      onClick={() => {
+                        if (!currentUser) {
+                          alert('일정을 담으려면 로그인이 필요합니다. 로그인 페이지로 이동합니다.')
+                          setPendingAuthRedirectPath?.(window.location.pathname)
+                          navigate('/auth')
+                        } else {
+                          cloneSavedPlan?.(planId)
+                        }
+                      }}
+                      className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-5 text-sm font-black text-[#33271E] transition hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] disabled:cursor-wait disabled:opacity-75"
+                    >
+                      {isPlanCloning && (
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-[#33271E]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      )}
+                      {isPlanCloning ? '내 일정으로 담는 중...' : '내 일정으로 담기'}
+                    </button>
+                  ) : (
+                    /* 본인의 일정이거나 신규 생성 일정 상태 */
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!currentUser) {
+                            alert('일정을 저장하려면 로그인이 필요합니다. 로그인 페이지로 이동합니다.')
+                            setPendingAuthRedirectPath?.(window.location.pathname)
+                            navigate('/auth')
+                          } else {
+                            saveGeneratedPlan()
+                          }
+                        }}
+                        disabled={isCurrentPlanSaved || isPlanSaving}
+                        className={`inline-flex min-h-12 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-5 text-sm font-black text-[#33271E] transition hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
+                          isCurrentPlanSaved
+                            ? 'disabled:cursor-default disabled:bg-[#FF8A2A]'
+                            : isPlanSaving
+                            ? 'disabled:cursor-wait disabled:opacity-75'
+                            : ''
+                        }`}
+                      >
+                        {isPlanSaving && (
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-[#33271E]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        )}
+                        {isCurrentPlanSaved ? '마이페이지에 저장됨' : isPlanSaving ? '저장 중...' : '마이페이지에 저장'}
+                      </button>
+
+                      {isCurrentPlanSaved ? (
+                        <>
+                          {/* 공개/비공개 설정 토글 버튼 */}
+                          <button
+                            type="button"
+                            disabled={isShareStatusUpdating}
+                            onClick={() => toggleSavedPlanShareStatus?.(planId, !isPublic)}
+                            className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-5 text-sm font-black text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] disabled:cursor-wait disabled:opacity-65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                          >
+                            {isShareStatusUpdating
+                              ? '설정 변경 중...'
+                              : isPublic
+                              ? '공개 일정 (비공개로 변경)'
+                              : '비공개 일정 (공개로 변경)'}
+                          </button>
+
+                          {/* 공유 링크 복사 버튼 */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const shareUrl = `${window.location.origin}/plans/${planId}`
+                              navigator.clipboard.writeText(shareUrl).then(() => {
+                                alert('공유 링크가 클립보드에 복사되었습니다!')
+                              }).catch(() => {
+                                alert('링크 복사에 실패했습니다. 주소창의 URL을 직접 복사해 주세요.')
+                              })
+                            }}
+                            className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-5 text-sm font-black text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                          >
+                            공유 링크 복사
+                          </button>
+
+                          {/* 저장 일정 삭제 버튼 */}
+                          <button
+                            type="button"
+                            aria-label="저장 일정 삭제"
+                            onClick={() => onDeleteSavedPlan(planId, { navigateToMyPage: true })}
+                            disabled={savedPlanDeletePending}
+                            className="inline-flex min-h-12 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-5 text-sm font-black text-[#A92B10] transition hover:border-[#A92B10] hover:bg-[#FFE0CA] disabled:cursor-wait disabled:opacity-65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                          >
+                            {savedPlanDeletePending ? '삭제 중' : '저장 일정 삭제'}
+                          </button>
+                        </>
+                      ) : null}
+                    </>
+                  )}
+
                   <button
                     type="button"
                     onClick={returnToChatWorkspace}
@@ -946,27 +1257,124 @@ export function PlanDetailView({
                   </p>
                 ) : null}
               </aside>
+
+              <div className="grid min-h-0 grid-rows-[minmax(320px,1fr)_minmax(220px,0.75fr)] gap-5 lg:sticky lg:top-[96px] lg:h-[calc(100dvh-7rem)] lg:min-h-[560px] max-lg:grid-rows-none">
+                {/* Interactive Route Map Panel */}
+                <div className="relative min-h-[320px] overflow-hidden rounded-[24px] border border-white/50 bg-[#fffffa]/30 shadow-[0_16px_42px_-28px_rgba(51,39,30,0.2)] backdrop-blur-sm max-lg:h-[420px]">
+                  <PlanDetailGoogleMap
+                    stops={activeMapStops}
+                    wishlistRestaurants={planDraft.selectedRestaurants ?? []}
+                    nameToCoords={nameToCoords}
+                    countryCode={countryCode}
+                    activeStopIndex={activeStopIndex}
+                    onSelectStopIndex={setActiveStopIndex}
+                    routePath={displayedRoutePath}
+                  />
+                  {routeStatusLabel ? (
+                    <span className="pointer-events-none absolute left-4 top-4 z-10 rounded-full border border-white/70 bg-[#fffffa]/90 px-3 py-1 text-[11px] font-black text-[#A92B10] shadow-[0_10px_28px_-20px_rgba(51,39,30,0.4)] backdrop-blur">
+                      {routeStatusLabel}
+                    </span>
+                  ) : null}
+                </div>
+
+                {/* 나의 맛집 위시리스트 (Pocket) */}
+                <div className="flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-[#F3B489] bg-[#fffffa] p-5 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.2)] max-lg:max-h-[420px]">
+                  <div className="shrink-0 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <h4 className="flex items-center gap-2 text-base font-black text-[#33271E]">
+                        <span>위시리스트</span>
+                      </h4>
+                      <p className="mt-1 break-keep text-[11px] font-semibold leading-5 text-[#6E5A50]">
+                        가고 싶은 맛집을 검색해 담고, 왼쪽 코스로 드래그하여 끼워 넣으세요!
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={openRestaurantSearch}
+                      className="inline-flex min-h-9 items-center rounded-full border border-[#A92B10] bg-[#F36B12] px-4 text-[12px] font-black text-[#33271E] transition hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                    >
+                      검색 및 추가
+                    </button>
+                  </div>
+
+                  {(planDraft.selectedRestaurants ?? []).length > 0 ? (
+                    <ul className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pb-6 pr-1" aria-label="담아둔 맛집 목록">
+                      {(planDraft.selectedRestaurants ?? []).map((restaurant) => (
+                        <li
+                          key={restaurant.id}
+                          draggable={true}
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('text/plain', JSON.stringify(restaurant))
+                            setIsDragging(true)
+                          }}
+                          onDragEnd={() => {
+                            setIsDragging(false)
+                          }}
+                          className="flex cursor-grab flex-wrap items-start justify-between gap-4 rounded-[18px] border border-[#F3B489]/30 bg-[#FFF8F6] p-4 transition-colors hover:border-[#F36B12] active:cursor-grabbing"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <h5 className="break-keep text-sm font-black leading-6 text-[#33271E]">
+                              {restaurant.placeName}
+                            </h5>
+                            <p className="mt-1 break-keep text-[12px] font-semibold leading-5 text-[#6E5A50]">
+                              {restaurant.roadAddressName ?? restaurant.addressName ?? '주소 정보 없음'}
+                            </p>
+                            {restaurant.phone ? (
+                              <p className="mt-0.5 text-[11px] font-semibold text-[#6E5A50]/80">
+                                전화: {restaurant.phone}
+                              </p>
+                            ) : null}
+                            {restaurant.placeUrl ? (
+                              <a
+                                href={restaurant.placeUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-2 inline-flex text-[11px] font-black text-[#A92B10] underline-offset-4 hover:underline"
+                              >
+                                상세 보기
+                              </a>
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeWishlistRestaurant?.(restaurant.id)}
+                            className="inline-flex min-h-8 items-center rounded-full border border-[#F3B489] bg-[#fffffa] px-3 text-[11px] font-black text-[#A92B10] transition hover:border-[#A92B10] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                          >
+                            제거
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="mt-4 rounded-[18px] border border-dashed border-[#F3B489]/50 bg-[#FFF8F6]/30 py-7 text-center">
+                      <p className="break-keep text-xs font-semibold leading-5 text-[#6E5A50]">
+                        아직 담긴 장소가 없습니다.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        {mealSearchPanel ? (
+        {restaurantSearchOpen ? (
           <section
-            aria-label={`${mealSearchPanel.slot.label} 장소 검색`}
+            aria-label="맛집 검색 및 추가"
             className="fixed bottom-24 right-6 z-40 w-[420px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-[22px] border border-white/65 bg-[#fffffa]/95 shadow-[0_24px_56px_-28px_rgba(51,39,30,0.3)] backdrop-blur-2xl max-sm:bottom-20 max-sm:right-4"
           >
             <header className="flex items-start justify-between gap-3 border-b border-[#F3B489]/35 bg-[#FFF0E4]/80 px-5 py-4">
               <div>
                 <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#A92B10]">
-                  Meal place
+                  Restaurant Wishlist
                 </p>
                 <h3 className="mt-1 break-keep text-lg font-black leading-7 text-[#33271E]">
-                  {mealSearchPanel.slot.label} 장소 고르기
+                  맛집 검색 및 추가
                 </h3>
               </div>
               <button
                 type="button"
-                onClick={() => setMealSearchPanel(null)}
-                aria-label="식사 장소 검색 닫기"
+                onClick={() => setRestaurantSearchOpen(false)}
+                aria-label="맛집 검색 닫기"
                 className="inline-flex size-9 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] text-sm font-black text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
               >
                 ×
@@ -976,39 +1384,30 @@ export function PlanDetailView({
               <form
                 onSubmit={(event) => {
                   event.preventDefault()
-                  void runMealSearch()
+                  void runRestaurantSearch()
                 }}
                 className="grid grid-cols-[minmax(0,1fr)_auto] gap-2"
               >
-                <label htmlFor="meal-place-query" className="sr-only">
-                  식사 장소 검색어
+                <label htmlFor="restaurant-place-query" className="sr-only">
+                  맛집 검색어
                 </label>
                 <input
-                  id="meal-place-query"
-                  value={mealSearchPanel.query}
-                  onChange={(event) =>
-                    setMealSearchPanel((currentPanel) =>
-                      currentPanel
-                        ? {
-                            ...currentPanel,
-                            query: event.target.value,
-                          }
-                        : currentPanel,
-                    )
-                  }
+                  id="restaurant-place-query"
+                  value={restaurantSearchQuery}
+                  onChange={(event) => setRestaurantSearchQuery(event.target.value)}
                   className="min-h-11 rounded-full border border-[#F3B489] bg-[#fffffa] px-4 text-sm font-semibold text-[#33271E] outline-none transition placeholder:text-[#6E5A50]/65 focus:border-[#F36B12] focus:ring-2 focus:ring-[#F36B12]/20"
                 />
                 <button
                   type="submit"
-                  disabled={mealSearchPanel.status === 'loading'}
+                  disabled={restaurantSearchStatus === 'loading'}
                   className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-4 text-sm font-black text-[#33271E] transition hover:bg-[#FF8A2A] disabled:cursor-wait disabled:opacity-65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
                 >
-                  {mealSearchPanel.status === 'loading' ? '검색 중' : '검색'}
+                  {restaurantSearchStatus === 'loading' ? '검색 중' : '검색'}
                 </button>
               </form>
 
               <a
-                href={createKakaoMapSearchUrl(mealSearchPanel.query)}
+                href={createKakaoMapSearchUrl(restaurantSearchQuery)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-3 inline-flex text-[12px] font-black text-[#A92B10] underline-offset-4 hover:underline"
@@ -1016,24 +1415,24 @@ export function PlanDetailView({
                 카카오맵에서 직접 검색하기
               </a>
 
-              {mealSearchPanel.status === 'idle' ? (
+              {restaurantSearchStatus === 'idle' ? (
                 <p className="mt-4 break-keep rounded-[14px] bg-[#FFF0E4] px-3 py-2 text-[12px] font-semibold leading-5 text-[#6E5A50]">
                   검색 버튼을 누르면 Kakao Places 후보를 불러옵니다. 키가 없거나 실패하면 위 링크로 직접 확인할 수 있어요.
                 </p>
               ) : null}
-              {mealSearchPanel.status === 'missing-key' || mealSearchPanel.status === 'unavailable' ? (
+              {restaurantSearchStatus === 'missing-key' || restaurantSearchStatus === 'unavailable' ? (
                 <p className="mt-4 break-keep rounded-[14px] bg-[#FFF0E4] px-3 py-2 text-[12px] font-semibold leading-5 text-[#6E5A50]">
                   현재 브라우저에서 Kakao Places 검색을 사용할 수 없어 링크 검색으로 확인해 주세요.
                 </p>
               ) : null}
-              {mealSearchPanel.status === 'zero-result' ? (
+              {restaurantSearchStatus === 'zero-result' ? (
                 <p className="mt-4 break-keep rounded-[14px] bg-[#FFF0E4] px-3 py-2 text-[12px] font-semibold leading-5 text-[#6E5A50]">
                   검색 결과가 없습니다. 장소명이나 지역명을 조금 바꿔 검색해 주세요.
                 </p>
               ) : null}
-              {mealSearchPanel.places.length > 0 ? (
+              {restaurantSearchResults.length > 0 ? (
                 <ol className="mt-4 grid max-h-[300px] gap-2 overflow-y-auto" aria-label="식사 장소 후보">
-                  {mealSearchPanel.places.map((place) => (
+                  {restaurantSearchResults.map((place) => (
                     <li key={place.id} className="rounded-[14px] border border-[#F3B489]/45 bg-[#FFF8F6] p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -1049,10 +1448,10 @@ export function PlanDetailView({
                         </div>
                         <button
                           type="button"
-                          onClick={() => selectMealPlace(mealSearchPanel.slot.id, place)}
+                          onClick={() => selectRestaurant(place)}
                           className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-[#A92B10] bg-[#F36B12] px-3 text-[12px] font-black text-[#33271E] transition hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
                         >
-                          선택
+                          추가
                         </button>
                       </div>
                     </li>
@@ -1103,9 +1502,9 @@ export function PlanDetailView({
                         </span>
                       ))}
                   </div>
-                  {recentChatMessages.length > 0 ? (
+                  {[...recentChatMessages, ...localChatMessages].length > 0 ? (
                     <div className="mt-4 space-y-3" aria-label="최근 대화">
-                      {recentChatMessages.map((message) => {
+                      {[...recentChatMessages, ...localChatMessages].map((message) => {
                         const isAssistantMessage = message.role === 'assistant'
 
                         return (
@@ -1131,6 +1530,24 @@ export function PlanDetailView({
                           </div>
                         )
                       })}
+                    </div>
+                  ) : null}
+                  {showRainyOptions ? (
+                    <div className="mt-4 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleRainyOptionYes}
+                        className="inline-flex min-h-10 flex-1 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-4 text-[12px] font-black text-[#33271E] transition hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                      >
+                        네
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRainyOptionNo}
+                        className="inline-flex min-h-10 flex-1 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-4 text-[12px] font-black text-[#6E5A50] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                      >
+                        아니오
+                      </button>
                     </div>
                   ) : null}
                   {floatingChatNotice ? (
@@ -1164,14 +1581,38 @@ export function PlanDetailView({
                 </form>
               </section>
             ) : null}
+            {/* Rainy season floating alert bubble */}
+            {isRainySeason && !hasRainyAlertDismissed && !floatingChatOpen ? (
+              <button
+                type="button"
+                onClick={handleRainyAlertClick}
+                className="animate-bounce-slow relative max-w-[260px] rounded-[16px] border border-white/65 bg-[#fffffa]/95 px-4 py-3 text-left shadow-[0_16px_40px_-20px_rgba(51,39,30,0.3)] backdrop-blur-2xl transition hover:shadow-[0_20px_48px_-20px_rgba(51,39,30,0.4)]"
+              >
+                <span
+                  aria-hidden="true"
+                  className="absolute -bottom-2 right-6 size-4 rotate-45 border-b border-r border-white/65 bg-[#fffffa]/95"
+                />
+                <p className="text-[13px] font-black leading-5 text-[#A92B10]">
+                  🌧️ 해당 월에는 비가 올 수 있어요.
+                </p>
+                <p className="mt-1 text-[11px] font-semibold leading-4 text-[#6E5A50]">
+                  실내 대체 일정 보러가기
+                </p>
+              </button>
+            ) : null}
             <button
               type="button"
-              onClick={() => setFloatingChatOpen((isOpen) => !isOpen)}
+              onClick={() => {
+                setFloatingChatOpen((isOpen) => !isOpen)
+                if (isRainySeason && !hasRainyAlertDismissed) {
+                  handleRainyAlertClick()
+                }
+              }}
               aria-expanded={floatingChatOpen}
               className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[#A92B10] bg-[#F36B12] px-5 text-sm font-black text-[#33271E] shadow-[0_16px_34px_-20px_rgba(51,39,30,0.45)] transition hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
             >
               <span aria-hidden="true">✦</span>
-              일정 수정 챗봇
+              Lovv 챗봇
             </button>
           </div>
         ) : null}

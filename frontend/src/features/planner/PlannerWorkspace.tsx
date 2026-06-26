@@ -9,6 +9,7 @@ import type {
   PlanDraft,
   PlannerStepStatus,
   PreferenceProfile,
+  ThemeId,
 } from '../../shared/types/app'
 import { PlannerChatInterface } from './PlannerChatInterface'
 import { PlannerTimelineView } from './PlannerTimelineView'
@@ -56,6 +57,9 @@ type PlannerWorkspaceProps = {
   savedPlanNotice: string | null
   isPlannerLoading: boolean
   planDestinationName?: string
+  activeThemeIds?: ThemeId[]
+  onAddThemePreference?: (themeId: ThemeId) => void
+  onRemoveThemePreferences?: (themeIdsToRemove: ThemeId[]) => void
 }
 
 export function PlannerWorkspace({
@@ -92,6 +96,9 @@ export function PlannerWorkspace({
   savedPlanNotice,
   isPlannerLoading,
   planDestinationName,
+  activeThemeIds,
+  onAddThemePreference,
+  onRemoveThemePreferences,
 }: PlannerWorkspaceProps) {
   const chatScrollRef = useRef<HTMLDivElement | null>(null)
   const planResultPanelRef = useRef<HTMLElement | null>(null)
@@ -154,19 +161,6 @@ export function PlannerWorkspace({
                     <span className="rounded-[5px] bg-white/45 px-2 py-0.5 text-[11px] font-black leading-4">
                       {step.statusLabel}
                     </span>
-                  </div>
-                  <p className="mt-2 line-clamp-2 break-keep text-[12px] font-semibold leading-5">
-                    {step.body}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {step.chips.slice(0, 3).map((chip) => (
-                      <span
-                        key={`${step.id}-${chip}`}
-                        className="inline-flex min-h-7 items-center rounded-[5px] bg-white/52 px-2.5 py-0.5 text-[11px] font-black leading-4"
-                      >
-                        {chip}
-                      </span>
-                    ))}
                   </div>
                 </div>
               </div>
@@ -251,6 +245,9 @@ export function PlannerWorkspace({
             resetPlannerFlow={resetPlannerFlow}
             shouldShowFestivalPrompt={shouldShowFestivalPrompt}
             shouldShowDurationPrompt={shouldShowDurationPrompt}
+            activeThemeIds={activeThemeIds}
+            onAddThemePreference={onAddThemePreference}
+            onRemoveThemePreferences={onRemoveThemePreferences}
           />
         </div>
       </div>

@@ -5,11 +5,13 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { PlanStop, RoutePathCoordinate } from '../../shared/types/app'
+import type { PlanStop, RoutePathCoordinate, SelectedMealPlace } from '../../shared/types/app'
 import { smallCityMapBounds, type SmallCityCountry } from '../map-city/smallCities'
+import { getPlanStopRoutePoints } from './plannerRouteModel'
 
 type PlanDetailGoogleMapProps = {
   stops: PlanStop[]
+  wishlistRestaurants?: SelectedMealPlace[]
   nameToCoords: Record<string, { lat: number; lng: number }>
   countryCode: SmallCityCountry
   activeStopIndex: number | null
@@ -141,6 +143,7 @@ const loadGoogleMapsRuntime = (apiKey: string) => {
 
 export function PlanDetailGoogleMap({
   stops,
+  wishlistRestaurants = [],
   nameToCoords,
   countryCode,
   activeStopIndex,
@@ -160,16 +163,17 @@ export function PlanDetailGoogleMap({
   )
   const [mapInstanceVersion, setMapInstanceVersion] = useState(0)
 
-  // Map the stops to coordinates where possible
   const validPoints = useMemo(() => {
-    return stops
-      .map((stop, index) => {
-        const key = stop.title.trim().toLowerCase().replace(/\s+/g, '')
-        const coords = nameToCoords[key]
-        return coords ? { index, stop, coords } : null
-      })
-      .filter((pt): pt is { index: number; stop: PlanStop; coords: GoogleLatLngLiteral } => pt !== null)
+    return getPlanStopRoutePoints(stops, nameToCoords)
   }, [stops, nameToCoords])
+  const placedWishlistRestaurantIds = useMemo(
+    () => new Set(stops.map((stop) => stop.wishlistRestaurantId).filter((id): id is string => Boolean(id))),
+    [stops],
+  )
+  const unplacedWishlistRestaurants = useMemo(
+    () => wishlistRestaurants.filter((restaurant) => !placedWishlistRestaurantIds.has(restaurant.id)),
+    [wishlistRestaurants, placedWishlistRestaurantIds],
+  )
 
   const routeLinePath = useMemo(() => {
     const routeCoordinates = routePathToLatLng(routePath)
@@ -229,7 +233,7 @@ export function PlanDetailGoogleMap({
 
     const boundsPath = routeLinePath.length > 0 ? routeLinePath : validPoints.map((pt) => pt.coords)
 
-    if (boundsPath.length === 0) {
+    if (boundsPath.length === 0 && unplacedWishlistRestaurants.length === 0) {
       map.setCenter(getCountryCenter(countryCode))
       map.setZoom(10)
       return
@@ -240,9 +244,15 @@ export function PlanDetailGoogleMap({
       bounds.extend(point)
     })
 
+    unplacedWishlistRestaurants.forEach((r) => {
+      if (r.lat != null && r.lng != null) {
+        bounds.extend({ lat: r.lat, lng: r.lng })
+      }
+    })
+
     // Padding prevents markers from getting cut off at edge of sticky screen
     map.fitBounds(bounds, 64)
-  }, [countryCode, routeLinePath, validPoints, runtimeStatus, mapInstanceVersion])
+  }, [countryCode, routeLinePath, validPoints, unplacedWishlistRestaurants, runtimeStatus, mapInstanceVersion])
 
   // Render markers and polyline paths
   useEffect(() => {
@@ -264,7 +274,7 @@ export function PlanDetailGoogleMap({
     if (!map || !maps || !GoogleMarker) return
 
     // 3. Render numbered markers
-    markerInstancesRef.current = validPoints.map((pt) => {
+    const stopMarkers = validPoints.map((pt) => {
       const isSelected = activeStopIndex === pt.index
       const marker = new GoogleMarker({
         position: pt.coords,
@@ -296,6 +306,36 @@ export function PlanDetailGoogleMap({
       return marker
     })
 
+    // 3.5. Render wishlist restaurant markers
+    const wishlistMarkers = unplacedWishlistRestaurants
+      .map((restaurant) => {
+        if (restaurant.lat == null || restaurant.lng == null) {
+          return null
+        }
+        const marker = new GoogleMarker({
+          position: { lat: restaurant.lat, lng: restaurant.lng },
+          map,
+          clickable: true,
+          label: {
+            text: '🍽️',
+            fontSize: '11px',
+          },
+          title: restaurant.placeName,
+          icon: {
+            path: maps.SymbolPath?.CIRCLE ?? 0,
+            fillColor: '#10B981', // green/emerald for restaurants
+            fillOpacity: 1.0,
+            strokeColor: '#FFFFFF',
+            strokeWeight: 2,
+            scale: 12,
+          },
+        })
+        return marker
+      })
+      .filter((m): m is GoogleMapMarkerInstance => m !== null)
+
+    markerInstancesRef.current = [...stopMarkers, ...wishlistMarkers]
+
     // 4. Render Dashed Polyline Path connecting stops in order
     if (GooglePolyline && routeLinePath.length > 1) {
       const lineSymbol = {
@@ -319,7 +359,7 @@ export function PlanDetailGoogleMap({
       })
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [validPoints, routeLinePath, activeStopIndex, runtimeStatus, mapInstanceVersion])
+  }, [validPoints, unplacedWishlistRestaurants, routeLinePath, activeStopIndex, runtimeStatus, mapInstanceVersion])
 
   return (
     <div

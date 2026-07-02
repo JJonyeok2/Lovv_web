@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import {
   adaptSmallCityDetailApiResponse,
   adaptSmallCityApiResponse,
@@ -48,6 +48,16 @@ const createResponse = (overrides: Partial<SmallCityApiListResponse> = {}): Smal
 })
 
 describe('small-city API contract adapter', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      throw new Error('API network failure mock')
+    }))
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('adapts backend city records into frontend SmallCity records', () => {
     const result = adaptSmallCityApiResponse(createResponse())
 
@@ -277,6 +287,7 @@ describe('small-city API contract adapter', () => {
       cityId: 'KR-Gangneung',
       category: '관광지',
       categoryName: '관광지',
+      contentId: '250126',
       name: '오죽헌',
       summary: '강릉의 전통과 산책 흐름을 함께 잡는 관광지입니다.',
       addressName: '강원특별자치도 강릉시 율곡로3139번길 24',

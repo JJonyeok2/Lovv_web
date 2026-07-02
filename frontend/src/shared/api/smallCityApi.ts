@@ -410,6 +410,9 @@ const normalizeSmallCityApiPlaceRecord = (
     normalizeRequiredString(record.id) ??
     normalizeRequiredString(record.contentId) ??
     normalizeRequiredString(record.content_id)
+  const contentId =
+    normalizeOptionalString(record.contentId) ??
+    normalizeOptionalString(record.content_id)
   const cityId =
     normalizeRequiredString(record.cityId) ??
     normalizeRequiredString(record.city_id) ??
@@ -483,6 +486,7 @@ const normalizeSmallCityApiPlaceRecord = (
   return {
     place: {
       id,
+      contentId,
       cityId,
       category,
       categoryCode: normalizeOptionalString(record.category),

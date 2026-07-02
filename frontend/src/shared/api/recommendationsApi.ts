@@ -7,6 +7,7 @@ import type { ThemeId, PlanDraft, PlanDay, PlanRoute, PlanStop } from '../types/
 
 export const recommendationsApiEndpoints = {
   create: '/api/v1/recommendations',
+  popularDestinations: '/api/v1/recommendations/popular-destinations',
 } as const
 
 export type RecommendationRequestPayload = {
@@ -69,6 +70,36 @@ export type RecommendationApiResponse = {
   }
 }
 
+export type PopularDestinationApiItem = {
+  cityId?: string
+  name?: string
+  region?: string
+  country?: 'KR' | 'JP' | string
+  countryLabel?: string
+  themeIds?: ThemeId[] | string[]
+  themes?: string[]
+  imageUrl?: string | null
+  image_url?: string | null
+  reactionCount?: number
+  reaction_count?: number
+  savedPlanCount?: number
+  saved_plan_count?: number
+  title?: string
+  summary?: string
+  recommendationReason?: string
+  recommendation_reason?: string
+  priority?: number
+}
+
+export type PopularDestinationsApiResponse = {
+  items?: PopularDestinationApiItem[]
+  ageGroups?: Array<{
+    ageGroup?: string
+    label?: string
+    items?: PopularDestinationApiItem[]
+  }>
+}
+
 export const requestCreateRecommendation = async (
   payload: RecommendationRequestPayload,
   baseUrl = (import.meta.env.VITE_LOVV_AGENT_API_URL?.trim() || import.meta.env.VITE_LOVV_API_BASE_URL?.trim()) ?? ''
@@ -91,6 +122,30 @@ export const requestCreateRecommendation = async (
   }
 
   return response.json()
+}
+
+export const requestListPopularDestinations = async (
+  limit = 6,
+  baseUrl = import.meta.env.VITE_LOVV_API_BASE_URL?.trim() ?? '',
+): Promise<Required<Pick<PopularDestinationsApiResponse, 'items' | 'ageGroups'>>> => {
+  const normalizedBaseUrl = baseUrl.trim().replace(/\/+$/, '')
+  const endpoint = `${recommendationsApiEndpoints.popularDestinations}?limit=${encodeURIComponent(String(limit))}`
+  const url = normalizedBaseUrl ? `${normalizedBaseUrl}${endpoint}` : endpoint
+
+  const response = await fetch(url, {
+    method: 'GET',
+    credentials: 'include',
+  })
+
+  if (!response.ok) {
+    throw new Error(`Popular destinations API request failed with status ${response.status}`)
+  }
+
+  const body = (await response.json()) as PopularDestinationsApiResponse
+  return {
+    items: Array.isArray(body.items) ? body.items : [],
+    ageGroups: Array.isArray(body.ageGroups) ? body.ageGroups : [],
+  }
 }
 
 export const mapRecommendationToDraft = (apiResponse: RecommendationApiResponse): PlanDraft => {

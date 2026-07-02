@@ -61,6 +61,12 @@ export type MonthlyRecommendation = {
   badge: string
   image?: string | null
   themes: string[]
+  cityId?: string
+  cityName?: string
+  region?: string
+  month?: number
+  timingTag?: string
+  source?: 'static' | 'api'
 }
 
 export type HeroTheme = {
@@ -179,6 +185,7 @@ export type SavedPlan = {
   isLiked?: boolean
   isPublic?: boolean
   copiedFromItineraryId?: string
+  likeCount?: number
 
   createdAt: string
   savedAt: string

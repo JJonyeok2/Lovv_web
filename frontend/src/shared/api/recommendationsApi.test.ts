@@ -1,7 +1,11 @@
-import { describe, it, expect } from 'vitest'
-import { mapRecommendationToDraft } from './recommendationsApi'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+import { mapRecommendationToDraft, requestListPopularDestinations } from './recommendationsApi'
 import type { RecommendationApiResponse } from './recommendationsApi'
 import type { PlanRoute } from '../types/app'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 const makeItem = (overrides: Partial<RecommendationApiResponse['itinerary']['days'][0]['items'][0]> = {}) => ({
   itemId: 'item-1',
@@ -76,6 +80,55 @@ describe('mapRecommendationToDraft — timeOfDay 매핑', () => {
   it('알 수 없는 timeOfDay → 아침 fallback', () => {
     const res = makeResponse([makeDay(1, [makeItem({ timeOfDay: 'noon' })])])
     expect(mapRecommendationToDraft(res).days[0].stops[0].time).toBe('아침')
+  })
+})
+
+describe('requestListPopularDestinations', () => {
+  it('calls the aggregate popular destinations endpoint with credentials', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [
+          {
+            cityId: 'KR-Donghae',
+            name: '동해시',
+            reactionCount: 7,
+            savedPlanCount: 2,
+            themes: ['바다'],
+          },
+        ],
+        ageGroups: [
+          {
+            ageGroup: '30s',
+            label: '30대',
+            items: [{ cityId: 'KR-Donghae', name: '동해시' }],
+          },
+        ],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchImpl)
+
+    const response = await requestListPopularDestinations(6, 'https://api.lovv.example/')
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'https://api.lovv.example/api/v1/recommendations/popular-destinations?limit=6',
+      {
+        method: 'GET',
+        credentials: 'include',
+      },
+    )
+    expect(response.items).toHaveLength(1)
+    expect(response.items[0].cityId).toBe('KR-Donghae')
+    expect(response.ageGroups[0].label).toBe('30대')
+  })
+
+  it('falls back to an empty item list when the response shape is incomplete', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    }))
+
+    await expect(requestListPopularDestinations()).resolves.toEqual({ items: [], ageGroups: [] })
   })
 })
 

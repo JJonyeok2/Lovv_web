@@ -6,15 +6,20 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { MonthlyRecommendation, PreferenceProfile, LovvUser } from '../../shared/types/app'
+import type { SmallCity } from '../map-city/smallCities'
 import { monthlyRecommendations } from './homeContent'
+import {
+  buildMonthlyThemeRecommendations,
+  getSystemRecommendationMonth,
+} from './homeRecommendationModel'
 
 export const monthlyRecommendationRotationIntervalMs = 7000
 export const monthlyRecommendationTransitionDurationMs = 420
 
 type MonthlyRecommendationMotion = 'idle' | 'next' | 'previous'
 
-const getWrappedRecommendationIndex = (index: number) =>
-  (index + monthlyRecommendations.length) % monthlyRecommendations.length
+const getWrappedRecommendationIndex = (index: number, recommendationCount: number) =>
+  (index + recommendationCount) % recommendationCount
 
 type MonthlyRecommendationMediaProps = {
   image?: string | null
@@ -47,6 +52,7 @@ type HomeRecommendationSliderProps = {
   currentUser?: LovvUser | null
   savedPlansCount?: number
   likedPlansCount?: number
+  monthlyCandidateCities?: SmallCity[]
   selectedPreferenceProfile: PreferenceProfile
   onOpenMonthlyRecommendationDetail: (recommendation: MonthlyRecommendation) => void
 }
@@ -55,20 +61,41 @@ export function HomeRecommendationSlider({
   currentUser = null,
   savedPlansCount = 0,
   likedPlansCount = 0,
+  monthlyCandidateCities,
   selectedPreferenceProfile,
   onOpenMonthlyRecommendationDetail,
 }: HomeRecommendationSliderProps) {
+  const currentRecommendationMonth = getSystemRecommendationMonth()
+  const hasLiveMonthlyCandidateInput = monthlyCandidateCities !== undefined && monthlyCandidateCities.length > 0
+  const activeMonthlyRecommendations = buildMonthlyThemeRecommendations({
+    cities: monthlyCandidateCities ?? [],
+    selectedPreferenceProfile,
+    month: currentRecommendationMonth,
+    fallbackRecommendations: hasLiveMonthlyCandidateInput ? [] : monthlyRecommendations,
+  })
   const [featuredRecommendationIndex, setFeaturedRecommendationIndex] = useState(0)
   const [monthlyRecommendationMotion, setMonthlyRecommendationMotion] =
     useState<MonthlyRecommendationMotion>('idle')
   const monthlyRecommendationMotionRef = useRef<MonthlyRecommendationMotion>('idle')
   const monthlyRecommendationMotionTimerRef = useRef<number | null>(null)
+  const monthlyRecommendationCount = activeMonthlyRecommendations.length
+  const isMonthlyRecommendationEmpty = monthlyRecommendationCount === 0
+  const activeFeaturedRecommendationIndex = isMonthlyRecommendationEmpty
+    ? 0
+    : getWrappedRecommendationIndex(featuredRecommendationIndex, monthlyRecommendationCount)
 
-  const featuredRecommendation = monthlyRecommendations[featuredRecommendationIndex]
-  const previousRecommendation =
-    monthlyRecommendations[getWrappedRecommendationIndex(featuredRecommendationIndex - 1)]
-  const nextRecommendation =
-    monthlyRecommendations[getWrappedRecommendationIndex(featuredRecommendationIndex + 1)]
+  const featuredRecommendation =
+    activeMonthlyRecommendations[activeFeaturedRecommendationIndex] ?? monthlyRecommendations[0]
+  const previousRecommendation = isMonthlyRecommendationEmpty
+    ? featuredRecommendation
+    : activeMonthlyRecommendations[
+        getWrappedRecommendationIndex(activeFeaturedRecommendationIndex - 1, monthlyRecommendationCount)
+      ]
+  const nextRecommendation = isMonthlyRecommendationEmpty
+    ? featuredRecommendation
+    : activeMonthlyRecommendations[
+        getWrappedRecommendationIndex(activeFeaturedRecommendationIndex + 1, monthlyRecommendationCount)
+      ]
 
   const visibleMonthlyRecommendations = [
     { placement: 'previous', recommendation: previousRecommendation },
@@ -77,7 +104,7 @@ export function HomeRecommendationSlider({
   ] as const
 
   const moveMonthlyRecommendation = useCallback((direction: -1 | 1) => {
-    if (monthlyRecommendations.length <= 1 || monthlyRecommendationMotionRef.current !== 'idle') {
+    if (monthlyRecommendationCount <= 1 || monthlyRecommendationMotionRef.current !== 'idle') {
       return
     }
 
@@ -88,7 +115,7 @@ export function HomeRecommendationSlider({
 
     monthlyRecommendationMotionRef.current = nextMotion
     setFeaturedRecommendationIndex((currentIndex) =>
-      getWrappedRecommendationIndex(currentIndex + direction),
+      getWrappedRecommendationIndex(currentIndex + direction, monthlyRecommendationCount),
     )
     setMonthlyRecommendationMotion(nextMotion)
 
@@ -97,10 +124,10 @@ export function HomeRecommendationSlider({
       monthlyRecommendationMotionTimerRef.current = null
       setMonthlyRecommendationMotion('idle')
     }, monthlyRecommendationTransitionDurationMs)
-  }, [])
+  }, [monthlyRecommendationCount])
 
   useEffect(() => {
-    if (monthlyRecommendations.length <= 1) {
+    if (monthlyRecommendationCount <= 1) {
       return undefined
     }
 
@@ -111,7 +138,7 @@ export function HomeRecommendationSlider({
     return () => {
       window.clearInterval(rotationTimer)
     }
-  }, [moveMonthlyRecommendation])
+  }, [monthlyRecommendationCount, moveMonthlyRecommendation])
 
   useEffect(
     () => () => {
@@ -124,62 +151,81 @@ export function HomeRecommendationSlider({
 
   const isPersonalized = savedPlansCount + likedPlansCount >= 2
 
-  const basicCards = [
-    {
-      recommendation: monthlyRecommendations[3], // 미식·노포 (대표 전주·오사카)
-      timingTag: '10월 맑은 편',
-      badgeText: '미식·노포',
-      subtitle: '대표 관광지 전주 · 오사카',
-      exampleText: '예: 군산',
-      isCurrent: true,
-      cardType: 'preference'
-    },
-    {
-      recommendation: monthlyRecommendations[4], // 자연·트레킹 (대표 제주·닛코)
-      timingTag: '비수기 한산',
-      badgeText: '자연·트레킹',
-      subtitle: '대표 관광지 제주 · 닛코',
-      exampleText: '예: 곡성',
-      isCurrent: false,
-      cardType: 'preference'
-    },
-    {
-      recommendation: monthlyRecommendations[2], // 역사·전통 (대표 경주·교토)
-      timingTag: '10월 축제 개최',
-      badgeText: '역사·전통',
-      subtitle: '대표 관광지 경주 · 교토',
-      exampleText: '예: 공주',
-      isCurrent: false,
-      cardType: 'preference'
-    },
-    {
-      recommendation: monthlyRecommendations[1], // 바다·해안 (대표 부산·오키나와)
-      timingTag: '이달 절정',
-      badgeText: '바다·해안',
-      subtitle: '대표 관광지 부산 · 오키나와',
-      exampleText: '예: 영덕',
-      isCurrent: false,
-      cardType: 'timing'
-    },
-    {
-      recommendation: monthlyRecommendations[0], // 온천·휴양 (대표 아산·온양·벳푸)
-      timingTag: '발견',
-      badgeText: '온천·휴양',
-      subtitle: '우천에도 좋은 온천',
-      exampleText: '예: 수안보',
-      isCurrent: false,
-      cardType: 'discovery'
-    },
-    {
-      recommendation: monthlyRecommendations[5], // 예술·감성 (대표 강릉·가나자와)
-      timingTag: '발견',
-      badgeText: '예술·감성',
-      subtitle: '감성 카페와 바다',
-      exampleText: '예: 고성',
-      isCurrent: false,
-      cardType: 'discovery'
+  const sectionHeader = (
+    <div className="mb-6 flex items-end justify-between gap-6 max-md:flex-col max-md:items-start">
+      <div className="min-w-0">
+        <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#F36B12]">
+          FOR YOU
+        </p>
+        <h2
+          id="monthly-recommendations-title"
+          aria-label="이번 달 추천 소도시"
+          className="mt-3 break-keep text-[34px] font-black leading-10 text-[#33271E] max-sm:text-[28px] max-sm:leading-9"
+        >
+          {currentUser?.name
+            ? `${currentUser.name.split(' ')[0]} 님을 위한 추천`
+            : '수아 님을 위한 추천'}
+        </h2>
+        <p className="mt-3 max-w-[660px] break-keep text-sm font-semibold leading-6 text-[#33271E]">
+          {isPersonalized
+            ? '지난번 다녀오신 소도시의 분위기를 기억해, 비슷한 곳을 골랐어요'
+            : `${currentRecommendationMonth}월 날씨·축제 경향이 맞는 소도시를 먼저 보여드려요`}
+        </p>
+      </div>
+    </div>
+  )
+
+  if (isMonthlyRecommendationEmpty) {
+    return (
+      <section
+        id="monthly-recommendations"
+        aria-labelledby="monthly-recommendations-title"
+        className="mx-auto max-w-[1440px] px-[55px] pb-0 max-sm:px-5"
+      >
+        {sectionHeader}
+        <div className="grid gap-3 rounded-[26px] border border-white/60 bg-[#fffffa]/20 p-4 shadow-[0_18px_54px_-44px_rgba(51,39,30,0.15)] backdrop-blur-xl md:grid-cols-3 lg:grid-cols-6">
+          {Array.from({ length: 6 }, (_, index) => (
+            <div
+              key={`monthly-empty-${index}`}
+              className="flex min-h-[220px] flex-col justify-between rounded-[18px] border border-white/60 bg-white/45 p-4 shadow-sm"
+            >
+              <span className="h-6 w-20 rounded-full bg-[#FFF0E4]" />
+              <div>
+                <p className="text-sm font-black text-[#33271E]">추천 대기 중</p>
+                <p className="mt-2 break-keep text-[12px] font-semibold leading-5 text-[#7A5A45]">
+                  {currentRecommendationMonth}월 추천 데이터가 준비되면 이 칸에 표시됩니다.
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  const basicCards = activeMonthlyRecommendations.slice(0, 6).map((recommendation, index) => {
+    const isCurrentTheme = selectedPreferenceProfile.selectedThemeIds.includes(
+      recommendation.preference.themeId,
+    )
+    const isApiRecommendation = recommendation.source === 'api'
+
+    return {
+      recommendation,
+      timingTag: recommendation.timingTag ?? `${currentRecommendationMonth}월 추천`,
+      badgeText: recommendation.badge,
+      subtitle:
+        recommendation.cityName && recommendation.region
+          ? `${recommendation.region} · ${recommendation.cityName}`
+          : recommendation.preference.cityPair,
+      exampleText: recommendation.cityName ? `예: ${recommendation.cityName}` : '예: 소도시',
+      isCurrent: isCurrentTheme,
+      cardType: isCurrentTheme
+        ? 'preference'
+        : isApiRecommendation && index < 3
+          ? 'timing'
+          : 'discovery',
     }
-  ]
+  })
 
   const personalizedCard = {
     recommendation: monthlyRecommendations[4], // 자연·트레킹 코스를 매핑
@@ -200,27 +246,7 @@ export function HomeRecommendationSlider({
       className="mx-auto max-w-[1440px] px-[55px] pb-0 max-sm:px-5"
     >
       {/* 1. Dynamic Greeting Title based on Personalization status */}
-      <div className="mb-6 flex items-end justify-between gap-6 max-md:flex-col max-md:items-start">
-        <div className="min-w-0">
-          <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#F36B12]">
-            FOR YOU
-          </p>
-          <h2
-            id="monthly-recommendations-title"
-            aria-label="이번 달 추천 소도시"
-            className="mt-3 break-keep text-[34px] font-black leading-10 text-[#33271E] max-sm:text-[28px] max-sm:leading-9"
-          >
-            {currentUser?.name 
-              ? `${currentUser.name.split(' ')[0]} 님을 위한 추천`
-              : '수아 님을 위한 추천'}
-          </h2>
-          <p className="mt-3 max-w-[660px] break-keep text-sm font-semibold leading-6 text-[#33271E]">
-            {isPersonalized
-              ? '지난번 저장하신 소도시의 분위기를 기억해, 비슷한 곳을 골랐어요'
-              : '이번 달 날씨·축제 경향이 맞는 소도시를 먼저 보여드려요'}
-          </p>
-        </div>
-      </div>
+      {sectionHeader}
 
       {/* 2. Premium Grid Card Slot layouts (6 cards or 7 cards based on personalization) */}
       <div
@@ -250,7 +276,7 @@ export function HomeRecommendationSlider({
           let gradientClass = 'from-[#1F1A17]/95 via-[#1F1A17]/35 to-transparent'
           const textTitleClass = 'text-white font-black'
           const textSubtitleClass = 'text-white/70 font-bold'
-          const cardBottomBg = 'bg-white/10 border-white/10 text-white/90'
+
 
           if (isPersonalizedCard) {
             cardBorderClass = 'border-[#D8B4FE]/30 bg-[#1E0B36]/95 shadow-[0_10px_25px_-12px_rgba(91,33,182,0.15)]'
@@ -295,15 +321,6 @@ export function HomeRecommendationSlider({
                 <h3 className={`mt-1 break-keep text-[13px] leading-snug ${textTitleClass} line-clamp-2`}>
                   {rec.title}
                 </h3>
-                
-                <div className={`mt-2 flex items-center justify-between gap-1.5 rounded-[6px] p-1.5 border ${cardBottomBg}`}>
-                  <span className="text-[9px] font-medium truncate">
-                    {isPersonalizedCard ? '개인화 추가 카드' : isTimingCard ? '순수 타이밍 카드' : isDiscoveryCard ? '발견' : '덜 붐비는 소도시'}
-                  </span>
-                  <span className="text-[9px] font-extrabold bg-[#FFF0E4] text-[#A92B10] px-1 rounded-[3px] shrink-0">
-                    {card.exampleText}
-                  </span>
-                </div>
               </div>
             </button>
           )
@@ -313,7 +330,7 @@ export function HomeRecommendationSlider({
       {/* 3. Hidden compatibility layer for automated testing (Bypasses old Carousel constraints) */}
       <div
         data-testid="monthly-recommendation-grid"
-        data-featured-index={featuredRecommendationIndex}
+        data-featured-index={activeFeaturedRecommendationIndex}
         data-motion={monthlyRecommendationMotion}
         style={{
           position: 'absolute',

@@ -176,7 +176,6 @@ function App() {
   const [activeMonthlyRecommendation, setActiveMonthlyRecommendation] = useState(monthlyRecommendations[0])
   const [activeViewOverride, setActiveViewOverride] = useState<View | null>(null)
   const [generatedPlanDetailRouteId, setGeneratedPlanDetailRouteId] = useState<string | null>(null)
-  const [savedPlanActionRouteId, setSavedPlanActionRouteId] = useState<string | null>(null)
 
   const routedView = getCanonicalViewFromPath(location.pathname) ?? 'auth'
   const activeView =
@@ -633,7 +632,6 @@ function App() {
   const openSavedPlanDetail = (planId: string) => {
     auth.setSavedPlanNotice(null)
     setGeneratedPlanDetailRouteId(null)
-    setSavedPlanActionRouteId(planId)
     navigate(`/plans/${encodeURIComponent(planId)}`)
   }
 
@@ -644,7 +642,6 @@ function App() {
 
     auth.setSavedPlanNotice(null)
     setGeneratedPlanDetailRouteId(planner.currentPlanId)
-    setSavedPlanActionRouteId(null)
     navigateToView('planDetail')
   }
 
@@ -824,7 +821,7 @@ function App() {
                 isPlanSaving={planner.isSavingPlan}
                 isCurrentPlanSaved={isActivePlanDetailSaved}
                 isGeneratedPlanDetail={Boolean(generatedPlanDetailRouteId)}
-                allowSavedPlanActions={routePlanId === savedPlanActionRouteId}
+                allowSavedPlanActions={Boolean(activeSavedPlanForRoute)}
                 savedPlanDeletePending={planner.isSavedPlanDeletePending(activePlanDetailId)}
                 onDeleteSavedPlan={planner.deleteSavedPlan}
                 openMyPage={openMyPage}

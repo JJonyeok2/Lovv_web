@@ -534,6 +534,47 @@ describe('MVP main entry screen', () => {
     })
   })
 
+  it('replaces stale local saved-plan cache with the backend saved-plan response', async () => {
+    vi.stubEnv('VITE_LOVV_AUTH_MODE', 'api')
+    vi.mocked(requestAuthSession).mockResolvedValue(restoredGoogleAuthState)
+    vi.mocked(requestListSavedPlans).mockResolvedValue({
+      savedPlans: [serverSavedPlan],
+      likes: {},
+    })
+    localStorage.setItem(
+      'lovv.savedPlans',
+      JSON.stringify([
+        { ...serverSavedPlan, id: 'stale-plan-1', title: '이전 사용자 저장 일정' },
+        serverSavedPlan,
+      ]),
+    )
+    localStorage.setItem(
+      'lovv.savedPlanLikes',
+      JSON.stringify({
+        'stale-plan-1': 'like',
+        'server-plan-1': 'like',
+      }),
+    )
+
+    renderApp('/mypage')
+
+    await waitFor(() => {
+      expect(requestListSavedPlans).toHaveBeenCalledWith({
+        accessToken: 'restored-access-token',
+      })
+    })
+
+    expect(screen.getByText('서버 저장 일정')).toBeInTheDocument()
+    expect(screen.queryByText('이전 사용자 저장 일정')).not.toBeInTheDocument()
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlans') ?? '[]')).toMatchObject([
+      {
+        id: 'server-plan-1',
+        title: '서버 저장 일정',
+      },
+    ])
+    expect(JSON.parse(localStorage.getItem('lovv.savedPlanLikes') ?? '{}')).toEqual({})
+  })
+
   it('keeps backend protected routes on auth loading without showing stale saved-plan storage', async () => {
     vi.stubEnv('VITE_LOVV_AUTH_MODE', 'api')
     const authSession = createDeferred<AuthApiState>()
@@ -613,6 +654,7 @@ describe('MVP main entry screen', () => {
 
     expect(screen.getByRole('region', { name: '세부 일정 상세' })).toBeInTheDocument()
     expect(screen.getByText('서버 저장 일정')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '저장 일정 삭제' })).toBeInTheDocument()
     expect(screen.getByText('안목해변')).toBeInTheDocument()
     await waitFor(() => {
       expect(requestGetSmallCityPlaces).toHaveBeenCalledWith('KR-Gangneung')

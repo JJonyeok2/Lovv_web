@@ -78,6 +78,20 @@ const providerLabels: Record<SocialAuthProvider, string> = {
   kakao: 'Kakao',
 }
 
+const isSameSavedPlanIdentity = (left: SavedPlan, right: SavedPlan) =>
+  left.id === right.id ||
+  Boolean(left.sourceRecommendationId && left.sourceRecommendationId === right.sourceRecommendationId) ||
+  Boolean(right.sourceRecommendationId && right.sourceRecommendationId === left.id) ||
+  Boolean(left.sourceRecommendationId && left.sourceRecommendationId === right.id)
+
+const isPendingGeneratedSavedPlan = (
+  plan: SavedPlan,
+  activeGeneratedPlanId: string | null,
+  serverPlans: SavedPlan[],
+) =>
+  Boolean(activeGeneratedPlanId && (plan.id === activeGeneratedPlanId || plan.sourceRecommendationId === activeGeneratedPlanId)) &&
+  !serverPlans.some((serverPlan) => isSameSavedPlanIdentity(plan, serverPlan))
+
 const resolveSocialAuthProvider = (
   user: LovvUser | null,
   fallbackProvider: SocialAuthProvider | null,
@@ -200,9 +214,19 @@ export function useAuth({ plannerRef }: UseAuthOptions = {}) {
   const [savedPlanLikes, setSavedPlanLikes] = useState<SavedPlanLikeMap>(() =>
     isBackendAuthMode ? {} : readStoredSavedPlanLikes(),
   )
+  const savedPlansRef = useRef(savedPlans)
+  const savedPlanLikesRef = useRef(savedPlanLikes)
   const [pendingSavedPlanLikeIds, setPendingSavedPlanLikeIds] = useState<string[]>([])
   const [pendingSavedPlanDeleteIds, setPendingSavedPlanDeleteIds] = useState<string[]>([])
   const [savedPlanLikeErrors, setSavedPlanLikeErrors] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    savedPlansRef.current = savedPlans
+  }, [savedPlans])
+
+  useEffect(() => {
+    savedPlanLikesRef.current = savedPlanLikes
+  }, [savedPlanLikes])
   const [savedPlanNotice, setSavedPlanNotice] = useState<string | null>(null)
 
   const clearSavedPlanUiState = useCallback((clearStorage = false) => {
@@ -274,9 +298,6 @@ export function useAuth({ plannerRef }: UseAuthOptions = {}) {
           routePlanLoadFailed = true
         }
       }
-
-      writeStoredSavedPlans(nextSavedPlans)
-      writeStoredSavedPlanLikes(nextSavedPlanLikes)
 
       return { savedPlans: nextSavedPlans, savedPlanLikes: nextSavedPlanLikes, routePlanLoadFailed }
     },
@@ -467,14 +488,40 @@ export function useAuth({ plannerRef }: UseAuthOptions = {}) {
     }
 
     log.info('PLAN', `Saved plans loaded (${savedPlansQuery.data.savedPlans.length})`)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSavedPlans(savedPlansQuery.data.savedPlans)
-    setSavedPlanLikes(savedPlansQuery.data.savedPlanLikes)
+    const serverPlans = savedPlansQuery.data.savedPlans
+    const activeGeneratedPlanId = plannerRef?.current?.currentPlanId ?? null
+    const pendingGeneratedPlans = savedPlansRef.current.filter((plan) =>
+      isPendingGeneratedSavedPlan(plan, activeGeneratedPlanId, serverPlans),
+    )
+    const nextSavedPlans = [...pendingGeneratedPlans, ...serverPlans]
+    const pendingGeneratedLikes = pendingGeneratedPlans.reduce<SavedPlanLikeMap>((likes, plan) => {
+      const planLike =
+        savedPlanLikesRef.current[plan.id] ??
+        (plan.sourceRecommendationId ? savedPlanLikesRef.current[plan.sourceRecommendationId] : undefined)
+
+      if (planLike) {
+        likes[plan.id] = planLike
+        if (plan.sourceRecommendationId) {
+          likes[plan.sourceRecommendationId] = planLike
+        }
+      }
+
+      return likes
+    }, {})
+    const nextSavedPlanLikes = {
+      ...pendingGeneratedLikes,
+      ...savedPlansQuery.data.savedPlanLikes,
+    }
+
+    setSavedPlans(nextSavedPlans)
+    writeStoredSavedPlans(nextSavedPlans)
+    setSavedPlanLikes(nextSavedPlanLikes)
+    writeStoredSavedPlanLikes(nextSavedPlanLikes)
 
     if (savedPlansQuery.data.routePlanLoadFailed) {
       setSavedPlanNotice('저장 일정을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.')
     }
-  }, [savedPlansQuery.data])
+  }, [plannerRef, savedPlansQuery.data])
 
   useEffect(() => {
     if (savedPlansQuery.isError) {

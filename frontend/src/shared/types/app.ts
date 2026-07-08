@@ -61,6 +61,12 @@ export type MonthlyRecommendation = {
   badge: string
   image?: string | null
   themes: string[]
+  cityId?: string
+  cityName?: string
+  region?: string
+  month?: number
+  timingTag?: string
+  source?: 'static' | 'api'
 }
 
 export type HeroTheme = {
@@ -74,10 +80,26 @@ export type HeroTheme = {
   glowClassName: string
 }
 
+export type ChatClarificationOption = {
+  optionId: string
+  label: string
+  description?: string
+}
+
+export type ChatClarification = {
+  threadId: string
+  recommendationId?: string
+  reasonCode?: string
+  prompt: string
+  selectedOptionId?: string
+  options: ChatClarificationOption[]
+}
+
 export type ChatMessage = {
   id: string
   role: 'assistant' | 'user'
   content: string
+  clarification?: ChatClarification
 }
 
 export type PlannerStepStatus = 'completed' | 'active' | 'pending'
@@ -179,6 +201,7 @@ export type SavedPlan = {
   isLiked?: boolean
   isPublic?: boolean
   copiedFromItineraryId?: string
+  likeCount?: number
 
   createdAt: string
   savedAt: string

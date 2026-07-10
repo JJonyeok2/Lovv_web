@@ -134,10 +134,9 @@ export function CityMapDetailPanel({
                 </div>
                 {places.length > 0 ? (
                   <ul className="mt-2 grid gap-2">
-                    {places.map((place) => (
+                    {places.slice(0, 5).map((place) => (
                       <li key={`${testId}-${place.id}`} className="break-keep text-[12px] leading-5 text-[#33271E]">
                         <p className="font-black">{place.name}</p>
-                        <p className="mt-1 font-semibold text-[#6E5A50]">{place.summary}</p>
                         {place.addressName ? (
                           <p className="mt-1 font-bold text-[#8A7467]">{place.addressName}</p>
                         ) : null}
@@ -160,6 +159,11 @@ export function CityMapDetailPanel({
                         </div>
                       </li>
                     ))}
+                    {places.length > 5 ? (
+                      <li className="break-keep text-[11px] font-bold text-[#8A7467] mt-1 pl-1">
+                        외 {places.length - 5}곳 더 있음
+                      </li>
+                    ) : null}
                   </ul>
                 ) : (
                   <p className="mt-2 break-keep text-[12px] font-semibold leading-5 text-[#6E5A50]">

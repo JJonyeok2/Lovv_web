@@ -148,7 +148,9 @@ export function PlannerWorkspace({
     >
       <div className="grid grid-cols-[minmax(220px,0.8fr)_minmax(0,1.45fr)_minmax(220px,0.7fr)] items-start gap-5 max-xl:grid-cols-1">
         <div>
-          <p className="text-sm font-semibold text-[#33271E]">Lovv AI Planner</p>
+          <p className="text-[12px] font-black uppercase tracking-[0.14em] text-[#A92B10]">
+            Lovv AI Planner
+          </p>
           <h2
             id="chat-title"
             className="mt-3 break-keep text-[28px] font-black leading-9 text-[#33271E] max-sm:text-2xl max-sm:leading-8"
@@ -184,14 +186,16 @@ export function PlannerWorkspace({
                       {step.statusLabel}
                     </span>
                   </div>
-                  <p className="mt-2 line-clamp-2 break-keep text-[12px] font-semibold leading-5">
-                    {step.body}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
+                  {step.body ? (
+                    <p className="mt-2 line-clamp-2 break-keep text-[12px] font-semibold leading-5">
+                      {step.body}
+                    </p>
+                  ) : null}
+                  <div className={`${step.body ? 'mt-3' : 'mt-2'} flex flex-col items-start gap-1.5`}>
                     {step.chips.slice(0, 3).map((chip) => (
                       <span
                         key={`${step.id}-${chip}`}
-                        className="inline-flex min-h-7 items-center rounded-[5px] bg-white/52 px-2.5 py-0.5 text-[11px] font-black leading-4"
+                        className="inline-flex min-h-7 max-w-full items-center rounded-[5px] bg-white/52 px-2.5 py-0.5 text-[11px] font-black leading-4"
                       >
                         {chip}
                       </span>

@@ -829,6 +829,7 @@ function App() {
                 chatMessages={planner.chatMessages}
                 onReplacePlanStop={isRouteCurrentGeneratedPlan ? planner.replacePlanStop : undefined}
                 onReplacePlanDay={isRouteCurrentGeneratedPlan ? planner.replacePlanDay : undefined}
+                onRequestPlanModification={isRouteCurrentGeneratedPlan ? planner.requestPlanModification : undefined}
                 activeThemeIds={preferences.activeThemeIds}
                 onAddThemePreference={handleAddThemePreference}
                 onRemoveThemePreferences={handleRemoveThemePreferences}

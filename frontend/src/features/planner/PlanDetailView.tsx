@@ -1,13 +1,12 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ChatMessage, PlanDay, PlanDraft, PlanStop, RoutePathCoordinate, ThemeId, LovvUser, SelectedMealPlace, SavedPlanLike } from '../../shared/types/app'
 import { useTranslation } from 'react-i18next'
 import type { SmallCityCountry } from '../map-city/smallCities'
 import { requestGetSmallCityDetail, requestGetSmallCityPlaces } from '../../shared/api/smallCityApi'
+import { RecommendationApiRequestError } from '../../shared/api/recommendationsApi'
 import { PlanDetailGoogleMap } from './PlanDetailGoogleMap'
 import {
-  createDayReplacementCandidate,
-  createStopReplacementCandidate,
   parsePlannerEditCommand,
 } from './plannerEditModel'
 import { isMealPlaceholderStop } from './plannerModel'
@@ -19,7 +18,13 @@ import {
   DEFAULT_IMAGE_CDN_BASE_URL,
   buildAttractionImageUrl as buildAttractionImageUrlFromModel,
 } from './plannerImageModel'
-import { formatEstimatedMoveLabel, getPlanRouteCoordinates, getPlanStopLatLng, requestOpenRouteServicePath } from './plannerRouteModel'
+import {
+  formatEstimatedMoveLabel,
+  getPlanRouteCoordinates,
+  getPlanStopLatLng,
+  getStraightLineDistanceMeters,
+  requestOpenRouteServicePath,
+} from './plannerRouteModel'
 
 // ---------------------------------------------------------------------------
 // Image URL helpers (Task 13 – S3 / CloudFront integration)
@@ -30,6 +35,30 @@ const IMAGE_CDN_BASE =
   DEFAULT_IMAGE_CDN_BASE_URL
 const OPEN_ROUTE_SERVICE_API_KEY = (import.meta.env.VITE_OPENROUTESERVICE_API_KEY as string | undefined)?.trim() ?? ''
 let rainyMessageIdSequence = 0
+const MAX_WISHLIST_STOPS_PER_DAY = 3
+const DISTANT_RESTAURANT_WARNING_METERS = 10_000
+const DISTANT_RESTAURANT_BLOCK_METERS = 30_000
+const ROUTE_STOP_TIME_LABELS: PlanStop['time'][] = ['아침', '점심', '저녁']
+const STOP_DRAG_MIME_TYPE = 'application/x-lovv-plan-stop'
+
+const getPlanModificationFailureMessage = (error: unknown) => {
+  if (error instanceof RecommendationApiRequestError) {
+    if (error.status === 502 || error.code === 'AGENTCORE_UNAVAILABLE') {
+      return '일정 수정 에이전트가 현재 응답하지 않아요. 잠시 후 다시 시도해 주세요.'
+    }
+
+    if (error.status >= 400 && error.status < 500) {
+      return '일정 수정 요청 형식이 맞지 않아요. 조건을 조금 더 구체적으로 다시 입력해 주세요.'
+    }
+
+    return '일정 수정 요청을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.'
+  }
+
+  return '일정 수정 에이전트 연결이 끊겼어요. 네트워크 상태를 확인한 뒤 다시 시도해 주세요.'
+}
+
+const canFetchSmallCityPlaceData = (destinationId?: string) =>
+  Boolean(destinationId && !/^KR-mock/i.test(destinationId) && !/^JP-mock/i.test(destinationId))
 
 const createRainyMessageId = (prefix: string) => {
   rainyMessageIdSequence += 1
@@ -165,8 +194,14 @@ const usePlaceDataMap = (destinationId?: string) => {
   const prevId = useRef<string | undefined>(undefined)
 
   useEffect(() => {
-    if (!destinationId) {
+    if (!destinationId || !canFetchSmallCityPlaceData(destinationId)) {
       prevId.current = undefined
+      setLoadedDestinationId(undefined)
+      setCityEnglishName('')
+      setCityFallbackImageUrl('')
+      setNameToImageUrl({})
+      setNameToCoords({})
+      setCountryCode('KR')
       return
     }
 
@@ -274,6 +309,9 @@ const resolveStopImageUrl = (
   return buildAttractionImageUrl(cityEnglishName, stop.title, countryCode)
 }
 
+const getRouteStopDisplayTime = (routeStopIndex: number, fallback: PlanStop['time']): PlanStop['time'] =>
+  ROUTE_STOP_TIME_LABELS[routeStopIndex] ?? fallback
+
 const getDropTargetTimeLabel = (stops: PlanStop[], targetIndex: number): PlanStop['time'] => {
   const previousStop = stops
     .slice(0, targetIndex)
@@ -335,6 +373,13 @@ type PlanDetailViewProps = {
   chatMessages?: ChatMessage[]
   onReplacePlanStop?: (dayNumber: number, stopIndex: number, replacement: PlanStop) => void
   onReplacePlanDay?: (dayNumber: number, replacement: PlanDay) => void
+  onRequestPlanModification?: (request: {
+    rawModifyQuery: string
+    scope:
+      | { kind: 'day'; dayNumber: number }
+      | { kind: 'stop'; dayNumber: number; stopIndex: number }
+    planDraftOverride?: PlanDraft
+  }) => Promise<PlanDay | PlanStop | null>
   activeThemeIds?: ThemeId[]
   onAddThemePreference?: (themeId: ThemeId) => void
   onRemoveThemePreferences?: (themeIdsToRemove: ThemeId[]) => void
@@ -390,6 +435,30 @@ type PendingPlanEdit =
       candidate: PlanDay
     }
 
+type PendingDistantRestaurant = {
+  restaurant: SelectedMealPlace
+  targetIndex: number
+  nearestDistanceMeters: number
+}
+
+const formatDistanceKm = (distanceMeters: number) =>
+  `${Math.max(0.1, distanceMeters / 1000).toLocaleString('ko-KR', {
+    maximumFractionDigits: distanceMeters >= 10_000 ? 0 : 1,
+  })}km`
+
+const isSameRestaurantStop = (stop: PlanStop, restaurant: SelectedMealPlace) => {
+  if (stop.wishlistRestaurantId === restaurant.id) {
+    return true
+  }
+
+  const restaurantAddress = restaurant.roadAddressName ?? restaurant.addressName ?? ''
+
+  return (
+    stop.title.trim() === restaurant.placeName.trim() &&
+    (!restaurantAddress || stop.body.trim() === restaurantAddress.trim())
+  )
+}
+
 export function PlanDetailView({
   isPlannerReady,
   shouldAskFestivalTheme,
@@ -414,6 +483,7 @@ export function PlanDetailView({
   chatMessages = [],
   onReplacePlanStop,
   onReplacePlanDay,
+  onRequestPlanModification,
   activeThemeIds = [],
   onAddThemePreference,
   onRemoveThemePreferences,
@@ -441,15 +511,24 @@ export function PlanDetailView({
   const [activeDayIndex, setActiveDayIndex] = useState(0)
   const [activeStopIndex, setActiveStopIndex] = useState<number | null>(null)
   const [pendingEdit, setPendingEdit] = useState<PendingPlanEdit | null>(null)
+  const [pendingModificationRequest, setPendingModificationRequest] = useState<{
+    kind: 'day' | 'stop'
+    dayNumber: number
+    stopIndex?: number
+  } | null>(null)
   const [floatingChatOpen, setFloatingChatOpen] = useState(false)
   const [floatingChatInput, setFloatingChatInput] = useState('')
   const [floatingChatNotice, setFloatingChatNotice] = useState<string | null>(null)
   const [collapsedStops, setCollapsedStops] = useState<Record<string, boolean>>({})
   const [isDragging, setIsDragging] = useState(false)
+  const [draggingStopKey, setDraggingStopKey] = useState<string | null>(null)
   const [restaurantSearchOpen, setRestaurantSearchOpen] = useState(false)
   const [restaurantSearchQuery, setRestaurantSearchQuery] = useState('')
   const [restaurantSearchStatus, setRestaurantSearchStatus] = useState<'idle' | 'loading' | 'ready' | 'missing-key' | 'unavailable' | 'zero-result'>('idle')
   const [restaurantSearchResults, setRestaurantSearchResults] = useState<SelectedMealPlace[]>([])
+  const [selectedWishlistRestaurantId, setSelectedWishlistRestaurantId] = useState<string | null>(null)
+  const [restaurantPlacementNotice, setRestaurantPlacementNotice] = useState<string | null>(null)
+  const [pendingDistantRestaurant, setPendingDistantRestaurant] = useState<PendingDistantRestaurant | null>(null)
   const [pendingSavedPlanExitAction, setPendingSavedPlanExitAction] = useState<(() => void) | null>(null)
 
   const toggleStopCollapse = (dayNumber: number, stopIndex: number) => {
@@ -580,6 +659,14 @@ export function PlanDetailView({
   const activeRouteCoordinates = getPlanRouteCoordinates(activeMapStops, nameToCoords)
   const activeRouteCoordinateKey = serializeRouteCoordinates(activeRouteCoordinates)
   const hasUserAddedWishlistStop = activeMapStops.some((stop) => stop.wishlistRestaurantId || stop.source === 'wishlist')
+  const allPlacedWishlistRestaurantIds = useMemo(
+    () => new Set(days.flatMap((day) => day.stops).map((stop) => stop.wishlistRestaurantId).filter((id): id is string => Boolean(id))),
+    [days],
+  )
+  const activeDayWishlistRestaurants = useMemo(
+    () => (planDraft.selectedRestaurants ?? []).filter((r) => !allPlacedWishlistRestaurantIds.has(r.id) || activeMapStops.some((stop) => stop.wishlistRestaurantId === r.id)),
+    [planDraft.selectedRestaurants, allPlacedWishlistRestaurantIds, activeMapStops],
+  )
   const [openRouteResult, setOpenRouteResult] = useState<{
     key: string
     path: RoutePathCoordinate[] | null
@@ -660,12 +747,14 @@ export function PlanDetailView({
   const planHeroSubtitle = createPlanHeroSubtitle(planDraft)
   const isReadOnly = Boolean(isCurrentPlanSaved && ownerId && ownerId !== currentUser?.id)
   const canUseSavedPlanActions = Boolean(isCurrentPlanSaved && !isReadOnly && !isGeneratedPlanDetail && allowSavedPlanActions)
-  const canEditSavedPlan = canUseSavedPlanActions && Boolean(onReplacePlanStop && onReplacePlanDay)
+  const canEditPlan = Boolean(!isReadOnly && onReplacePlanStop && onReplacePlanDay && onRequestPlanModification)
   const canUseMealWishlist = Boolean(!isReadOnly && onReplacePlanDay && addWishlistRestaurant)
   const shouldAskSavedPlanExitFeedback =
     canUseSavedPlanActions && Boolean(onSelectSavedPlanLike) && getSavedPlanLike?.(planId) !== 'like'
   const recentChatMessages = chatMessages.slice(-4)
   const selectedMealCount = (planDraft.selectedRestaurants ?? []).length
+  const selectedWishlistRestaurant =
+    (planDraft.selectedRestaurants ?? []).find((restaurant) => restaurant.id === selectedWishlistRestaurantId) ?? null
 
   const requestSavedPlanExit = (nextAction: () => void) => {
     if (shouldAskSavedPlanExitFeedback) {
@@ -763,14 +852,44 @@ export function PlanDetailView({
 
     const dayTabLabel = (dayNumber: number) => (days.length <= 1 ? '당일' : `${dayNumber}일차`)
 
-    const openStopReplacement = (day: PlanDay, stopIndex: number) => {
-      setPendingEdit({
-        kind: 'stop',
-        dayNumber: day.day,
-        stopIndex,
-        candidate: createStopReplacementCandidate(day, stopIndex, displayDestinationName),
-      })
-      setFloatingChatNotice(null)
+    const requestStopReplacement = async (
+      day: PlanDay,
+      stopIndex: number,
+      rawModifyQuery = `${day.day}일차 ${day.stops[stopIndex]?.time ?? ''} 일정 바꿔줘`.trim(),
+    ) => {
+      if (!onRequestPlanModification) {
+        setFloatingChatNotice('일정 수정 에이전트 연결이 아직 준비되지 않았어요.')
+        return
+      }
+
+      setPendingModificationRequest({ kind: 'stop', dayNumber: day.day, stopIndex })
+      setPendingEdit(null)
+      setFloatingChatNotice('Lovv 에이전트가 대체 장소를 찾고 있어요.')
+
+      try {
+        const candidate = await onRequestPlanModification({
+          rawModifyQuery,
+          scope: { kind: 'stop', dayNumber: day.day, stopIndex },
+          planDraftOverride: planDraft,
+        })
+
+        if (!candidate || !('time' in candidate)) {
+          setFloatingChatNotice('수정 후보를 받지 못했어요. 조건을 조금 더 구체적으로 다시 요청해 주세요.')
+          return
+        }
+
+        setPendingEdit({
+          kind: 'stop',
+          dayNumber: day.day,
+          stopIndex,
+          candidate,
+        })
+        setFloatingChatNotice('에이전트가 제안한 후보를 확인해 주세요.')
+      } catch (error) {
+        setFloatingChatNotice(getPlanModificationFailureMessage(error))
+      } finally {
+        setPendingModificationRequest(null)
+      }
     }
 
     const openDayReplacementConfirmation = (dayNumber: number) => {
@@ -781,18 +900,43 @@ export function PlanDetailView({
       setFloatingChatNotice(null)
     }
 
-    const openDayReplacementCandidate = (dayNumber: number) => {
+    const requestDayReplacementCandidate = async (
+      dayNumber: number,
+      rawModifyQuery = `${dayNumber}일차 일정 바꿔줘`,
+    ) => {
       const targetDay = days.find((day) => day.day === dayNumber)
 
-      if (!targetDay) {
+      if (!targetDay || !onRequestPlanModification) {
+        setFloatingChatNotice('일정 수정 에이전트 연결이 아직 준비되지 않았어요.')
         return
       }
 
-      setPendingEdit({
-        kind: 'day',
-        dayNumber,
-        candidate: createDayReplacementCandidate(targetDay, displayDestinationName),
-      })
+      setPendingModificationRequest({ kind: 'day', dayNumber })
+      setFloatingChatNotice('Lovv 에이전트가 대체 일정을 구성하고 있어요.')
+
+      try {
+        const candidate = await onRequestPlanModification({
+          rawModifyQuery,
+          scope: { kind: 'day', dayNumber },
+          planDraftOverride: planDraft,
+        })
+
+        if (!candidate || !('stops' in candidate)) {
+          setFloatingChatNotice('수정 후보를 받지 못했어요. 조건을 조금 더 구체적으로 다시 요청해 주세요.')
+          return
+        }
+
+        setPendingEdit({
+          kind: 'day',
+          dayNumber,
+          candidate,
+        })
+        setFloatingChatNotice('에이전트가 제안한 후보를 확인해 주세요.')
+      } catch (error) {
+        setFloatingChatNotice(getPlanModificationFailureMessage(error))
+      } finally {
+        setPendingModificationRequest(null)
+      }
     }
 
     const applyPendingEdit = () => {
@@ -842,11 +986,125 @@ export function PlanDetailView({
       }
 
       addWishlistRestaurant?.(place)
+      setSelectedWishlistRestaurantId(place.id)
+      setRestaurantPlacementNotice('맛집을 담았어요. 왼쪽 코스 사이에서 넣을 위치를 선택해 주세요.')
       setRestaurantSearchOpen(false)
     }
 
-    const handleDropRestaurant = (restaurant: SelectedMealPlace, targetIndex: number) => {
+    const getRestaurantCoords = (restaurant: SelectedMealPlace) => {
+      if (typeof restaurant.lat === 'number' && Number.isFinite(restaurant.lat) && typeof restaurant.lng === 'number' && Number.isFinite(restaurant.lng)) {
+        return { lat: restaurant.lat, lng: restaurant.lng }
+      }
+
+      return null
+    }
+
+    const getNearestRouteDistanceMeters = (restaurant: SelectedMealPlace) => {
+      const restaurantCoords = getRestaurantCoords(restaurant)
+      const stopCoords = activeMapStops
+        .map((stop) => getPlanStopLatLng(stop, nameToCoords))
+        .filter((coords): coords is { lat: number; lng: number } => Boolean(coords))
+
+      if (!restaurantCoords || stopCoords.length === 0) {
+        return null
+      }
+
+      return Math.min(...stopCoords.map((coords) => getStraightLineDistanceMeters(coords, restaurantCoords)))
+    }
+
+    const validateRestaurantPlacement = (
+      restaurant: SelectedMealPlace,
+      targetIndex: number,
+      options: { allowDistant?: boolean } = {},
+    ) => {
+      if (!activeDay) {
+        return false
+      }
+
+      if (activeDay.stops.some((stop) => isSameRestaurantStop(stop, restaurant))) {
+        setRestaurantPlacementNotice('이미 현재 일차 코스에 추가된 맛집입니다.')
+        return false
+      }
+
+      const userAddedStopCount = activeDay.stops.filter(
+        (stop) => stop.wishlistRestaurantId || stop.source === 'wishlist',
+      ).length
+      if (userAddedStopCount >= MAX_WISHLIST_STOPS_PER_DAY) {
+        setRestaurantPlacementNotice('하루에 직접 추가할 맛집은 아침·점심·저녁 기준 3곳까지만 넣을 수 있어요.')
+        return false
+      }
+
+      const nearestDistanceMeters = getNearestRouteDistanceMeters(restaurant)
+
+      if (nearestDistanceMeters == null) {
+        return true
+      }
+
+      if (nearestDistanceMeters > DISTANT_RESTAURANT_BLOCK_METERS) {
+        setRestaurantPlacementNotice(
+          `현재 코스와 ${formatDistanceKm(nearestDistanceMeters)} 떨어져 있어 추가할 수 없어요. 여행지 근처 장소를 선택해 주세요.`,
+        )
+        return false
+      }
+
+      if (nearestDistanceMeters > DISTANT_RESTAURANT_WARNING_METERS && !options.allowDistant) {
+        setPendingDistantRestaurant({
+          restaurant,
+          targetIndex,
+          nearestDistanceMeters,
+        })
+        return false
+      }
+
+      return true
+    }
+
+    const normalizeStopsAfterReorder = (stops: PlanStop[]) =>
+      stops.map((stop, index) => {
+        const nextStop = stops[index + 1]
+
+        return {
+          ...stop,
+          day: activeDay?.day ?? stop.day,
+          order: index + 1,
+          time: getRouteStopDisplayTime(index, stop.time),
+          move: nextStop
+            ? formatEstimatedMoveLabel(getPlanStopLatLng(stop, nameToCoords), getPlanStopLatLng(nextStop, nameToCoords))
+            : '0분',
+        }
+      })
+
+    const reorderActiveDayStop = (fromStopIndex: number, toStopIndex: number) => {
+      if (!activeDay || !onReplacePlanDay || fromStopIndex === toStopIndex) {
+        return
+      }
+
+      const stops = [...activeDay.stops]
+      const [movedStop] = stops.splice(fromStopIndex, 1)
+
+      if (!movedStop || isMealPlaceholderStop(movedStop)) {
+        return
+      }
+
+      stops.splice(toStopIndex, 0, movedStop)
+      onReplacePlanDay(activeDay.day, {
+        ...activeDay,
+        stops: normalizeStopsAfterReorder(stops),
+      })
+      setActiveStopIndex(toStopIndex)
+      setFloatingChatNotice('방문 순서를 바꿨어요. 다음 수정 요청부터 Agent가 이 순서를 기준으로 봅니다.')
+    }
+
+    const handleDropRestaurant = (
+      restaurant: SelectedMealPlace,
+      targetIndex: number,
+      options: { allowDistant?: boolean } = {},
+    ) => {
       if (!canUseMealWishlist || !activeDay || !onReplacePlanDay) return
+
+      if (!validateRestaurantPlacement(restaurant, targetIndex, options)) {
+        return
+      }
 
       const currentStops = [...activeDay.stops]
 
@@ -888,6 +1146,8 @@ export function PlanDetailView({
       }
 
       onReplacePlanDay(activeDay.day, updatedDay)
+      setSelectedWishlistRestaurantId(null)
+      setRestaurantPlacementNotice('선택한 맛집을 일정 코스 사이에 추가했습니다. 저장하면 반영됩니다.')
       setFloatingChatNotice('선택한 맛집을 일정 코스 사이에 추가했습니다. 저장하면 반영됩니다.')
     }
 
@@ -897,7 +1157,13 @@ export function PlanDetailView({
       }
 
       return (
-        <div
+        <button
+          type="button"
+          onClick={() => {
+            if (selectedWishlistRestaurant) {
+              handleDropRestaurant(selectedWishlistRestaurant, dropIndex)
+            }
+          }}
           onDragOver={(e) => {
             e.preventDefault()
             e.currentTarget.classList.add('border-[#F36B12]', 'bg-[#FFF0E4]')
@@ -919,19 +1185,31 @@ export function PlanDetailView({
               console.error('Drop handling failed:', err)
             }
           }}
-          aria-label={`${dropIndex + 1}번째 위치에 맛집 드롭`}
-          className={`my-3 flex min-h-14 items-center justify-center rounded-[16px] border border-dashed px-4 transition-all duration-200 ${
-            isDragging ? 'border-[#F36B12] bg-[#FFF0E4] shadow-[0_12px_28px_-24px_rgba(51,39,30,0.3)]' : 'border-[#F3B489]/55 bg-[#fffffa]/70'
+          aria-label={
+            selectedWishlistRestaurant
+              ? `${selectedWishlistRestaurant.placeName}을(를) ${dropIndex + 1}번째 위치에 추가`
+              : `${dropIndex + 1}번째 위치에 맛집 드롭 또는 선택 후 추가`
+          }
+          className={`my-3 flex min-h-14 w-full items-center justify-center rounded-[16px] border border-dashed px-4 text-center transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
+            isDragging || selectedWishlistRestaurant
+              ? 'border-[#F36B12] bg-[#FFF0E4] shadow-[0_12px_28px_-24px_rgba(51,39,30,0.3)]'
+              : 'border-[#F3B489]/55 bg-[#fffffa]/70'
           }`}
         >
-          <span className={`break-keep text-[12px] font-black text-[#A92B10] transition-opacity duration-200 ${isDragging ? 'opacity-100' : 'opacity-70'}`}>
-            맛집을 이 위치에 드롭해서 코스에 추가
+          <span
+            className={`break-keep text-[12px] font-black text-[#A92B10] transition-opacity duration-200 ${
+              isDragging || selectedWishlistRestaurant ? 'opacity-100' : 'opacity-70'
+            }`}
+          >
+            {selectedWishlistRestaurant
+              ? `${selectedWishlistRestaurant.placeName}을(를) 이 위치에 추가`
+              : '맛집을 이 위치에 드롭하거나 선택 후 클릭해서 추가'}
           </span>
-        </div>
+        </button>
       )
     }
 
-    const handleFloatingChatSubmit = (event: FormEvent<HTMLFormElement>) => {
+    const handleFloatingChatSubmit = async (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault()
 
       const command = floatingChatInput.trim()
@@ -953,11 +1231,13 @@ export function PlanDetailView({
         const targetDay = days.find((day) => day.day === editIntent.day)
 
         if (targetDay) {
-          openStopReplacement(targetDay, editIntent.stopIndex)
+          await requestStopReplacement(targetDay, editIntent.stopIndex, command)
         }
       }
 
-      setFloatingChatNotice('요청을 확인했어요. 일정 화면에서 변경 범위를 확정해 주세요.')
+      if (editIntent.type === 'replace_day_confirmation') {
+        setFloatingChatNotice('요청을 확인했어요. 일정 화면에서 변경 범위를 확정해 주세요.')
+      }
       setFloatingChatInput('')
       setFloatingChatOpen(false)
     }
@@ -1093,7 +1373,7 @@ export function PlanDetailView({
                       <span className="inline-flex min-h-8 items-center rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-black leading-4 text-[#33271E]">
                         {activeDay.stops.length}개 코스
                       </span>
-                      {canEditSavedPlan ? (
+                      {canEditPlan ? (
                         <button
                           type="button"
                           onClick={() => openDayReplacementConfirmation(activeDay.day)}
@@ -1122,21 +1402,42 @@ export function PlanDetailView({
                           <div className="mt-4 flex flex-wrap gap-2">
                             <button
                               type="button"
-                              onClick={() => openDayReplacementCandidate(pendingEdit.dayNumber)}
+                              onClick={() => requestDayReplacementCandidate(pendingEdit.dayNumber)}
+                              disabled={pendingModificationRequest?.kind === 'day' && pendingModificationRequest.dayNumber === pendingEdit.dayNumber}
                               className="inline-flex min-h-10 items-center rounded-full border border-[#A92B10] bg-[#F36B12] px-4 text-[12px] font-black text-[#33271E] transition hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
                             >
-                              {pendingEdit.dayNumber}일차 전체 후보 보기
+                              {pendingModificationRequest?.kind === 'day' && pendingModificationRequest.dayNumber === pendingEdit.dayNumber
+                                ? '에이전트 확인 중'
+                                : `${pendingEdit.dayNumber}일차 전체 후보 보기`}
                             </button>
-                            {activeDay.stops.map((stop, stopIndex) => (
-                              <button
-                                key={`time-choice-${activeDay.day}-${stop.time}`}
-                                type="button"
-                                onClick={() => openStopReplacement(activeDay, stopIndex)}
-                                className="inline-flex min-h-10 items-center rounded-full border border-[#F3B489] bg-[#FFF8F6] px-4 text-[12px] font-black text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
-                              >
-                                {stop.time}만 바꾸기
-                              </button>
-                            ))}
+                            {activeDay.stops
+                              .map((stop, stopIndex) => ({ stop, stopIndex }))
+                              .filter(({ stop }) => !isMealPlaceholderStop(stop))
+                              .map(({ stop, stopIndex }) => {
+                                const displayTime = stop.time
+
+                                return (
+                                  <button
+                                    key={`time-choice-${activeDay.day}-${stopIndex}-${displayTime}`}
+                                    type="button"
+                                    onClick={() =>
+                                      requestStopReplacement(activeDay, stopIndex, `${activeDay.day}일차 ${displayTime} 일정 바꿔줘`)
+                                    }
+                                    disabled={
+                                      pendingModificationRequest?.kind === 'stop' &&
+                                      pendingModificationRequest.dayNumber === activeDay.day &&
+                                      pendingModificationRequest.stopIndex === stopIndex
+                                    }
+                                    className="inline-flex min-h-10 items-center rounded-full border border-[#F3B489] bg-[#FFF8F6] px-4 text-[12px] font-black text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                                  >
+                                    {pendingModificationRequest?.kind === 'stop' &&
+                                    pendingModificationRequest.dayNumber === activeDay.day &&
+                                    pendingModificationRequest.stopIndex === stopIndex
+                                      ? '에이전트 확인 중'
+                                      : `${displayTime}만 바꾸기`}
+                                  </button>
+                                )
+                              })}
                             <button
                               type="button"
                               onClick={() => setPendingEdit(null)}
@@ -1191,16 +1492,67 @@ export function PlanDetailView({
                     {renderDropZone(Math.max(0, activeDay.stops.findIndex((s) => !isMealPlaceholderStop(s))))}
 
                     {/* Filter out meal placeholder stops from the numbered list */}
-                    {activeDay.stops.filter((s) => !isMealPlaceholderStop(s)).map((item, index) => {
+                    {activeDay.stops
+                      .map((stop, stopIndex) => ({ stop, stopIndex }))
+                      .filter(({ stop }) => !isMealPlaceholderStop(stop))
+                      .map(({ stop: item, stopIndex }, index) => {
                       const imageUrl = resolveStopImageUrl(item, nameToImageUrl, cityEnglishName, countryCode)
                       const isStopActive = index === activeStopIndex
                       const isStopCollapsed = collapsedStops[`${activeDay.day}-${index}`] === true
+                      const displayTime = item.time
+
+                      const stopDragKey = `${activeDay.day}-${stopIndex}`
 
                       return (
-                        <div key={`${activeDay.day}-${item.time}-${item.title}`}>
+                        <div
+                          key={`${activeDay.day}-${stopIndex}-${item.title}`}
+                          draggable={canEditPlan}
+                          onDragStart={(event) => {
+                            if (!canEditPlan) return
+                            event.dataTransfer.effectAllowed = 'move'
+                            event.dataTransfer.setData(
+                              STOP_DRAG_MIME_TYPE,
+                              JSON.stringify({ dayNumber: activeDay.day, stopIndex }),
+                            )
+                            setDraggingStopKey(stopDragKey)
+                          }}
+                          onDragEnd={() => setDraggingStopKey(null)}
+                          onDragOver={(event) => {
+                            if (event.dataTransfer.types.includes(STOP_DRAG_MIME_TYPE)) {
+                              event.preventDefault()
+                              event.dataTransfer.dropEffect = 'move'
+                            }
+                          }}
+                          onDrop={(event) => {
+                            if (!event.dataTransfer.types.includes(STOP_DRAG_MIME_TYPE)) return
+                            event.preventDefault()
+
+                            try {
+                              const payload = JSON.parse(event.dataTransfer.getData(STOP_DRAG_MIME_TYPE)) as {
+                                dayNumber?: number
+                                stopIndex?: number
+                              }
+
+                              if (
+                                payload.dayNumber === activeDay.day &&
+                                typeof payload.stopIndex === 'number'
+                              ) {
+                                reorderActiveDayStop(payload.stopIndex, stopIndex)
+                              }
+                            } catch {
+                              // Ignore malformed drag payloads from outside the itinerary list.
+                            } finally {
+                              setDraggingStopKey(null)
+                            }
+                          }}
+                          aria-label={`${displayTime} ${item.title} 일정 카드`}
+                          className={canEditPlan ? 'cursor-grab active:cursor-grabbing' : undefined}
+                        >
                           <div
                             className={`space-y-3 p-2 rounded-[22px] transition-all duration-200 ${
                               isStopActive ? 'ring-2 ring-[#F36B12]/40 bg-[#FFF7F0]/40 shadow-sm' : ''
+                            } ${
+                              draggingStopKey === stopDragKey ? 'opacity-65' : ''
                             }`}
                             onMouseEnter={() => setActiveStopIndex(index)}
                           >
@@ -1213,7 +1565,15 @@ export function PlanDetailView({
                                   <span className="mt-2 h-full min-h-8 w-px bg-[#F3B489]/45" />
                                 ) : null}
                               </div>
-                              <div className="min-w-0 overflow-hidden rounded-[20px] border border-transparent bg-[#FFF0E4]">
+                              <div className="relative min-w-0 overflow-hidden rounded-[20px] border border-transparent bg-[#FFF0E4]">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleStopCollapse(activeDay.day, index)}
+                                  aria-label={`${item.title} ${isStopCollapsed ? '이미지와 설명 펼치기' : '이미지와 설명 접기'}`}
+                                  className="absolute right-3 top-3 z-10 inline-flex min-h-8 items-center rounded-full border border-white/70 bg-[#fffffa]/90 px-3 py-1 text-[12px] font-black leading-4 text-[#33271E] shadow-sm backdrop-blur-sm transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                                >
+                                  {isStopCollapsed ? '펼치기 ▼' : '접기 ▲'}
+                                </button>
                                 {/* Attraction image */}
                                 {!isStopCollapsed && (
                                   <div className="relative h-40 w-full overflow-hidden max-sm:h-32">
@@ -1228,25 +1588,29 @@ export function PlanDetailView({
                                 <div className="p-5">
                                   <div className="flex flex-wrap items-center gap-2">
                                     <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-black leading-4 text-[#33271E]">
-                                      {item.time}
+                                      {displayTime}
                                     </span>
                                     <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-bold leading-4 text-[#33271E]">
                                       다음 장소까지 {item.move}
                                     </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => toggleStopCollapse(activeDay.day, index)}
-                                      className="inline-flex min-h-8 items-center rounded-full border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-black leading-4 text-[#33271E] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
-                                    >
-                                      {isStopCollapsed ? '펼치기 ▼' : '접기 ▲'}
-                                    </button>
-                                    {canEditSavedPlan ? (
+                                    {canEditPlan ? (
                                       <button
                                         type="button"
-                                        onClick={() => openStopReplacement(activeDay, index)}
+                                        onClick={() =>
+                                          requestStopReplacement(activeDay, stopIndex, `${activeDay.day}일차 ${displayTime} 일정 바꿔줘`)
+                                        }
+                                        disabled={
+                                          pendingModificationRequest?.kind === 'stop' &&
+                                          pendingModificationRequest.dayNumber === activeDay.day &&
+                                          pendingModificationRequest.stopIndex === stopIndex
+                                        }
                                         className="inline-flex min-h-8 items-center rounded-full border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-black leading-4 text-[#A92B10] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
                                       >
-                                        이 장소만 바꾸기
+                                        {pendingModificationRequest?.kind === 'stop' &&
+                                        pendingModificationRequest.dayNumber === activeDay.day &&
+                                        pendingModificationRequest.stopIndex === stopIndex
+                                          ? '에이전트 확인 중'
+                                          : '이 장소 바꾸기'}
                                       </button>
                                     ) : null}
                                   </div>
@@ -1271,7 +1635,7 @@ export function PlanDetailView({
                             </article>
                           </div>
                           {/* Render Dropzone after this stop */}
-                          {renderDropZone(activeDay.stops.indexOf(item) + 1)}
+                          {renderDropZone(stopIndex + 1)}
                         </div>
                       )
                     })}
@@ -1446,12 +1810,12 @@ export function PlanDetailView({
                 ) : null}
               </aside>
 
-              <div className="grid min-h-0 grid-rows-[minmax(320px,1fr)_minmax(220px,0.75fr)] gap-5 lg:sticky lg:top-[96px] lg:h-[calc(100dvh-7rem)] lg:min-h-[560px] max-lg:grid-rows-none">
+              <div className="grid min-h-0 grid-rows-[minmax(280px,1fr)_auto] gap-5 lg:sticky lg:top-[96px] lg:max-h-[calc(100dvh-7rem)] lg:min-h-[560px] max-lg:grid-rows-none">
                 {/* Interactive Route Map Panel */}
-                <div className="relative min-h-[320px] overflow-hidden rounded-[24px] border border-white/50 bg-[#fffffa]/30 shadow-[0_16px_42px_-28px_rgba(51,39,30,0.2)] backdrop-blur-sm max-lg:h-[420px]">
+                <div className="relative min-h-[280px] overflow-hidden rounded-[24px] border border-white/50 bg-[#fffffa]/30 shadow-[0_16px_42px_-28px_rgba(51,39,30,0.2)] backdrop-blur-sm max-lg:h-[420px]">
                   <PlanDetailGoogleMap
                     stops={activeMapStops}
-                    wishlistRestaurants={planDraft.selectedRestaurants ?? []}
+                    wishlistRestaurants={activeDayWishlistRestaurants}
                     nameToCoords={nameToCoords}
                     countryCode={countryCode}
                     activeStopIndex={activeStopIndex}
@@ -1467,14 +1831,14 @@ export function PlanDetailView({
 
                 {/* 나의 맛집 위시리스트 (Pocket) */}
                 {canUseMealWishlist ? (
-                  <div className="flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-[#F3B489] bg-[#fffffa] p-5 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.2)] max-lg:max-h-[420px]">
+                  <div className="flex min-h-0 flex-col rounded-[22px] border border-[#F3B489] bg-[#fffffa] p-5 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.2)] max-lg:max-h-[420px]">
                   <div className="shrink-0 flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h4 className="flex items-center gap-2 text-base font-black text-[#33271E]">
                         <span>위시리스트</span>
                       </h4>
                       <p className="mt-1 break-keep text-[11px] font-semibold leading-5 text-[#6E5A50]">
-                        가고 싶은 맛집을 검색해 담고, 왼쪽 코스로 드래그하여 끼워 넣으세요!
+                        맛집을 선택한 뒤 왼쪽 코스 사이를 클릭하거나, 직접 드래그해서 끼워 넣으세요.
                       </p>
                     </div>
                     <button
@@ -1486,53 +1850,88 @@ export function PlanDetailView({
                     </button>
                   </div>
 
+                  {restaurantPlacementNotice ? (
+                    <p
+                      role="status"
+                      className="mt-4 break-keep rounded-[14px] border border-[#F3B489]/35 bg-[#FFF0E4] px-3 py-2 text-[12px] font-black leading-5 text-[#A92B10]"
+                    >
+                      {restaurantPlacementNotice}
+                    </p>
+                  ) : null}
+
                   {(planDraft.selectedRestaurants ?? []).length > 0 ? (
-                    <ul className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pb-6 pr-1" aria-label="담아둔 맛집 목록">
-                      {(planDraft.selectedRestaurants ?? []).map((restaurant) => (
-                        <li
-                          key={restaurant.id}
-                          draggable={true}
-                          onDragStart={(e) => {
-                            e.dataTransfer.setData('text/plain', JSON.stringify(restaurant))
-                            setIsDragging(true)
-                          }}
-                          onDragEnd={() => {
-                            setIsDragging(false)
-                          }}
-                          className="flex cursor-grab flex-wrap items-start justify-between gap-4 rounded-[18px] border border-[#F3B489]/30 bg-[#FFF8F6] p-4 transition-colors hover:border-[#F36B12] active:cursor-grabbing"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <h5 className="break-keep text-sm font-black leading-6 text-[#33271E]">
-                              {restaurant.placeName}
-                            </h5>
-                            <p className="mt-1 break-keep text-[12px] font-semibold leading-5 text-[#6E5A50]">
-                              {restaurant.roadAddressName ?? restaurant.addressName ?? '주소 정보 없음'}
-                            </p>
-                            {restaurant.phone ? (
-                              <p className="mt-0.5 text-[11px] font-semibold text-[#6E5A50]/80">
-                                전화: {restaurant.phone}
-                              </p>
-                            ) : null}
-                            {restaurant.placeUrl ? (
-                              <a
-                                href={restaurant.placeUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="mt-2 inline-flex text-[11px] font-black text-[#A92B10] underline-offset-4 hover:underline"
-                              >
-                                상세 보기
-                              </a>
-                            ) : null}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeWishlistRestaurant?.(restaurant.id)}
-                            className="inline-flex min-h-8 items-center rounded-full border border-[#F3B489] bg-[#fffffa] px-3 text-[11px] font-black text-[#A92B10] transition hover:border-[#A92B10] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                    <ul className="mt-4 min-h-0 max-h-[360px] space-y-3 overflow-y-auto overscroll-contain pb-2 pr-1" aria-label="담아둔 맛집 목록">
+                      {(planDraft.selectedRestaurants ?? []).map((restaurant) => {
+                        const isSelectedForPlacement = selectedWishlistRestaurantId === restaurant.id
+
+                        return (
+                          <li
+                            key={restaurant.id}
+                            draggable={true}
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('text/plain', JSON.stringify(restaurant))
+                              setIsDragging(true)
+                            }}
+                            onDragEnd={() => {
+                              setIsDragging(false)
+                            }}
+                            className={`flex cursor-grab flex-wrap items-start justify-between gap-4 rounded-[18px] border p-4 transition-colors active:cursor-grabbing ${
+                              isSelectedForPlacement
+                                ? 'border-[#F36B12] bg-[#FFF0E4] shadow-[0_12px_28px_-24px_rgba(51,39,30,0.3)]'
+                                : 'border-[#F3B489]/30 bg-[#FFF8F6] hover:border-[#F36B12]'
+                            }`}
                           >
-                            제거
-                          </button>
-                        </li>
-                      ))}
+                            <div className="min-w-0 flex-1">
+                              <h5 className="break-keep text-sm font-black leading-6 text-[#33271E]">
+                                {restaurant.placeName}
+                              </h5>
+                              <p className="mt-1 break-keep text-[12px] font-semibold leading-5 text-[#6E5A50]">
+                                {restaurant.roadAddressName ?? restaurant.addressName ?? '주소 정보 없음'}
+                              </p>
+                              {restaurant.phone ? (
+                                <p className="mt-0.5 text-[11px] font-semibold text-[#6E5A50]/80">
+                                  전화: {restaurant.phone}
+                                </p>
+                              ) : null}
+                              {restaurant.placeUrl ? (
+                                <a
+                                  href={restaurant.placeUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="mt-2 inline-flex text-[11px] font-black text-[#A92B10] underline-offset-4 hover:underline"
+                                >
+                                  상세 보기
+                                </a>
+                              ) : null}
+                            </div>
+                            <div className="flex shrink-0 flex-col gap-2">
+                              <button
+                                type="button"
+                                aria-pressed={isSelectedForPlacement}
+                                onClick={() => {
+                                  setSelectedWishlistRestaurantId((currentId) =>
+                                    currentId === restaurant.id ? null : restaurant.id,
+                                  )
+                                }}
+                                className={`inline-flex min-h-8 items-center rounded-full border px-3 text-[11px] font-black transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] ${
+                                  isSelectedForPlacement
+                                    ? 'border-[#A92B10] bg-[#F36B12] text-[#33271E] hover:bg-[#FF8A2A]'
+                                    : 'border-[#F3B489] bg-[#fffffa] text-[#33271E] hover:border-[#F36B12] hover:bg-[#FFE0CA]'
+                                }`}
+                              >
+                                {isSelectedForPlacement ? '선택됨' : '위치 선택'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeWishlistRestaurant?.(restaurant.id)}
+                                className="inline-flex min-h-8 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-3 text-center text-[11px] font-black text-[#A92B10] transition hover:border-[#A92B10] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                              >
+                                제거
+                              </button>
+                            </div>
+                          </li>
+                        )
+                      })}
                     </ul>
                   ) : (
                     <div className="mt-4 rounded-[18px] border border-dashed border-[#F3B489]/50 bg-[#FFF8F6]/30 py-7 text-center">
@@ -1651,7 +2050,54 @@ export function PlanDetailView({
             </div>
           </section>
         ) : null}
-        {canEditSavedPlan ? (
+        {pendingDistantRestaurant ? (
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="distant-restaurant-title"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-[#33271E]/35 px-5 backdrop-blur-sm"
+          >
+            <div className="w-full max-w-[460px] rounded-[24px] border border-white/65 bg-[#fffffa]/95 p-6 shadow-[0_26px_64px_-30px_rgba(51,39,30,0.35)] backdrop-blur-2xl">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#A92B10]">
+                Distance check
+              </p>
+              <h3
+                id="distant-restaurant-title"
+                className="mt-3 break-keep text-2xl font-black leading-8 text-[#33271E]"
+              >
+                현재 동선에서 조금 멀어요
+              </h3>
+              <p className="mt-4 break-keep text-sm font-semibold leading-7 text-[#6E5A50]">
+                {pendingDistantRestaurant.restaurant.placeName}은 현재 코스의 가장 가까운 장소와 약{' '}
+                {formatDistanceKm(pendingDistantRestaurant.nearestDistanceMeters)} 떨어져 있어요. 그래도 이 위치에 추가할까요?
+              </p>
+              <div className="mt-6 grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const pending = pendingDistantRestaurant
+                    setPendingDistantRestaurant(null)
+                    handleDropRestaurant(pending.restaurant, pending.targetIndex, { allowDistant: true })
+                  }}
+                  className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-5 text-sm font-black text-[#33271E] transition hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                >
+                  그래도 추가
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPendingDistantRestaurant(null)
+                    setRestaurantPlacementNotice('여행지 근처 장소를 다시 선택해 주세요.')
+                  }}
+                  className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-5 text-sm font-black text-[#6E5A50] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                >
+                  다시 고르기
+                </button>
+              </div>
+            </div>
+          </section>
+        ) : null}
+        {canEditPlan ? (
           <div className="fixed bottom-6 right-6 z-40 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-3 max-sm:bottom-4 max-sm:right-4">
             {floatingChatOpen ? (
               <section

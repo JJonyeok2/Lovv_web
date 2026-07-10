@@ -61,7 +61,9 @@ describe('PlannerChatInterface clarification options', () => {
             {
               optionId: 'continue_without_festival',
               label: '축제 없이 계속하기',
-              description: '동선을 먼저 안정적으로 구성합니다.',
+              helperText: '동선을 먼저 안정적으로 구성합니다.',
+              apply: { includeFestivals: false },
+              then: 'rerun_discovery',
             },
             {
               optionId: 'include_festival',
@@ -75,6 +77,7 @@ describe('PlannerChatInterface clarification options', () => {
     renderChat({ chatMessages, onSelectClarificationOption })
 
     expect(screen.getByText('축제를 일정에 포함할까요?')).toBeInTheDocument()
+    expect(screen.getByText('동선을 먼저 안정적으로 구성합니다.')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /축제 없이 계속하기/ }))
 
     expect(onSelectClarificationOption).toHaveBeenCalledWith(

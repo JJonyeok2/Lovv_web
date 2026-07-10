@@ -297,9 +297,9 @@ export function PlannerChatInterface({
                             <span className="block break-keep text-sm font-black leading-5 text-[#33271E]">
                               {option.label}
                             </span>
-                            {option.description ? (
+                            {option.description || option.helperText ? (
                               <span className="mt-1 block break-keep text-[12px] font-semibold leading-5 text-[#6E5A50]">
-                                {option.description}
+                                {option.description || option.helperText}
                               </span>
                             ) : null}
                           </button>
@@ -418,10 +418,12 @@ export function PlannerChatInterface({
                 ? isPlannerReady
                   ? '추가로 원하는 조건을 입력해 주세요'
                   : '동행, 관심사, 걷는 정도를 자연어로 입력해 주세요.'
+                : shouldShowFestivalPrompt
+                  ? '축제 포함 여부를 먼저 선택해 주세요'
                 : shouldShowTravelMonthPrompt
                   ? '여행 예정 월을 먼저 선택해 주세요'
                 : shouldAskFestivalTheme
-                  ? '축제 포함 여부와 여행 기간을 먼저 선택해 주세요'
+                  ? '여행 기간, 여행 월, 축제 포함 여부를 먼저 선택해 주세요'
                   : '여행 기간을 먼저 선택해 주세요'
             }
             className="min-h-12 min-w-0 rounded-[18px] border-0 bg-transparent px-4 py-2 break-keep text-sm leading-5 text-[#33271E] outline-none placeholder:text-[#8A7467] disabled:cursor-not-allowed disabled:opacity-65 transition-all focus:bg-transparent max-sm:text-[13px]"

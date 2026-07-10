@@ -3,6 +3,7 @@ import type { PlanDay } from '../../shared/types/app'
 import {
   applyPlanDayReplacement,
   applyPlanStopReplacement,
+  applyWishlistSummaryToPlanDraft,
   createDayReplacementCandidate,
   createStopReplacementCandidate,
   parsePlannerEditCommand,
@@ -69,6 +70,28 @@ describe('planner edit model', () => {
     expect(nextDays[0].stops[0].title).not.toBe('하평 해변')
     expect(nextDays[0].stops[1]).toEqual(sampleDays[0].stops[1])
     expect(nextDays[0].stops[2]).toEqual(sampleDays[0].stops[2])
+  })
+
+  it('refreshes summaries from the edited stop list', () => {
+    const replacement = {
+      ...sampleDays[0].stops[0],
+      title: '새 아침 산책로',
+      body: '바뀐 첫 장소입니다.',
+    }
+    const nextDays = applyPlanStopReplacement(sampleDays, 1, 0, replacement)
+    const nextDraft = applyWishlistSummaryToPlanDraft({
+      durationLabel: '당일치기',
+      dayCount: 1,
+      intensityLabel: '동선이 느슨한 일정',
+      festivalThemeLabel: '축제 제외',
+      summary: '하평 해변을 방문하고 중앙시장을 둘러보는 일정입니다.',
+      days: nextDays,
+      stops: nextDays.flatMap((day) => day.stops),
+    })
+
+    expect(nextDraft.days[0].summary).toBe('새 아침 산책로 ➔ 중앙시장 ➔ 해안 산책로 등을 차례로 방문하는 일정입니다.')
+    expect(nextDraft.summary).toContain('새 아침 산책로')
+    expect(nextDraft.summary).not.toContain('하평 해변')
   })
 
   it('replaces only the selected day', () => {

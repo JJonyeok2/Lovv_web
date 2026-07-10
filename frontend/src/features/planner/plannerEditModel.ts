@@ -19,17 +19,92 @@ const USER_WISHLIST_DAY_SUMMARY_PATTERN =
   /\s*사용자가 추가한 맛집 [^.]+ 동선을 조정했습니다\./g
 const USER_WISHLIST_PLAN_SUMMARY_PATTERN =
   /\s*사용자가 직접 추가한 맛집 \d+곳을 포함한 일정입니다\./g
+const GENERATED_ROUTE_SUMMARY_PATTERN =
+  /\s*[^.]+(?:등을\s*)?차례로 방문하는 일정입니다\./g
+const GENERATED_SINGLE_STOP_SUMMARY_PATTERN =
+  /\s*[^.]+ 중심으로 구성한 일정입니다\./g
 
 const normalizeCommandText = (text: string) => text.trim().replace(/\s+/g, ' ')
 const stripGeneratedWishlistSummary = (summary: string) =>
   summary
     .replace(USER_WISHLIST_DAY_SUMMARY_PATTERN, '')
     .replace(USER_WISHLIST_PLAN_SUMMARY_PATTERN, '')
+    .replace(GENERATED_ROUTE_SUMMARY_PATTERN, '')
+    .replace(GENERATED_SINGLE_STOP_SUMMARY_PATTERN, '')
     .replace(/\s{2,}/g, ' ')
     .trim()
 
+const getUniqueStrings = (values: string[]) =>
+  Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)))
+
 const getUniqueStopTitles = (stops: PlanStop[]) =>
-  Array.from(new Set(stops.map((stop) => stop.title.trim()).filter(Boolean)))
+  getUniqueStrings(stops.map((stop) => stop.title))
+
+const appendObjectParticle = (value: string) => {
+  const lastChar = value.trim().at(-1)
+
+  if (!lastChar) {
+    return value
+  }
+
+  const codePoint = lastChar.charCodeAt(0)
+  const hangulBase = 0xac00
+  const hangulLast = 0xd7a3
+
+  if (codePoint < hangulBase || codePoint > hangulLast) {
+    return `${value}을`
+  }
+
+  return `${value}${(codePoint - hangulBase) % 28 === 0 ? '를' : '을'}`
+}
+
+const isMealPlaceholderLikeStop = (stop: PlanStop) => {
+  const haystack = `${stop.title} ${stop.body} ${stop.reason}`.toLowerCase()
+
+  return (
+    /식사\s*장소/.test(haystack) ||
+    /자유롭게\s*(선택|식사)/.test(haystack) ||
+    /식사는?\s*사용자/.test(haystack) ||
+    /meal\s*place/i.test(haystack) ||
+    /freely\s*choose/i.test(haystack)
+  )
+}
+
+const getSummaryStopTitles = (stops: PlanStop[]) =>
+  getUniqueStopTitles(stops.filter((stop) => !isMealPlaceholderLikeStop(stop)))
+
+export const createDaySummaryFromStops = (day: PlanDay) => {
+  const stopTitles = getSummaryStopTitles(day.stops)
+
+  if (stopTitles.length === 0) {
+    return `${day.day}일차 일정을 확인해 보세요.`
+  }
+
+  if (stopTitles.length === 1) {
+    return `${stopTitles[0]} 중심으로 구성한 일정입니다.`
+  }
+
+  return `${stopTitles.join(' ➔ ')} 등을 차례로 방문하는 일정입니다.`
+}
+
+export const createPlanSummaryFromDays = (days: PlanDay[]) => {
+  const dayTitles = days
+    .map((day) => getSummaryStopTitles(day.stops))
+    .filter((titles) => titles.length > 0)
+
+  const allTitles = getUniqueStrings(dayTitles.flatMap((titles) => titles))
+
+  if (allTitles.length === 0) {
+    return '방문 순서와 이동 흐름을 정리한 맞춤 일정입니다.'
+  }
+
+  const highlightedTitles = allTitles.slice(0, 3)
+  const suffix = allTitles.length > highlightedTitles.length
+    ? ` 외 ${allTitles.length - highlightedTitles.length}곳`
+    : ''
+
+  return `${appendObjectParticle(`${highlightedTitles.join(' ➔ ')}${suffix}`)} 중심으로 구성한 ${days.length}일 일정입니다.`
+}
 
 const formatWishlistStopNames = (stops: PlanStop[]) => {
   const titles = getUniqueStopTitles(stops)
@@ -54,7 +129,7 @@ export const isUserAddedWishlistStop = (stop: PlanStop) =>
 export const applyWishlistSummaryToDays = (days: PlanDay[]): PlanDay[] =>
   days.map((day) => {
     const wishlistStops = day.stops.filter(isUserAddedWishlistStop)
-    const baseSummary = stripGeneratedWishlistSummary(day.summary)
+    const baseSummary = createDaySummaryFromStops(day)
 
     if (wishlistStops.length === 0) {
       return {
@@ -76,7 +151,7 @@ export const applyWishlistSummaryToPlanDraft = (draft: PlanDraft): PlanDraft => 
   const days = applyWishlistSummaryToDays(draft.days)
   const stops = days.flatMap((day) => day.stops)
   const wishlistStopCount = stops.filter(isUserAddedWishlistStop).length
-  const baseSummary = stripGeneratedWishlistSummary(draft.summary)
+  const baseSummary = createPlanSummaryFromDays(days) || stripGeneratedWishlistSummary(draft.summary)
 
   return {
     ...draft,

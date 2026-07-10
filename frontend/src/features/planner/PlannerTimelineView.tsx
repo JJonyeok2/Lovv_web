@@ -182,7 +182,7 @@ export function PlannerTimelineView({
     </section>
   )
 
-  if (isPlannerLoading && hasGuidedPlannerChoices) {
+  if (isPlannerLoading && hasGuidedPlannerChoices && isPlannerReady) {
     return renderSkeletonItineraryPanel()
   }
 
@@ -199,7 +199,7 @@ export function PlannerTimelineView({
           </h3>
           <p className="mt-4 break-keep text-sm leading-6 text-[#33271E] max-sm:text-[13px]">
             {shouldAskFestivalTheme
-              ? '축제 포함 여부와 여행 기간을 고른 뒤 이번 여행 조건을 입력하면 일정 초안이 여기에 표시됩니다.'
+              ? '여행 기간, 여행 월, 축제 포함 여부를 고른 뒤 이번 여행 조건을 입력하면 일정 초안이 여기에 표시됩니다.'
               : shouldShowTravelMonthPrompt
                 ? '여행 예정 월을 고르면 해당 소도시의 축제 기간과 맞는지 확인해 일정 초안을 표시합니다.'
                 : '여행 기간을 고른 뒤 해당 소도시의 동선 단서를 기준으로 일정 초안이 여기에 표시됩니다.'}

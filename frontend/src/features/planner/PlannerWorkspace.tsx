@@ -166,11 +166,11 @@ export function PlannerWorkspace({
           </p>
         </div>
 
-        <ol aria-label="AI 일정 진행 상태" className="grid grid-cols-3 gap-3 max-md:grid-cols-1">
+        <ol aria-label="AI 일정 진행 상태" className="grid grid-cols-3 gap-3 max-md:flex max-md:overflow-x-auto max-md:snap-x max-md:snap-mandatory max-md:pb-2 scroll-smooth">
           {plannerStateSteps.map((step, index) => (
             <li
               key={step.id}
-              className={`min-w-0 rounded-[14px] border px-4 py-3 ${getPlannerStepClassName(step.status, getStepTone(index))}`}
+              className={`min-w-0 rounded-[14px] border px-4 py-3 max-md:w-[280px] max-md:shrink-0 max-md:snap-center ${getPlannerStepClassName(step.status, getStepTone(index))}`}
             >
               <div className="flex items-start gap-3">
                 <span
@@ -238,7 +238,7 @@ export function PlannerWorkspace({
         {renderPlannerStateHeader()}
         <div
           data-testid="chat-top-grid"
-          className="grid min-h-[680px] grid-cols-[minmax(0,1.6fr)_minmax(360px,0.74fr)] items-stretch gap-6 xl:h-[min(760px,calc(100dvh-9rem))] max-xl:grid-cols-1"
+          className="grid min-h-[680px] grid-cols-[minmax(0,1.6fr)_minmax(360px,0.74fr)] items-stretch gap-6 xl:h-[min(760px,calc(100dvh-9rem))] max-xl:grid-cols-1 max-xl:h-auto"
         >
           <PlannerChatInterface
             chatScrollRef={chatScrollRef}

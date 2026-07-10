@@ -192,9 +192,9 @@ export function PlannerChatInterface({
     <section
       aria-label="여행 조건을 대화로 정리하기"
       data-testid="chat-conversation-panel"
-      className="lovv-chat-panel flex h-full min-h-[680px] min-w-0 flex-col overflow-hidden rounded-[26px] border border-white/70 shadow-[0_28px_64px_-40px_rgba(51,39,30,0.34)] xl:min-h-0"
+      className="lovv-chat-panel flex h-full min-h-[680px] min-w-0 flex-col overflow-hidden rounded-[26px] border border-white/70 shadow-[0_28px_64px_-40px_rgba(51,39,30,0.34)] xl:min-h-0 max-xl:h-[600px] max-sm:h-[480px] max-sm:min-h-0"
     >
-      <header className="border-b border-white/60 bg-[#FFF8F6]/76 px-6 py-5 backdrop-blur-sm">
+      <header className="border-b border-white/60 bg-[#FFF8F6]/76 px-6 py-5 backdrop-blur-sm max-sm:px-4 max-sm:py-3.5">
         <div className="flex items-start justify-between gap-5">
           <div>
             <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#A92B10]">
@@ -203,11 +203,11 @@ export function PlannerChatInterface({
             <h3 className="mt-2 break-keep text-2xl font-black leading-8 text-[#33271E] max-sm:text-xl max-sm:leading-7">
               여행 조건을 대화로 정리하기
             </h3>
-            <p className="mt-2 break-keep text-sm font-semibold leading-6 text-[#6E5A50] max-sm:text-[13px]">
+            <p className="mt-2 break-keep text-sm font-semibold leading-6 text-[#6E5A50] max-sm:text-[12px] max-sm:leading-5">
               대화에서 조건을 좁히고, 옆 요약 패널에서 일정 초안을 바로 확인합니다.
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2 rounded-full border border-white/70 bg-[#fffffa]/85 px-3 py-2 shadow-sm backdrop-blur-sm">
+          <div className="flex shrink-0 items-center gap-2 rounded-full border border-white/70 bg-[#fffffa]/85 px-3 py-2 shadow-sm backdrop-blur-sm max-sm:p-1">
             <span
               className="flex size-9 items-center justify-center overflow-hidden rounded-full border border-[#F3B489]/50 bg-[#FFF0E4]"
               aria-hidden="true"
@@ -223,7 +223,7 @@ export function PlannerChatInterface({
         ref={chatScrollRef}
         role="log"
         aria-label="AI 일정 대화"
-        className="lovv-chat-scroll flex-1 space-y-5 overflow-y-auto px-6 py-6"
+        className="lovv-chat-scroll flex-1 space-y-5 overflow-y-auto px-6 py-6 max-sm:px-4 max-sm:py-4"
       >
         {chatMessages.map((message) => {
           const isAssistant = message.role === 'assistant'
@@ -236,7 +236,7 @@ export function PlannerChatInterface({
             >
               {isAssistant ? (
                 <span
-                  className="mt-6 flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#F3B489]/50 bg-[#FFF0E4] shadow-[0_8px_18px_-10px_rgba(51,39,30,0.35)]"
+                  className="mt-6 flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#F3B489]/50 bg-[#FFF0E4] shadow-[0_8px_18px_-10px_rgba(51,39,30,0.35)] max-sm:mt-4 max-sm:size-8"
                   aria-hidden="true"
                 >
                   <img src={foxFaceImage} alt="" className="h-full w-full object-cover" />
@@ -244,7 +244,7 @@ export function PlannerChatInterface({
               ) : null}
               <div
                 className={`min-w-0 ${
-                  isAssistant ? 'max-w-[min(720px,82%)]' : 'max-w-[min(600px,76%)] items-end text-right'
+                  isAssistant ? 'max-w-[min(720px,82%)] max-sm:max-w-[88%]' : 'max-w-[min(600px,76%)] max-sm:max-w-[84%] items-end text-right'
                 }`}
               >
                 <p
@@ -255,7 +255,7 @@ export function PlannerChatInterface({
                   {isAssistant ? 'Lovv Planner' : '내 조건'}
                 </p>
                 <div
-                  className={`break-keep whitespace-pre-wrap rounded-[22px] border px-5 py-4 text-sm leading-6 text-[#33271E] shadow-sm max-sm:text-[13px] max-sm:leading-6 ${
+                  className={`break-keep whitespace-pre-wrap rounded-[22px] border px-5 py-4 text-sm leading-6 text-[#33271E] shadow-sm max-sm:rounded-[18px] max-sm:px-4 max-sm:py-3 max-sm:text-[13px] max-sm:leading-5 ${
                     isAssistant
                       ? 'lovv-chat-bubble-assistant border-white/70 bg-white/78 backdrop-blur-sm shadow-[0_12px_26px_-22px_rgba(51,39,30,0.3)]'
                       : 'lovv-chat-bubble-user ml-auto border-[#E65E12]/25 bg-[#F36B12] text-[#33271E] font-bold shadow-[0_12px_24px_-10px_rgba(243,107,18,0.35)] transition-all duration-200 hover:scale-[1.01]'
@@ -271,9 +271,9 @@ export function PlannerChatInterface({
                   <div
                     role="group"
                     aria-label="추가 확인 선택지"
-                    className="mt-3 rounded-[20px] border border-[#F3B489]/25 bg-[#FFF8F6]/88 p-4 shadow-[0_12px_28px_-24px_rgba(51,39,30,0.24)] backdrop-blur-sm"
+                    className="mt-3 rounded-[20px] border border-[#F3B489]/25 bg-[#FFF8F6]/88 p-4 shadow-[0_12px_28px_-24px_rgba(51,39,30,0.24)] backdrop-blur-sm max-sm:p-3"
                   >
-                    <p className="break-keep text-sm font-black leading-6 text-[#33271E]">
+                    <p className="break-keep text-sm font-black leading-6 text-[#33271E] max-sm:text-[13px] max-sm:leading-5">
                       {message.clarification.prompt}
                     </p>
                     <div className="mt-3 grid gap-2">
@@ -294,11 +294,11 @@ export function PlannerChatInterface({
                                 : 'border-white/70 bg-white/84 hover:border-[#F36B12]/40 hover:bg-white hover:shadow-[0_10px_18px_-15px_rgba(243,107,18,0.34)] disabled:opacity-60'
                             }`}
                           >
-                            <span className="block break-keep text-sm font-black leading-5 text-[#33271E]">
+                            <span className="block break-keep text-sm font-black leading-5 text-[#33271E] max-sm:text-[13px] max-sm:leading-4">
                               {option.label}
                             </span>
                             {option.description || option.helperText ? (
-                              <span className="mt-1 block break-keep text-[12px] font-semibold leading-5 text-[#6E5A50]">
+                              <span className="mt-1 block break-keep text-[12px] font-semibold leading-5 text-[#6E5A50] max-sm:text-[11px] max-sm:leading-4">
                                 {option.description || option.helperText}
                               </span>
                             ) : null}
@@ -345,12 +345,12 @@ export function PlannerChatInterface({
                 selected: selectedTravelMonth === month,
                 onClick: () => submitChatMessage(getTravelMonthLabel(month)),
               })),
-              'grid grid-cols-6 gap-2',
+              'grid grid-cols-6 gap-2 max-sm:grid-cols-4',
             )
           : null}
 
         {isPlannerReady ? (
-          <div aria-label="조건 해석 결과" className="rounded-[20px] border border-white/60 bg-[#FFF8F6]/84 p-5 shadow-[0_14px_30px_-26px_rgba(51,39,30,0.18)] backdrop-blur-sm">
+          <div aria-label="조건 해석 결과" className="rounded-[20px] border border-white/60 bg-[#FFF8F6]/84 p-5 shadow-[0_14px_30px_-26px_rgba(51,39,30,0.18)] backdrop-blur-sm max-sm:p-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-[5px] border border-white/65 bg-[#fffffa]/90 px-3 py-1 text-[12px] font-bold text-[#33271E] shadow-sm">
                 일정 초안
@@ -367,7 +367,7 @@ export function PlannerChatInterface({
                 </span>
               ))}
             </div>
-            <p className="mt-3 break-keep text-sm font-semibold leading-6 text-[#33271E] max-sm:text-[13px]">
+            <p className="mt-3 break-keep text-sm font-semibold leading-6 text-[#33271E] max-sm:text-[13px] max-sm:leading-5">
               요약 패널에 반영했어요. 시간대별 동선과 추천 이유는 세부 일정에서 이어서 확인해 주세요.
             </p>
             {plannerConditionExtraction?.softPreferences.length ? (
@@ -384,7 +384,7 @@ export function PlannerChatInterface({
         ) : null}
       </div>
 
-      <div className="border-t border-white/60 bg-[#FFF8F6]/72 p-5 backdrop-blur-md">
+      <div className="border-t border-white/60 bg-[#FFF8F6]/72 p-5 backdrop-blur-md max-sm:p-3.5">
         {isPlannerReady ? (
           <div className="mb-3">
             <p className="text-[12px] font-black text-[#A92B10]">자주 쓰는 조건</p>
@@ -406,7 +406,7 @@ export function PlannerChatInterface({
         
         <form
           onSubmit={submitChatForm}
-          className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-[24px] border border-white/70 bg-[#fffffa]/82 p-2 shadow-[0_18px_34px_-28px_rgba(51,39,30,0.22)] max-sm:grid-cols-1 max-sm:rounded-[22px] focus-within:border-[#F36B12]/40 focus-within:bg-white focus-within:shadow-[0_12px_24px_-10px_rgba(243,107,18,0.25)] focus-within:ring-2 focus-within:ring-[#F36B12]/10 transition-all duration-200 backdrop-blur-sm"
+          className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-[24px] border border-white/70 bg-[#fffffa]/82 p-2 shadow-[0_18px_34px_-28px_rgba(51,39,30,0.22)] max-sm:gap-2 max-sm:p-1.5 max-sm:rounded-[20px] focus-within:border-[#F36B12]/40 focus-within:bg-white focus-within:shadow-[0_12px_24px_-10px_rgba(243,107,18,0.25)] focus-within:ring-2 focus-within:ring-[#F36B12]/10 transition-all duration-200 backdrop-blur-sm"
         >
           <input
             aria-label="여행 조건 입력"
@@ -426,7 +426,7 @@ export function PlannerChatInterface({
                   ? '여행 기간, 여행 월, 축제 포함 여부를 먼저 선택해 주세요'
                   : '여행 기간을 먼저 선택해 주세요'
             }
-            className="min-h-12 min-w-0 rounded-[18px] border-0 bg-transparent px-4 py-2 break-keep text-sm leading-5 text-[#33271E] outline-none placeholder:text-[#8A7467] disabled:cursor-not-allowed disabled:opacity-65 transition-all focus:bg-transparent max-sm:text-[13px]"
+            className="min-h-12 min-w-0 rounded-[18px] border-0 bg-transparent px-4 py-2 break-keep text-sm leading-5 text-[#33271E] outline-none placeholder:text-[#8A7467] disabled:cursor-not-allowed disabled:opacity-65 transition-all focus:bg-transparent max-sm:px-2 max-sm:text-[13px] max-sm:placeholder:text-[12px]"
           />
           <button
             type="submit"

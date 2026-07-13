@@ -206,6 +206,7 @@ export function useAuth({ plannerRef }: UseAuthOptions = {}) {
     },
     enabled: isInitialAuthSessionQueryEnabled,
     retry: false,
+    refetchOnWindowFocus: false,
   })
 
   const [pendingAuthRedirectPath, setPendingAuthRedirectPath] = useState<string | null>(null)
@@ -314,10 +315,11 @@ export function useAuth({ plannerRef }: UseAuthOptions = {}) {
       return { savedPlans: nextSavedPlans, savedPlanLikes: nextSavedPlanLikes, routePlanLoadFailed }
     },
     enabled: shouldLoadSavedPlans,
+    refetchOnWindowFocus: false,
   })
 
   const isSavedPlansRestoring =
-    shouldLoadSavedPlans && (savedPlansQuery.isFetching || savedPlansQuery.isPending)
+    shouldLoadSavedPlans && savedPlansQuery.isPending
 
   const commitCurrentUser = useCallback(
     (user: LovvUser | null, fallbackProvider: SocialAuthProvider | null = null) => {

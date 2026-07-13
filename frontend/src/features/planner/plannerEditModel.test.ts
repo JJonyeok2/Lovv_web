@@ -6,6 +6,7 @@ import {
   applyWishlistSummaryToPlanDraft,
   createDayReplacementCandidate,
   createStopReplacementCandidate,
+  hasExplicitReplacementDestination,
   parsePlannerEditCommand,
 } from './plannerEditModel'
 
@@ -59,8 +60,42 @@ describe('planner edit model', () => {
     })
   })
 
+  it('parses broad plan replacement commands', () => {
+    expect(parsePlannerEditCommand('도시 바꿔줘', sampleDays)).toEqual({
+      type: 'replace_plan',
+      rawText: '도시 바꿔줘',
+    })
+  })
+
+  it('parses ordinal stop replacement commands', () => {
+    expect(parsePlannerEditCommand('1일차 2번째 장소를 시장 말고 카페로 바꿔줘', sampleDays)).toEqual({
+      type: 'replace_stop',
+      day: 1,
+      stopIndex: 1,
+      timeLabel: '점심',
+      rawText: '1일차 2번째 장소를 시장 말고 카페로 바꿔줘',
+    })
+  })
+
+  it('uses the active day for ordinal stop replacement commands without day text', () => {
+    expect(parsePlannerEditCommand('두 번째를 카페로 바꿔줘', sampleDays, 1)).toEqual({
+      type: 'replace_stop',
+      day: 1,
+      stopIndex: 1,
+      timeLabel: '점심',
+      rawText: '두 번째를 카페로 바꿔줘',
+    })
+  })
+
   it('returns null for unsupported edit commands', () => {
-    expect(parsePlannerEditCommand('전체 여행 다시 짜줘', sampleDays)).toBeNull()
+    expect(parsePlannerEditCommand('그냥 좋아', sampleDays)).toBeNull()
+  })
+
+  it('detects direct destination replacement requests before they reach the agent', () => {
+    expect(hasExplicitReplacementDestination('1일차 점심을 설악해변으로 바꿔줘')).toBe(true)
+    expect(hasExplicitReplacementDestination('두 번째 장소를 카페로 변경해줘')).toBe(true)
+    expect(hasExplicitReplacementDestination('1일차 2번째 중앙시장 바꿔줘')).toBe(false)
+    expect(hasExplicitReplacementDestination('1일차 점심을 실내 위주로 찾아줘')).toBe(false)
   })
 
   it('replaces only the selected stop', () => {

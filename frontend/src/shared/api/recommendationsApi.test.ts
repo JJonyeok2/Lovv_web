@@ -470,6 +470,65 @@ describe('mapRecommendationToDraft — AgentCore V2 fields', () => {
     expect(draft.alternativeItinerary).toEqual(alternativeItinerary)
   })
 
+  it('uses alternativeItinerary days when the primary itinerary has no days', () => {
+    const draft = mapRecommendationToDraft(
+      makeResponse(
+        [],
+        {
+          alternativeItinerary: {
+            tripType: 'daytrip',
+            title: '비 오는 날 대체 일정',
+            summary: '실내 중심 대체 일정입니다.',
+            durationLabel: '당일치기',
+            days: [
+              makeDay(1, [
+                makeItem({
+                  title: '서귀포 실내 전시관',
+                  body: '비를 피하며 둘러보는 장소',
+                  reason: '날씨 영향을 줄입니다.',
+                }),
+              ]),
+            ],
+          },
+        },
+      ),
+    )
+
+    expect(draft.dayCount).toBe(1)
+    expect(draft.durationLabel).toBe('당일치기')
+    expect(draft.summary).toBe('실내 중심 대체 일정입니다.')
+    expect(draft.days[0].stops[0].title).toBe('서귀포 실내 전시관')
+  })
+
+  it('prefers alternativeItinerary for an explicit weather replacement response', () => {
+    const draft = mapRecommendationToDraft(
+      makeResponse(
+        [makeDay(1, [makeItem({ title: '기존 야외 일정' })])],
+        {
+          alternativeItinerary: {
+            tripType: 'daytrip',
+            title: '비 오는 날 대체 일정',
+            summary: '실내 중심 대체 일정입니다.',
+            durationLabel: '당일치기',
+            days: [
+              makeDay(1, [
+                makeItem({
+                  title: '서귀포 실내 전시관',
+                  body: '비를 피하며 둘러보는 장소',
+                  reason: '날씨 영향을 줄입니다.',
+                }),
+              ]),
+            ],
+          },
+        },
+      ),
+      { preferAlternativeItinerary: true },
+    )
+
+    expect(draft.summary).toBe('실내 중심 대체 일정입니다.')
+    expect(draft.days[0].stops[0].title).toBe('서귀포 실내 전시관')
+  })
+
   it('preserves V2 itinerary item metadata needed for modify currentOrder', () => {
     const draft = mapRecommendationToDraft(
       makeResponse(

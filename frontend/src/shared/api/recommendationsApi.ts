@@ -242,6 +242,57 @@ export type RecommendationApiResponse = {
   itinerary?: RecommendationItinerary
 }
 
+const isRecommendationItineraryLike = (value: unknown): value is RecommendationItinerary => {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const record = value as Partial<RecommendationItinerary>
+
+  return Array.isArray(record.days)
+}
+
+const resolveMappableItinerary = (
+  apiResponse: RecommendationApiResponse,
+  preferAlternativeItinerary = false,
+): RecommendationItinerary | undefined => {
+  if (
+    preferAlternativeItinerary &&
+    isRecommendationItineraryLike(apiResponse.alternativeItinerary) &&
+    apiResponse.alternativeItinerary.days.length > 0
+  ) {
+    const alternative = apiResponse.alternativeItinerary
+    const original = apiResponse.itinerary
+
+    return {
+      tripType: alternative.tripType || original?.tripType || 'daytrip',
+      title: alternative.title || original?.title || '날씨 대체 일정',
+      summary: alternative.summary || original?.summary || '날씨 영향을 줄인 대체 일정입니다.',
+      durationLabel: alternative.durationLabel || original?.durationLabel || '당일치기',
+      days: alternative.days,
+    }
+  }
+
+  if (isRecommendationItineraryLike(apiResponse.itinerary) && apiResponse.itinerary.days.length > 0) {
+    return apiResponse.itinerary
+  }
+
+  if (isRecommendationItineraryLike(apiResponse.alternativeItinerary) && apiResponse.alternativeItinerary.days.length > 0) {
+    const alternative = apiResponse.alternativeItinerary
+    const original = apiResponse.itinerary
+
+    return {
+      tripType: alternative.tripType || original?.tripType || 'daytrip',
+      title: alternative.title || original?.title || '날씨 대체 일정',
+      summary: alternative.summary || original?.summary || '날씨 영향을 줄인 대체 일정입니다.',
+      durationLabel: alternative.durationLabel || original?.durationLabel || '당일치기',
+      days: alternative.days,
+    }
+  }
+
+  return apiResponse.itinerary
+}
+
 export type PopularDestinationApiItem = {
   cityId?: string
   name?: string
@@ -442,8 +493,12 @@ export const requestListReactionCities = async (
   }
 }
 
-export const mapRecommendationToDraft = (apiResponse: RecommendationApiResponse): PlanDraft => {
-  const { itinerary, explainability, explanations } = apiResponse
+export const mapRecommendationToDraft = (
+  apiResponse: RecommendationApiResponse,
+  options: { preferAlternativeItinerary?: boolean } = {},
+): PlanDraft => {
+  const { explainability, explanations } = apiResponse
+  const itinerary = resolveMappableItinerary(apiResponse, options.preferAlternativeItinerary)
 
   if (!itinerary) {
     throw new Error('Recommendation API response is missing itinerary')

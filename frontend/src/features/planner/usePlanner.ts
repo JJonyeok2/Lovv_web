@@ -29,6 +29,7 @@ import {
   getTravelMonthLabel,
   resolveFestivalThemeChoice,
   formatThemeList,
+  shouldAskFestivalForCity,
 } from './plannerModel'
 import {
   requestCreateSavedPlan,
@@ -294,18 +295,19 @@ export function usePlanner({
   const plannerPreferenceLabel = getPreferenceProfileLabel(plannerPreferenceProfile)
   const plannerThemeHashtags = getThemeHashtags(plannerPreferenceProfile)
 
-  const shouldAskFestivalTheme = true
+  const shouldAskFestivalTheme = shouldAskFestivalForCity(plannerCityContext)
   const shouldShowDurationPrompt = selectedDurationLabel === null
   const shouldShowTravelMonthPrompt =
     selectedDurationLabel !== null &&
     selectedTravelMonth === null &&
     plannerConditionExtraction === null
   const shouldShowFestivalPrompt =
+    shouldAskFestivalTheme &&
     selectedDurationLabel !== null &&
     selectedTravelMonth !== null &&
     festivalThemeChoice === 'undecided' &&
     plannerConditionExtraction === null
-  const hasSettledFestivalChoice = festivalThemeChoice !== 'undecided'
+  const hasSettledFestivalChoice = !shouldAskFestivalTheme || festivalThemeChoice !== 'undecided'
   const hasGuidedPlannerChoices =
     selectedDurationLabel !== null && selectedTravelMonth !== null && hasSettledFestivalChoice
   const isPlannerReady = hasGuidedPlannerChoices && plannerConditionExtraction !== null
@@ -951,6 +953,11 @@ export function usePlanner({
     setSavedPlanNotice('선택한 일차만 대체 일정으로 바꿨어요.')
   }, [setSavedPlanNotice])
 
+  const replacePlanDraft = useCallback((replacement: PlanDraft) => {
+    setPlanDraft(applyWishlistSummaryToPlanDraft(replacement))
+    setSavedPlanNotice('전체 일정 수정안을 반영했어요. 저장하면 변경 내용이 반영됩니다.')
+  }, [setSavedPlanNotice])
+
   const addWishlistRestaurant = useCallback((restaurant: SelectedMealPlace) => {
     setPlanDraft((currentDraft) => {
       const currentList = currentDraft.selectedRestaurants ?? []
@@ -1008,13 +1015,16 @@ export function usePlanner({
     rawModifyQuery,
     scope,
     planDraftOverride,
+    preferAlternativeItinerary = false,
   }: {
     rawModifyQuery: string
     scope:
+      | { kind: 'plan' }
       | { kind: 'day'; dayNumber: number }
       | { kind: 'stop'; dayNumber: number; stopIndex: number }
     planDraftOverride?: PlanDraft
-  }): Promise<PlanDay | PlanStop | null> => {
+    preferAlternativeItinerary?: boolean
+  }): Promise<PlanDraft | PlanDay | PlanStop | null> => {
     const trimmedQuery = rawModifyQuery.trim()
 
     if (!trimmedQuery) {
@@ -1051,7 +1061,11 @@ export function usePlanner({
     })) as RecommendationApiResponse
 
     rememberRecommendationSession(response)
-    const modifiedDraft = mapRecommendationToDraft(response)
+    const modifiedDraft = mapRecommendationToDraft(response, { preferAlternativeItinerary })
+
+    if (scope.kind === 'plan') {
+      return modifiedDraft
+    }
 
     if (scope.kind === 'day') {
       return modifiedDraft.days.find((day) => day.day === scope.dayNumber) ?? null
@@ -1102,7 +1116,7 @@ export function usePlanner({
         {
           id: createMessageId('assistant', currentMessages.length + 1),
           role: 'assistant',
-          content: `${getFestivalThemeLabel(nextFestivalThemeChoice)} 기준으로 볼게요. 이제 동행, 관심사, 걷는 정도 등 원하는 조건을 자유롭게 알려주세요.`,
+          content: `${getFestivalThemeLabel(nextFestivalThemeChoice)} 기준으로 볼게요. 이제 원하는 조건을 자유롭게 말해주세요.`,
         },
       ])
       setFestivalThemeChoice(nextFestivalThemeChoice)
@@ -1541,6 +1555,59 @@ export function usePlanner({
     }
   }
 
+  const submitGuidedPlannerChoices = ({
+    durationLabel,
+    travelMonth,
+    festivalChoice,
+  }: {
+    durationLabel: string
+    travelMonth: number
+    festivalChoice: Exclude<FestivalThemeChoice, 'undecided'>
+  }) => {
+    if (hasGuidedPlannerChoices || isPlannerLoading) {
+      return
+    }
+
+    const travelMonthLabel = getTravelMonthLabel(travelMonth)
+    const festivalChoiceLabel = getFestivalThemeLabel(festivalChoice)
+    const guidedChoiceSummary = shouldAskFestivalTheme
+      ? `${durationLabel} · ${travelMonthLabel} · ${festivalChoiceLabel}`
+      : `${durationLabel} · ${travelMonthLabel}`
+    const guidedChoiceReply = shouldAskFestivalTheme
+      ? `${durationLabel}, ${travelMonthLabel}, ${festivalChoiceLabel} 기준으로 볼게요. 이제 원하는 조건을 자유롭게 말해주세요.`
+      : `${durationLabel}, ${travelMonthLabel} 기준으로 볼게요. 이제 원하는 조건을 자유롭게 말해주세요.`
+    const nextPlannerContextText = `${plannerContextText} ${travelMonthLabel}`.trim()
+    const nextDraft = createPlanDraft(
+      plannerPreference,
+      `${durationLabel} ${nextPlannerContextText}`,
+      festivalChoice,
+      plannerCityContext,
+      travelMonth,
+    )
+
+    setChatMessages((currentMessages) => [
+      ...currentMessages,
+      {
+        id: createMessageId('user', currentMessages.length),
+        role: 'user',
+        content: guidedChoiceSummary,
+      },
+      {
+        id: createMessageId('assistant', currentMessages.length + 1),
+        role: 'assistant',
+        content: guidedChoiceReply,
+      },
+    ])
+    setSelectedDurationLabel(durationLabel)
+    setSelectedTravelMonth(travelMonth)
+    setFestivalThemeChoice(festivalChoice)
+    setPlannerContextText(nextPlannerContextText)
+    setPlannerConditionExtraction(null)
+    setPlanDraft(nextDraft)
+    setSavedPlanNotice(null)
+    setChatInput('')
+  }
+
   const submitChatForm = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     submitChatMessage(chatInput)
@@ -1668,10 +1735,12 @@ export function usePlanner({
     toggleGeneratedPlanLike,
     replacePlanStop,
     replacePlanDay,
+    replacePlanDraft,
     requestPlanModification,
     addWishlistRestaurant,
     removeWishlistRestaurant,
     submitChatMessage,
+    submitGuidedPlannerChoices,
     selectClarificationOption,
     submitChatForm,
     plannerStateSteps,

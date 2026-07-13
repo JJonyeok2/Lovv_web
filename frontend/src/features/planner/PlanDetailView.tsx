@@ -2,11 +2,14 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ChatMessage, PlanDay, PlanDraft, PlanStop, RoutePathCoordinate, ThemeId, LovvUser, SelectedMealPlace, SavedPlanLike } from '../../shared/types/app'
 import { useTranslation } from 'react-i18next'
+import foxFaceImage from '../../assets/foxhead-smile.png'
 import type { SmallCityCountry } from '../map-city/smallCities'
 import { requestGetSmallCityDetail, requestGetSmallCityPlaces } from '../../shared/api/smallCityApi'
 import { RecommendationApiRequestError } from '../../shared/api/recommendationsApi'
 import { PlanDetailGoogleMap } from './PlanDetailGoogleMap'
 import {
+  hasExplicitReplacementDestination,
+  isUserAddedWishlistStop,
   parsePlannerEditCommand,
 } from './plannerEditModel'
 import { isMealPlaceholderStop } from './plannerModel'
@@ -34,7 +37,7 @@ const IMAGE_CDN_BASE =
   (import.meta.env.VITE_IMAGE_CDN_BASE_URL as string | undefined)?.trim().replace(/\/+$/, '') ||
   DEFAULT_IMAGE_CDN_BASE_URL
 const OPEN_ROUTE_SERVICE_API_KEY = (import.meta.env.VITE_OPENROUTESERVICE_API_KEY as string | undefined)?.trim() ?? ''
-let rainyMessageIdSequence = 0
+let localChatMessageIdSequence = 0
 const MAX_WISHLIST_STOPS_PER_DAY = 3
 const DISTANT_RESTAURANT_WARNING_METERS = 10_000
 const DISTANT_RESTAURANT_BLOCK_METERS = 30_000
@@ -60,9 +63,9 @@ const getPlanModificationFailureMessage = (error: unknown) => {
 const canFetchSmallCityPlaceData = (destinationId?: string) =>
   Boolean(destinationId && !/^KR-mock/i.test(destinationId) && !/^JP-mock/i.test(destinationId))
 
-const createRainyMessageId = (prefix: string) => {
-  rainyMessageIdSequence += 1
-  return `${prefix}-${Date.now()}-${rainyMessageIdSequence}`
+const createLocalChatMessageId = (prefix: string) => {
+  localChatMessageIdSequence += 1
+  return `${prefix}-${Date.now()}-${localChatMessageIdSequence}`
 }
 
 /**
@@ -90,6 +93,25 @@ const normalizeContentLookupKey = (value?: string | number | null) => {
   const numericMatch = normalized.match(/\d+/g)
 
   return numericMatch ? numericMatch.join('') : normalized
+}
+
+const normalizeReplacementPlaceTitle = (value: string) =>
+  value.trim().toLowerCase().replace(/[^a-z0-9가-힣]/g, '')
+
+const hasOnlyNewReplacementStops = (currentDay: PlanDay, candidateDay: PlanDay) => {
+  const currentTitles = new Set(
+    currentDay.stops
+      .filter((stop) => !isMealPlaceholderStop(stop) && !isUserAddedWishlistStop(stop))
+      .map((stop) => normalizeReplacementPlaceTitle(stop.title))
+      .filter(Boolean),
+  )
+  const candidateStops = candidateDay.stops.filter(
+    (stop) => !isMealPlaceholderStop(stop) && !isUserAddedWishlistStop(stop),
+  )
+
+  return candidateStops.length > 0 && candidateStops.every(
+    (stop) => !currentTitles.has(normalizeReplacementPlaceTitle(stop.title)),
+  )
 }
 
 const addPlaceLookupValue = <T,>(
@@ -373,19 +395,21 @@ type PlanDetailViewProps = {
   chatMessages?: ChatMessage[]
   onReplacePlanStop?: (dayNumber: number, stopIndex: number, replacement: PlanStop) => void
   onReplacePlanDay?: (dayNumber: number, replacement: PlanDay) => void
+  onReplacePlanDraft?: (replacement: PlanDraft) => void
   onRequestPlanModification?: (request: {
     rawModifyQuery: string
     scope:
+      | { kind: 'plan' }
       | { kind: 'day'; dayNumber: number }
       | { kind: 'stop'; dayNumber: number; stopIndex: number }
     planDraftOverride?: PlanDraft
-  }) => Promise<PlanDay | PlanStop | null>
+    preferAlternativeItinerary?: boolean
+  }) => Promise<PlanDraft | PlanDay | PlanStop | null>
   activeThemeIds?: ThemeId[]
   onAddThemePreference?: (themeId: ThemeId) => void
   onRemoveThemePreferences?: (themeIdsToRemove: ThemeId[]) => void
   getSavedPlanLike?: (planId: string) => SavedPlanLike
   onSelectSavedPlanLike?: (planId: string, like: Exclude<SavedPlanLike, null>) => void
-  selectedTravelMonth?: number | null
   currentUser?: LovvUser | null
   ownerId?: string
   isPublic?: boolean
@@ -483,13 +507,13 @@ export function PlanDetailView({
   chatMessages = [],
   onReplacePlanStop,
   onReplacePlanDay,
+  onReplacePlanDraft,
   onRequestPlanModification,
   activeThemeIds = [],
   onAddThemePreference,
   onRemoveThemePreferences,
   getSavedPlanLike,
   onSelectSavedPlanLike,
-  selectedTravelMonth = null,
   currentUser = null,
   ownerId,
   isPublic = false,
@@ -512,8 +536,8 @@ export function PlanDetailView({
   const [activeStopIndex, setActiveStopIndex] = useState<number | null>(null)
   const [pendingEdit, setPendingEdit] = useState<PendingPlanEdit | null>(null)
   const [pendingModificationRequest, setPendingModificationRequest] = useState<{
-    kind: 'day' | 'stop'
-    dayNumber: number
+    kind: 'plan' | 'day' | 'stop'
+    dayNumber?: number
     stopIndex?: number
   } | null>(null)
   const [floatingChatOpen, setFloatingChatOpen] = useState(false)
@@ -542,10 +566,6 @@ export function PlanDetailView({
   const { t } = useTranslation()
   const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null)
 
-  // --- Rainy season alert & indoor alternative state ---
-  const isRainySeason = selectedTravelMonth !== null && [6, 7, 8].includes(selectedTravelMonth)
-  const [hasRainyAlertDismissed, setHasRainyAlertDismissed] = useState(false)
-  const [showRainyOptions, setShowRainyOptions] = useState(false)
   const [localChatMessages, setLocalChatMessages] = useState<ChatMessage[]>([])
 
   const feedbackChips = [
@@ -588,52 +608,6 @@ export function PlanDetailView({
       }
       setTimeout(() => setFeedbackNotice(null), 3000)
     }
-  }
-
-  // --- Indoor alternative itinerary helpers ---
-  const convertToIndoorDay = (day: PlanDay): PlanDay => {
-    const indoorStops = day.stops.map((stop) => {
-      const isOutdoor = /해변|바다|해수욕|공원|산|계곡|폭포|올레|트레킹|등산|해안/.test(`${stop.title} ${stop.body}`)
-      if (!isOutdoor) return stop
-      return {
-        ...stop,
-        title: stop.title.replace(/해변|바다|해수욕장?/g, '실내 전시·체험관').replace(/공원|산|계곡|폭포/g, '문화·예술 공간'),
-        body: '비를 피할 수 있는 실내 공간에서 여유롭게 즐길 수 있는 코스입니다.',
-        reason: '우천 시에도 편하게 방문할 수 있는 실내형 대체 코스입니다.',
-      }
-    })
-    return { ...day, stops: indoorStops, title: `${day.title} (실내 대체)`, summary: '비를 피할 수 있는 실내 코스로 구성한 일정입니다.' }
-  }
-
-  const handleRainyAlertClick = () => {
-    setHasRainyAlertDismissed(true)
-    setFloatingChatOpen(true)
-    const assistantMsg: ChatMessage = {
-      id: createRainyMessageId('rain-prompt'),
-      role: 'assistant',
-      content: '실내 대체 일정을 생성할 수 있어요. 생성해드릴까요?',
-    }
-    setLocalChatMessages((prev) => [...prev, assistantMsg])
-    setShowRainyOptions(true)
-  }
-
-  const handleRainyOptionYes = () => {
-    const userMsg: ChatMessage = { id: createRainyMessageId('rain-yes'), role: 'user', content: '네' }
-    const replyMsg: ChatMessage = { id: createRainyMessageId('rain-yes-reply'), role: 'assistant', content: '비를 피할 수 있는 실내 코스로 일정을 변경했어요! 저장하면 마이페이지에 반영됩니다.' }
-    setLocalChatMessages((prev) => [...prev, userMsg, replyMsg])
-    setShowRainyOptions(false)
-    if (onReplacePlanDay) {
-      days.forEach((day) => {
-        onReplacePlanDay(day.day, convertToIndoorDay(day))
-      })
-    }
-  }
-
-  const handleRainyOptionNo = () => {
-    const userMsg: ChatMessage = { id: createRainyMessageId('rain-no'), role: 'user', content: '아니오' }
-    const replyMsg: ChatMessage = { id: createRainyMessageId('rain-no-reply'), role: 'assistant', content: '알겠습니다. 기존 일정을 그대로 유지할게요.' }
-    setLocalChatMessages((prev) => [...prev, userMsg, replyMsg])
-    setShowRainyOptions(false)
   }
 
   // Reset active stop when day changes
@@ -747,7 +721,7 @@ export function PlanDetailView({
   const planHeroSubtitle = createPlanHeroSubtitle(planDraft)
   const isReadOnly = Boolean(isCurrentPlanSaved && ownerId && ownerId !== currentUser?.id)
   const canUseSavedPlanActions = Boolean(isCurrentPlanSaved && !isReadOnly && !isGeneratedPlanDetail && allowSavedPlanActions)
-  const canEditPlan = Boolean(!isReadOnly && onReplacePlanStop && onReplacePlanDay && onRequestPlanModification)
+  const canEditPlan = Boolean(!isReadOnly && onReplacePlanStop && onReplacePlanDay && onReplacePlanDraft && onRequestPlanModification)
   const canUseMealWishlist = Boolean(!isReadOnly && onReplacePlanDay && addWishlistRestaurant)
   const shouldAskSavedPlanExitFeedback =
     canUseSavedPlanActions && Boolean(onSelectSavedPlanLike) && getSavedPlanLike?.(planId) !== 'like'
@@ -892,6 +866,27 @@ export function PlanDetailView({
       }
     }
 
+    const openStopModificationChat = async (day: PlanDay, stopIndex: number, visibleIndex: number) => {
+      const stop = day.stops[stopIndex]
+
+      if (!stop) {
+        return
+      }
+
+      const requestMessage = `${day.day}일차 ${visibleIndex + 1}번째 ${stop.title} 바꿔줘`
+
+      setPendingEdit(null)
+      setFloatingChatNotice(null)
+      setFloatingChatInput('')
+      setFloatingChatOpen(true)
+      setLocalChatMessages((current) => [
+        ...current,
+        { id: createLocalChatMessageId('stop-replace'), role: 'user', content: requestMessage },
+      ])
+
+      await requestStopReplacement(day, stopIndex, requestMessage)
+    }
+
     const openDayReplacementConfirmation = (dayNumber: number) => {
       setPendingEdit({
         kind: 'day-confirm',
@@ -902,7 +897,7 @@ export function PlanDetailView({
 
     const requestDayReplacementCandidate = async (
       dayNumber: number,
-      rawModifyQuery = `${dayNumber}일차 일정 바꿔줘`,
+      rawModifyQuery = `${dayNumber}일차 전체 일정을 기존 방문지와 겹치지 않는 새로운 방문지로 바꿔줘`,
     ) => {
       const targetDay = days.find((day) => day.day === dayNumber)
 
@@ -921,8 +916,13 @@ export function PlanDetailView({
           planDraftOverride: planDraft,
         })
 
-        if (!candidate || !('stops' in candidate)) {
+        if (!candidate || !('stops' in candidate) || 'days' in candidate) {
           setFloatingChatNotice('수정 후보를 받지 못했어요. 조건을 조금 더 구체적으로 다시 요청해 주세요.')
+          return
+        }
+
+        if (!hasOnlyNewReplacementStops(targetDay, candidate)) {
+          setFloatingChatNotice('기존 방문지와 겹치지 않는 새 일차를 받지 못했어요. 잠시 후 다시 시도해 주세요.')
           return
         }
 
@@ -934,6 +934,46 @@ export function PlanDetailView({
         setFloatingChatNotice('에이전트가 제안한 후보를 확인해 주세요.')
       } catch (error) {
         setFloatingChatNotice(getPlanModificationFailureMessage(error))
+      } finally {
+        setPendingModificationRequest(null)
+      }
+    }
+
+    const requestPlanReplacement = async (
+      rawModifyQuery: string,
+      options: {
+        preferAlternativeItinerary?: boolean
+        successNotice?: string
+      } = {},
+    ): Promise<boolean> => {
+      if (!onRequestPlanModification || !onReplacePlanDraft) {
+        setFloatingChatNotice('일정 수정 에이전트 연결이 아직 준비되지 않았어요.')
+        return false
+      }
+
+      setPendingModificationRequest({ kind: 'plan' })
+      setPendingEdit(null)
+      setFloatingChatNotice('Lovv 에이전트가 전체 일정 수정안을 구성하고 있어요.')
+
+      try {
+        const candidate = await onRequestPlanModification({
+          rawModifyQuery,
+          scope: { kind: 'plan' },
+          planDraftOverride: planDraft,
+          preferAlternativeItinerary: options.preferAlternativeItinerary,
+        })
+
+        if (!candidate || !('days' in candidate)) {
+          setFloatingChatNotice('전체 일정 수정안을 받지 못했어요. 조건을 조금 더 구체적으로 다시 요청해 주세요.')
+          return false
+        }
+
+        onReplacePlanDraft(candidate)
+        setFloatingChatNotice(options.successNotice ?? '에이전트가 제안한 전체 일정 수정안을 반영했어요.')
+        return true
+      } catch (error) {
+        setFloatingChatNotice(getPlanModificationFailureMessage(error))
+        return false
       } finally {
         setPendingModificationRequest(null)
       }
@@ -1218,14 +1258,31 @@ export function PlanDetailView({
         return
       }
 
-      const editIntent = parsePlannerEditCommand(command, days)
-
-      if (!editIntent) {
-        setFloatingChatNotice('현재는 “1일차 일정 바꿔줘” 또는 “1일차 아침 일정 바꿔줘”처럼 세부 일정 수정 요청만 처리할 수 있어요.')
+      if (hasExplicitReplacementDestination(command)) {
+        setFloatingChatNotice('특정 장소 지정은 지원하지 않아요. 바꿀 시간대와 실내 여부, 분위기, 이동 부담을 알려주세요.')
         return
       }
 
-      if (editIntent.type === 'replace_day_confirmation') {
+      const isWeatherAlternativeRequest = /(?:날씨|비|우천).*(?:대체|실내)|(?:대체|실내).*(?:날씨|비|우천)/.test(command)
+      const editIntent = parsePlannerEditCommand(command, days, activeDay?.day)
+
+      if (isWeatherAlternativeRequest) {
+        await requestPlanReplacement(command, {
+          preferAlternativeItinerary: true,
+          successNotice: '날씨 대체 일정을 반영했어요.',
+        })
+        setFloatingChatInput('')
+        return
+      }
+
+      if (!editIntent) {
+        setFloatingChatNotice('“도시 바꿔줘”, “1일차 2번째 장소 바꿔줘”, “1일차 점심을 OO로 바꿔줘”처럼 요청해 주세요.')
+        return
+      }
+
+      if (editIntent.type === 'replace_plan') {
+        await requestPlanReplacement(command)
+      } else if (editIntent.type === 'replace_day_confirmation') {
         openDayReplacementConfirmation(editIntent.day)
       } else {
         const targetDay = days.find((day) => day.day === editIntent.day)
@@ -1239,7 +1296,7 @@ export function PlanDetailView({
         setFloatingChatNotice('요청을 확인했어요. 일정 화면에서 변경 범위를 확정해 주세요.')
       }
       setFloatingChatInput('')
-      setFloatingChatOpen(false)
+      setFloatingChatOpen(editIntent.type === 'replace_stop')
     }
 
     return (
@@ -1290,7 +1347,7 @@ export function PlanDetailView({
                     </h2>
                   </>
                 )}
-                <p className="mt-4 max-w-[760px] break-keep text-sm font-semibold leading-7 text-[#33271E]">
+                <p className="mt-3 line-clamp-2 max-w-[760px] break-keep text-sm font-semibold leading-6 text-[#33271E]">
                   {planDraft.summary}
                 </p>
               </div>
@@ -1316,12 +1373,7 @@ export function PlanDetailView({
             {/* Left Column: Timeline Flow */}
             <div className="min-w-0">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-black text-[#33271E]">일차별 시간대 흐름</p>
-                  <p className="mt-1 break-keep text-sm font-semibold leading-6 text-[#33271E]/75">
-                    현재 대화에서 정리한 조건으로 만든 전체 일정 초안입니다.
-                  </p>
-                </div>
+                <p className="text-sm font-black text-[#33271E]">일차별 일정</p>
                 <span className="rounded-full border border-[#A92B10] bg-[#F36B12] px-4 py-2 text-[12px] font-black text-[#33271E]">
                   {planDraft.dayCount}일 구성
                 </span>
@@ -1365,9 +1417,14 @@ export function PlanDetailView({
                       >
                         {activeDay.title}
                       </h3>
-                      <p className="mt-1 break-keep text-sm font-semibold leading-6 text-[#33271E]/75">
-                        {activeDay.summary}
-                      </p>
+                      <details className="mt-1">
+                        <summary className="cursor-pointer text-[12px] font-bold leading-5 text-[#6E5A50] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]">
+                          일차 흐름 보기
+                        </summary>
+                        <p className="mt-1 break-keep text-sm font-semibold leading-6 text-[#33271E]/75">
+                          {activeDay.summary}
+                        </p>
+                      </details>
                     </div>
                     <div className="flex flex-wrap justify-end gap-2">
                       <span className="inline-flex min-h-8 items-center rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-black leading-4 text-[#33271E]">
@@ -1385,7 +1442,7 @@ export function PlanDetailView({
                     </div>
                   </div>
 
-                  {pendingEdit ? (
+                  {pendingEdit && pendingEdit.kind !== 'stop' ? (
                     <div
                       role="status"
                       aria-live="polite"
@@ -1408,7 +1465,7 @@ export function PlanDetailView({
                             >
                               {pendingModificationRequest?.kind === 'day' && pendingModificationRequest.dayNumber === pendingEdit.dayNumber
                                 ? '에이전트 확인 중'
-                                : `${pendingEdit.dayNumber}일차 전체 후보 보기`}
+                                : `${pendingEdit.dayNumber}일차 전체 바꾸기`}
                             </button>
                             {activeDay.stops
                               .map((stop, stopIndex) => ({ stop, stopIndex }))
@@ -1450,20 +1507,14 @@ export function PlanDetailView({
                       ) : (
                         <>
                           <p className="text-sm font-black text-[#33271E]">
-                            {pendingEdit.kind === 'stop'
-                              ? `${pendingEdit.dayNumber}일차 ${pendingEdit.candidate.time} 카드만 바꿀까요?`
-                              : `${pendingEdit.dayNumber}일차만 대체 일정으로 바꿀까요?`}
+                            {pendingEdit.dayNumber}일차만 대체 일정으로 바꿀까요?
                           </p>
                           <div className="mt-3 rounded-[14px] bg-[#FFF0E4] px-4 py-3">
                             <p className="break-keep text-sm font-black leading-6 text-[#33271E]">
-                              {pendingEdit.kind === 'stop'
-                                ? pendingEdit.candidate.title
-                                : pendingEdit.candidate.title}
+                              {pendingEdit.candidate.title}
                             </p>
                             <p className="mt-1 break-keep text-[13px] font-semibold leading-6 text-[#6E5A50]">
-                              {pendingEdit.kind === 'stop'
-                                ? pendingEdit.candidate.body
-                                : pendingEdit.candidate.summary}
+                              {pendingEdit.candidate.summary}
                             </p>
                           </div>
                           <div className="mt-4 flex flex-wrap gap-2">
@@ -1495,10 +1546,11 @@ export function PlanDetailView({
                     {activeDay.stops
                       .map((stop, stopIndex) => ({ stop, stopIndex }))
                       .filter(({ stop }) => !isMealPlaceholderStop(stop))
-                      .map(({ stop: item, stopIndex }, index) => {
+                      .map(({ stop: item, stopIndex }, index, visibleStops) => {
                       const imageUrl = resolveStopImageUrl(item, nameToImageUrl, cityEnglishName, countryCode)
                       const isStopActive = index === activeStopIndex
                       const isStopCollapsed = collapsedStops[`${activeDay.day}-${index}`] === true
+                      const isLastVisibleStop = index === visibleStops.length - 1
                       const displayTime = item.time
 
                       const stopDragKey = `${activeDay.day}-${stopIndex}`
@@ -1561,7 +1613,7 @@ export function PlanDetailView({
                                 <span className="flex size-10 items-center justify-center rounded-full bg-[#F36B12] text-sm font-black text-[#33271E] shadow-[0_8px_18px_-14px_rgba(51,39,30,0.5)]">
                                   {index + 1}
                                 </span>
-                                {index < activeDay.stops.length - 1 ? (
+                                {!isLastVisibleStop ? (
                                   <span className="mt-2 h-full min-h-8 w-px bg-[#F3B489]/45" />
                                 ) : null}
                               </div>
@@ -1586,19 +1638,22 @@ export function PlanDetailView({
                                 )}
 
                                 <div className="p-5">
-                                  <div className="flex flex-wrap items-center gap-2">
+                                  <h4 className="pr-20 break-keep text-xl font-black leading-8 text-[#33271E] max-sm:text-lg max-sm:leading-7">
+                                    {item.title}
+                                  </h4>
+                                  <div className="mt-3 flex flex-wrap items-center gap-2">
                                     <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-black leading-4 text-[#33271E]">
                                       {displayTime}
                                     </span>
-                                    <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-bold leading-4 text-[#33271E]">
-                                      다음 장소까지 {item.move}
-                                    </span>
+                                    {!isLastVisibleStop ? (
+                                      <span className="rounded-full bg-[#fffffa] px-3 py-1 text-[12px] font-bold leading-4 text-[#33271E]">
+                                        다음 장소까지 {item.move}
+                                      </span>
+                                    ) : null}
                                     {canEditPlan ? (
                                       <button
                                         type="button"
-                                        onClick={() =>
-                                          requestStopReplacement(activeDay, stopIndex, `${activeDay.day}일차 ${displayTime} 일정 바꿔줘`)
-                                        }
+                                        onClick={() => void openStopModificationChat(activeDay, stopIndex, index)}
                                         disabled={
                                           pendingModificationRequest?.kind === 'stop' &&
                                           pendingModificationRequest.dayNumber === activeDay.day &&
@@ -1614,20 +1669,17 @@ export function PlanDetailView({
                                       </button>
                                     ) : null}
                                   </div>
-                                  <h4 className="mt-4 break-keep text-xl font-black leading-8 text-[#33271E] max-sm:text-lg max-sm:leading-7">
-                                    {item.title}
-                                  </h4>
                                   {!isStopCollapsed && (
                                     <>
-                                      <p className="mt-2 break-keep text-sm font-semibold leading-7 text-[#33271E]">
+                                      <p className="mt-3 line-clamp-2 break-keep text-sm font-semibold leading-6 text-[#33271E]">
                                         {item.body}
                                       </p>
-                                      <div className="mt-4 rounded-[16px] border border-transparent bg-[#fffffa] px-4 py-3">
-                                        <p className="text-[12px] font-black text-[#A92B10]">추천 이유</p>
+                                      <details className="mt-3 rounded-[14px] border border-transparent bg-[#fffffa] px-4 py-3">
+                                        <summary className="cursor-pointer text-[12px] font-black text-[#A92B10] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]">추천 이유</summary>
                                         <p className="mt-1 break-keep text-sm font-semibold leading-6 text-[#33271E]">
                                           {item.reason}
                                         </p>
-                                      </div>
+                                      </details>
                                     </>
                                   )}
                                 </div>
@@ -2104,12 +2156,12 @@ export function PlanDetailView({
                 aria-label="세부 일정 수정 챗봇"
                 className="w-[380px] max-w-full overflow-hidden rounded-[22px] border border-white/65 bg-[#fffffa]/90 shadow-[0_24px_56px_-28px_rgba(51,39,30,0.28)] backdrop-blur-2xl"
               >
-                <header className="flex items-start justify-between gap-3 border-b border-[#F3B489]/35 bg-[#FFF0E4]/80 px-5 py-4">
-                  <div>
-                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#A92B10]">
-                      Lovv edit
-                    </p>
-                    <h3 className="mt-1 break-keep text-lg font-black leading-7 text-[#33271E]">
+                <header className="flex items-center justify-between gap-3 border-b border-[#F3B489]/35 bg-[#FFF0E4]/80 px-5 py-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#F3B489] bg-[#fffffa] shadow-sm">
+                      <img src={foxFaceImage} alt="" className="size-9 object-contain" />
+                    </span>
+                    <h3 className="break-keep text-lg font-black leading-7 text-[#33271E]">
                       세부 일정 수정
                     </h3>
                   </div>
@@ -2168,24 +2220,6 @@ export function PlanDetailView({
                       })}
                     </div>
                   ) : null}
-                  {showRainyOptions ? (
-                    <div className="mt-4 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleRainyOptionYes}
-                        className="inline-flex min-h-10 flex-1 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-4 text-[12px] font-black text-[#33271E] transition hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
-                      >
-                        네
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleRainyOptionNo}
-                        className="inline-flex min-h-10 flex-1 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-4 text-[12px] font-black text-[#6E5A50] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
-                      >
-                        아니오
-                      </button>
-                    </div>
-                  ) : null}
                   {floatingChatNotice ? (
                     <p
                       role="status"
@@ -2193,6 +2227,36 @@ export function PlanDetailView({
                     >
                       {floatingChatNotice}
                     </p>
+                  ) : null}
+                  {pendingEdit?.kind === 'stop' ? (
+                    <div
+                      role="group"
+                      aria-label={`${pendingEdit.candidate.title} 장소 변경 확인`}
+                      className="mt-4 rounded-[14px] border border-[#F3B489] bg-[#FFF8F6] p-4"
+                    >
+                      <p className="break-keep text-sm font-black leading-6 text-[#33271E]">
+                        {pendingEdit.candidate.title}(으)로 바꿀까요?
+                      </p>
+                      <p className="mt-2 line-clamp-2 break-keep text-[12px] font-semibold leading-5 text-[#6E5A50]">
+                        {pendingEdit.candidate.body}
+                      </p>
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={applyPendingEdit}
+                          className="inline-flex min-h-10 flex-1 items-center justify-center rounded-full border border-[#A92B10] bg-[#F36B12] px-3 text-[12px] font-black text-[#33271E] transition hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                        >
+                          바꾸기
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPendingEdit(null)}
+                          className="inline-flex min-h-10 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-3 text-[12px] font-black text-[#6E5A50] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                        >
+                          취소
+                        </button>
+                      </div>
+                    </div>
                   ) : null}
                 </div>
                 <form onSubmit={handleFloatingChatSubmit} className="border-t border-[#F3B489]/35 bg-[#FFF8F6]/80 p-4">
@@ -2217,38 +2281,16 @@ export function PlanDetailView({
                 </form>
               </section>
             ) : null}
-            {/* Rainy season floating alert bubble */}
-            {isRainySeason && !hasRainyAlertDismissed && !floatingChatOpen ? (
-              <button
-                type="button"
-                onClick={handleRainyAlertClick}
-                className="animate-bounce-slow relative max-w-[260px] rounded-[16px] border border-white/65 bg-[#fffffa]/95 px-4 py-3 text-left shadow-[0_16px_40px_-20px_rgba(51,39,30,0.3)] backdrop-blur-2xl transition hover:shadow-[0_20px_48px_-20px_rgba(51,39,30,0.4)]"
-              >
-                <span
-                  aria-hidden="true"
-                  className="absolute -bottom-2 right-6 size-4 rotate-45 border-b border-r border-white/65 bg-[#fffffa]/95"
-                />
-                <p className="text-[13px] font-black leading-5 text-[#A92B10]">
-                  🌧️ 해당 월에는 비가 올 수 있어요.
-                </p>
-                <p className="mt-1 text-[11px] font-semibold leading-4 text-[#6E5A50]">
-                  실내 대체 일정 보러가기
-                </p>
-              </button>
-            ) : null}
             <button
               type="button"
               onClick={() => {
                 setFloatingChatOpen((isOpen) => !isOpen)
-                if (isRainySeason && !hasRainyAlertDismissed) {
-                  handleRainyAlertClick()
-                }
               }}
+              aria-label="Lovv 챗봇"
               aria-expanded={floatingChatOpen}
-              className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[#A92B10] bg-[#F36B12] px-5 text-sm font-black text-[#33271E] shadow-[0_16px_34px_-20px_rgba(51,39,30,0.45)] transition hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+              className="inline-flex size-16 items-center justify-center overflow-hidden rounded-full border-2 border-[#F36B12] bg-[#fffffa] shadow-[0_16px_34px_-20px_rgba(51,39,30,0.45)] transition hover:border-[#A92B10] hover:bg-[#FFF0E4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
             >
-              <span aria-hidden="true">✦</span>
-              Lovv 챗봇
+              <img src={foxFaceImage} alt="" className="size-12 object-contain" />
             </button>
           </div>
         ) : null}

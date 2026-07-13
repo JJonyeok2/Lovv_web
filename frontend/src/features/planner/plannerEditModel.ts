@@ -2,6 +2,10 @@ import type { PlanDay, PlanDraft, PlanStop, SelectedMealPlace } from '../../shar
 
 export type PlannerEditIntent =
   | {
+      type: 'replace_plan'
+      rawText: string
+    }
+  | {
       type: 'replace_stop'
       day: number
       stopIndex: number
@@ -15,6 +19,7 @@ export type PlannerEditIntent =
     }
 
 const TIME_LABELS: PlanStop['time'][] = ['아침', '점심', '저녁']
+const PLAN_REPLACEMENT_PATTERN = /(도시|지역|여행지|소도시|전체|전부|다)\s*(를|을|도)?\s*(바꿔|변경|교체|수정|다시)/
 const USER_WISHLIST_DAY_SUMMARY_PATTERN =
   /\s*사용자가 추가한 맛집 [^.]+ 동선을 조정했습니다\./g
 const USER_WISHLIST_PLAN_SUMMARY_PATTERN =
@@ -25,6 +30,29 @@ const GENERATED_SINGLE_STOP_SUMMARY_PATTERN =
   /\s*[^.]+ 중심으로 구성한 일정입니다\./g
 
 const normalizeCommandText = (text: string) => text.trim().replace(/\s+/g, ' ')
+
+export const hasExplicitReplacementDestination = (text: string) =>
+  /(?:으로|로)\s*(?:바꿔|변경|교체|수정)/.test(normalizeCommandText(text).replace(/\s+/g, ''))
+
+const getOrdinalIndex = (text: string) => {
+  const compactText = text.replace(/\s+/g, '')
+  const numericMatch = compactText.match(/([1-9]\d*)(?:번째|번|번째장소|번째일정|번째코스)/)
+
+  if (numericMatch) {
+    return Number(numericMatch[1]) - 1
+  }
+
+  const ordinalMap: Array<[RegExp, number]> = [
+    [/첫(?:번째|째|번)?/, 0],
+    [/두(?:번째|째|번)?/, 1],
+    [/세(?:번째|째|번)?/, 2],
+    [/네(?:번째|째|번)?/, 3],
+    [/다섯(?:번째|째|번)?/, 4],
+  ]
+
+  return ordinalMap.find(([pattern]) => pattern.test(compactText))?.[1] ?? null
+}
+
 const stripGeneratedWishlistSummary = (summary: string) =>
   summary
     .replace(USER_WISHLIST_DAY_SUMMARY_PATTERN, '')
@@ -167,24 +195,44 @@ export const applyWishlistSummaryToPlanDraft = (draft: PlanDraft): PlanDraft => 
 export const parsePlannerEditCommand = (
   rawText: string,
   days: PlanDay[],
+  fallbackDay?: number,
 ): PlannerEditIntent | null => {
   const text = normalizeCommandText(rawText)
   const compactText = text.replace(/\s+/g, '')
   const dayMatch = compactText.match(/([1-9]\d*)일차/)
-  const day = dayMatch ? Number(dayMatch[1]) : null
+  const day = dayMatch ? Number(dayMatch[1]) : fallbackDay ?? null
 
-  if (!day || !days.some((planDay) => planDay.day === day)) {
-    return null
+  if (PLAN_REPLACEMENT_PATTERN.test(compactText)) {
+    return {
+      type: 'replace_plan',
+      rawText: text,
+    }
   }
 
   if (!/(바꿔|변경|교체|수정)/.test(compactText)) {
     return null
   }
 
+  if (!day || !days.some((planDay) => planDay.day === day)) {
+    return null
+  }
+
+  const targetDay = days.find((planDay) => planDay.day === day)
+  const ordinalIndex = getOrdinalIndex(compactText)
+
+  if (targetDay && ordinalIndex !== null && targetDay.stops[ordinalIndex]) {
+    return {
+      type: 'replace_stop',
+      day,
+      stopIndex: ordinalIndex,
+      timeLabel: targetDay.stops[ordinalIndex].time,
+      rawText: text,
+    }
+  }
+
   const matchedTimeLabel = TIME_LABELS.find((timeLabel) => compactText.includes(timeLabel))
 
   if (matchedTimeLabel) {
-    const targetDay = days.find((planDay) => planDay.day === day)
     const stopIndex = targetDay?.stops.findIndex((stop) => stop.time === matchedTimeLabel) ?? -1
 
     if (stopIndex >= 0) {

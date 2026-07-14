@@ -37,6 +37,7 @@ export type PlannerStateStep = {
 }
 
 type PlannerWorkspaceProps = {
+  plannerFlowKey: string
   goHome: (event?: MouseEvent<HTMLElement>) => void
   plannerCityContext: PlannerCityContext | null
   shouldAskFestivalTheme: boolean
@@ -83,6 +84,7 @@ type PlannerWorkspaceProps = {
 }
 
 export function PlannerWorkspace({
+  plannerFlowKey,
   goHome,
   plannerCityContext,
   shouldAskFestivalTheme,
@@ -259,6 +261,7 @@ export function PlannerWorkspace({
           className="grid min-h-[680px] grid-cols-[minmax(0,1.6fr)_minmax(360px,0.74fr)] items-stretch gap-6 xl:h-[min(760px,calc(100dvh-9rem))] max-xl:grid-cols-1 max-xl:h-auto"
         >
           <PlannerChatInterface
+            key={plannerFlowKey}
             chatScrollRef={chatScrollRef}
             chatMessages={chatMessages}
             shouldShowFestivalPrompt={shouldShowFestivalPrompt}

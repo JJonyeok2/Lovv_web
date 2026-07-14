@@ -156,21 +156,6 @@ export function PlannerChatInterface({
     hasGuidedPlannerChoices && festivalThemeChoice !== 'undecided' ? festivalThemeChoice : null,
   )
 
-  useEffect(() => {
-    if (hasGuidedPlannerChoices) return
-    setDraftDurationLabel(selectedDurationLabel)
-  }, [hasGuidedPlannerChoices, selectedDurationLabel])
-
-  useEffect(() => {
-    if (hasGuidedPlannerChoices) return
-    setDraftTravelMonth(selectedTravelMonth)
-  }, [hasGuidedPlannerChoices, selectedTravelMonth])
-
-  useEffect(() => {
-    if (hasGuidedPlannerChoices) return
-    setDraftFestivalChoice(null)
-  }, [hasGuidedPlannerChoices])
-
   const maybeSubmitGuidedPlannerChoices = ({
     durationLabel = draftDurationLabel,
     travelMonth = draftTravelMonth,

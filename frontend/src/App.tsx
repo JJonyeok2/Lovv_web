@@ -885,6 +885,7 @@ function App() {
           ) : (
             <ErrorBoundary>
               <PlannerWorkspace
+                plannerFlowKey={planner.plannerFlowKey}
                 goHome={goHome}
                 plannerCityContext={planner.plannerCityContext}
                 shouldAskFestivalTheme={planner.shouldAskFestivalTheme}

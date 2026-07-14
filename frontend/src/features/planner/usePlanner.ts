@@ -1093,7 +1093,6 @@ export function usePlanner({
     generatedRecommendationThreadId,
     festivalThemeChoice,
     planDraft,
-    plannerCityContext?.cityId,
     plannerCityContext,
     plannerRecommendationSessionId,
     plannerPreferenceProfile,
@@ -1677,7 +1676,6 @@ export function usePlanner({
     return steps
   }, [
     plannerCityContext,
-    selectedPreferenceLabel,
     plannerThemeHashtags,
     hasSettledFestivalChoice,
     plannerPreferenceProfile.selectedThemeIds,
@@ -1692,9 +1690,11 @@ export function usePlanner({
     hasGuidedPlannerChoices,
     shouldShowDurationPrompt,
     shouldShowTravelMonthPrompt,
+    shouldShowFestivalPrompt,
   ])
 
   return {
+    plannerFlowKey: plannerRecommendationSessionId,
     plannerPreferenceProfile,
     setPlannerPreferenceProfile,
     chatMessages,

@@ -218,13 +218,6 @@ const usePlaceDataMap = (destinationId?: string) => {
 
   useEffect(() => {
     if (!destinationId || !canFetchSmallCityPlaceData(destinationId)) {
-      prevId.current = undefined
-      setLoadedDestinationId(undefined)
-      setCityEnglishName('')
-      setCityFallbackImageUrl('')
-      setNameToImageUrl({})
-      setNameToCoords({})
-      setCountryCode('KR')
       return
     }
 

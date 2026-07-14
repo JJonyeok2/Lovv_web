@@ -85,6 +85,28 @@ describe('small-city API contract adapter', () => {
     ])
   })
 
+  it('corrects fixed 은/는 particles in backend city summaries', () => {
+    const result = adaptSmallCityApiResponse(
+      createResponse({
+        data: [
+          {
+            ...createResponse().data[0],
+            id: 'KR-Hwaseong',
+            country: 'KR',
+            region: '경기도',
+            name_ko: '화성',
+            name_local: '화성시',
+            summary: '경기도 화성는 전통·자연 여행 후보가 모여 있는 소도시입니다.',
+          },
+        ],
+      }),
+    )
+
+    expect(result.cities[0].summary).toBe(
+      '경기도 화성은 전통·자연 여행 후보가 모여 있는 소도시입니다.',
+    )
+  })
+
   it('accepts both camelCase and snake_case city image fields', () => {
     const result = adaptSmallCityApiResponse(
       createResponse({

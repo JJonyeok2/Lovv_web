@@ -13,6 +13,7 @@ import {
   createSmallCityDetail,
 } from '../../features/map-city/smallCities'
 import { log } from '../logger'
+import { normalizeKoreanTopicParticle } from '../utils/koreanParticles'
 
 export const smallCityApiEndpoints = {
   list: '/api/small-cities',
@@ -357,7 +358,7 @@ const normalizeSmallCityApiRecord = (
       latitude: record.latitude,
       longitude: record.longitude,
       themes,
-      summary,
+      summary: normalizeKoreanTopicParticle(summary, nameKo),
       detail,
       highlights,
       routeSeed,

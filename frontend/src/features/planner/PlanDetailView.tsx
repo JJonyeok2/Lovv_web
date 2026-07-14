@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import foxFaceImage from '../../assets/foxhead-smile.png'
 import type { SmallCityCountry } from '../map-city/smallCities'
 import { requestGetSmallCityDetail, requestGetSmallCityPlaces } from '../../shared/api/smallCityApi'
+import { requestKakaoPlaceImage } from '../../shared/api/kakaoPlaceImageApi'
 import { RecommendationApiRequestError } from '../../shared/api/recommendationsApi'
 import { PlanDetailGoogleMap } from './PlanDetailGoogleMap'
 import {
@@ -550,6 +551,7 @@ export function PlanDetailView({
   const [restaurantSearchQuery, setRestaurantSearchQuery] = useState('')
   const [restaurantSearchStatus, setRestaurantSearchStatus] = useState<'idle' | 'loading' | 'ready' | 'missing-key' | 'unavailable' | 'zero-result'>('idle')
   const [restaurantSearchResults, setRestaurantSearchResults] = useState<SelectedMealPlace[]>([])
+  const [restaurantImageLoadingId, setRestaurantImageLoadingId] = useState<string | null>(null)
   const [selectedWishlistRestaurantId, setSelectedWishlistRestaurantId] = useState<string | null>(null)
   const [restaurantPlacementNotice, setRestaurantPlacementNotice] = useState<string | null>(null)
   const [pendingDistantRestaurant, setPendingDistantRestaurant] = useState<PendingDistantRestaurant | null>(null)
@@ -1020,12 +1022,18 @@ export function PlanDetailView({
       setRestaurantSearchResults(result.places)
     }
 
-    const selectRestaurant = (place: SelectedMealPlace) => {
+    const selectRestaurant = async (place: SelectedMealPlace) => {
       if (!canUseMealWishlist) {
         return
       }
 
-      addWishlistRestaurant?.(place)
+      setRestaurantImageLoadingId(place.id)
+      const imageUrl = place.imageUrl ?? await requestKakaoPlaceImage(place.id)
+      addWishlistRestaurant?.({
+        ...place,
+        imageUrl,
+      })
+      setRestaurantImageLoadingId(null)
       setSelectedWishlistRestaurantId(place.id)
       setRestaurantPlacementNotice('맛집을 담았어요. 왼쪽 코스 사이에서 넣을 위치를 선택해 주세요.')
       setRestaurantSearchOpen(false)
@@ -1159,7 +1167,7 @@ export function PlanDetailView({
         source: 'wishlist',
         lockLevel: 'user_added',
         wishlistRestaurantId: restaurant.id,
-        imageUrl: '',
+        imageUrl: restaurant.imageUrl ?? '',
         latitude: restaurant.lat ?? null,
         longitude: restaurant.lng ?? null,
         move: '이동 시간 확인 필요',
@@ -1553,6 +1561,7 @@ export function PlanDetailView({
                       const isStopCollapsed = collapsedStops[`${activeDay.day}-${index}`] === true
                       const isLastVisibleStop = index === visibleStops.length - 1
                       const displayTime = item.time
+                      const wishlistRestaurantId = item.wishlistRestaurantId
 
                       const stopDragKey = `${activeDay.day}-${stopIndex}`
 
@@ -1654,15 +1663,28 @@ export function PlanDetailView({
                                     {canEditPlan ? (
                                       <button
                                         type="button"
-                                        onClick={() => void openStopModificationChat(activeDay, stopIndex, index)}
+                                        onClick={() => {
+                                          if (wishlistRestaurantId) {
+                                            removeWishlistRestaurant?.(wishlistRestaurantId)
+                                            setSelectedWishlistRestaurantId((currentId) =>
+                                              currentId === wishlistRestaurantId ? null : currentId,
+                                            )
+                                            return
+                                          }
+
+                                          void openStopModificationChat(activeDay, stopIndex, index)
+                                        }}
                                         disabled={
+                                          !wishlistRestaurantId &&
                                           pendingModificationRequest?.kind === 'stop' &&
                                           pendingModificationRequest.dayNumber === activeDay.day &&
                                           pendingModificationRequest.stopIndex === stopIndex
                                         }
-                                        className="inline-flex min-h-8 items-center rounded-full border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-[12px] font-black leading-4 text-[#A92B10] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                                        className="inline-flex min-h-8 items-center justify-center rounded-full border border-[#F3B489] bg-[#fffffa] px-3 py-1 text-center text-[12px] font-black leading-4 text-[#A92B10] transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
                                       >
-                                        {pendingModificationRequest?.kind === 'stop' &&
+                                        {wishlistRestaurantId
+                                          ? '제거'
+                                          : pendingModificationRequest?.kind === 'stop' &&
                                         pendingModificationRequest.dayNumber === activeDay.day &&
                                         pendingModificationRequest.stopIndex === stopIndex
                                           ? '에이전트 확인 중'
@@ -1934,6 +1956,14 @@ export function PlanDetailView({
                                 : 'border-[#F3B489]/30 bg-[#FFF8F6] hover:border-[#F36B12]'
                             }`}
                           >
+                            {restaurant.imageUrl ? (
+                              <img
+                                src={restaurant.imageUrl}
+                                alt=""
+                                referrerPolicy="no-referrer"
+                                className="size-16 shrink-0 rounded-[12px] object-cover"
+                              />
+                            ) : null}
                             <div className="min-w-0 flex-1">
                               <h5 className="break-keep text-sm font-black leading-6 text-[#33271E]">
                                 {restaurant.placeName}
@@ -2090,10 +2120,11 @@ export function PlanDetailView({
                         </div>
                         <button
                           type="button"
-                          onClick={() => selectRestaurant(place)}
-                          className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-[#A92B10] bg-[#F36B12] px-3 text-[12px] font-black text-[#33271E] transition hover:bg-[#FF8A2A] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                          onClick={() => void selectRestaurant(place)}
+                          disabled={restaurantImageLoadingId !== null}
+                          className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-[#A92B10] bg-[#F36B12] px-3 text-[12px] font-black text-[#33271E] transition hover:bg-[#FF8A2A] disabled:cursor-wait disabled:opacity-65 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
                         >
-                          추가
+                          {restaurantImageLoadingId === place.id ? '사진 확인 중' : '추가'}
                         </button>
                       </div>
                     </li>

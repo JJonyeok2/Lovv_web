@@ -156,6 +156,7 @@ export type SelectedMealPlace = {
   addressName?: string
   phone?: string
   placeUrl?: string
+  imageUrl?: string
   source: 'kakao'
   lat?: number
   lng?: number

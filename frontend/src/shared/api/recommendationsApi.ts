@@ -351,8 +351,7 @@ export class RecommendationApiRequestError extends Error {
   }
 }
 
-const defaultRecommendationCreateApiBaseUrl =
-  (import.meta.env.VITE_LOVV_AGENT_API_URL?.trim() || import.meta.env.VITE_LOVV_API_BASE_URL?.trim()) ?? ''
+const defaultRecommendationCreateApiBaseUrl = import.meta.env.VITE_LOVV_API_BASE_URL?.trim() ?? ''
 const defaultLovvApiBaseUrl = import.meta.env.VITE_LOVV_API_BASE_URL?.trim() ?? ''
 
 const resolveRecommendationsApiOptions = (

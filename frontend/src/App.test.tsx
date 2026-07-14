@@ -943,7 +943,7 @@ describe('MVP main entry screen', () => {
     expect(requestAuthSession).not.toHaveBeenCalled()
     expect(sessionStorage.getItem('lovv.auth.oauth.kakao')).toBeNull()
     expect(await screen.findByText('로그인 요청이 만료되었습니다.')).toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveTextContent('이전 로그인 요청을 더 이상 사용할 수 없습니다. 다시 시도해 주세요.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('이전 로그인 요청을 더 이상 사용할 수 없습니다. 다시 시도해 주세요.')
   })
 
   it('exchanges Cognito callbacks through Hosted UI token exchange and backend bridge session', async () => {
@@ -1448,7 +1448,7 @@ describe('MVP main entry screen', () => {
     expect(googleMap).toHaveTextContent(/Google Maps (fallback|loading)/)
     expect(within(googleMap).getAllByRole('button', { name: /지도 마커:/ })).toHaveLength(40)
     expect(within(screen.getByTestId('city-map-result-list')).getAllByRole('button')).toHaveLength(10)
-    expect(within(cityMapSection).getByText('상위 10개 표시')).toBeInTheDocument()
+    expect(within(cityMapSection).getByText('1-10 / 40')).toBeInTheDocument()
     expect(within(cityMapSection).queryByText(/Open\s?Street\s?Map/)).not.toBeInTheDocument()
 
     const citySearchInput = within(cityMapSection).getByPlaceholderText('도시, 지역, 테마 검색')

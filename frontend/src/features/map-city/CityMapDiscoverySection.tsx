@@ -180,10 +180,13 @@ export function CityMapDiscoverySection({
             <div
               ref={cityMapDetailPanelRef}
               data-testid="city-map-detail-sticky-content"
-              className="lovv-map-side-panel h-full min-h-0 overflow-y-auto rounded-[18px] p-3 pr-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.48)]"
+              className={`lovv-map-side-panel h-full min-h-0 rounded-[18px] p-3 pr-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.48)] max-xl:overflow-visible ${
+                isCityMapListPanel ? 'overflow-hidden' : 'overflow-y-auto'
+              }`}
             >
               {isCityMapListPanel ? (
                 <CityMapListPanel
+                  key={`${cityMapCountry}:${cityMapQuery}:${selectedSmallCityThemes.join(',')}`}
                   filteredSmallCities={filteredSmallCities}
                   activeCountryTotalCount={activeCountryTotalCount}
                   selectedSmallCity={selectedSmallCity}

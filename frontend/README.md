@@ -63,7 +63,6 @@ VITE_LOVV_AUTH_MODE=mock
 
 # Backend API URLs
 VITE_LOVV_API_BASE_URL=https://api.yourdomain.com
-VITE_LOVV_AGENT_API_URL=https://lambda-url.yourdomain.aws
 
 # AWS Cognito Configuration (Cognito 모드 활성화 시 필요)
 VITE_COGNITO_DOMAIN=https://your-cognito-domain.auth.us-east-1.amazoncognito.com

@@ -656,7 +656,7 @@ export function usePlanner({
         return nextLikes
       })
     }
-    setSavedPlanNotice('설정 정보를 확인하세요.')
+    setSavedPlanNotice('마이페이지 하단에서 확인하세요.')
     setIsSavingPlan(false)
   }
 

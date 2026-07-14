@@ -546,6 +546,15 @@ export function MyPageView({
                           로그아웃
                         </button>
                       </div>
+                      {currentUser?.roles?.includes('R-ADMIN') ? (
+                        <a
+                          href="https://admin.lovv.site/"
+                          className="mt-5 block text-center text-[10px] font-semibold text-[#6E5A50]/55 underline-offset-2 transition hover:text-[#A92B10] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E]"
+                          aria-label="Lovv 관리자 콘솔로 이동"
+                        >
+                          Admin
+                        </a>
+                      ) : null}
                     </aside>
                   </div>
                 </section>

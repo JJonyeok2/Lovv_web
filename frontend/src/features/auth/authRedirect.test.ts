@@ -191,6 +191,7 @@ describe('OAuth redirect helpers', () => {
       env: {
         VITE_COGNITO_DOMAIN: 'https://lovv-test.auth.ap-northeast-2.amazoncognito.com/',
         VITE_COGNITO_CLIENT_ID: 'lovv-cognito-client-id',
+        VITE_COGNITO_REDIRECT_URI: 'https://d3nuef0zacpyj.cloudfront.net/auth/callback/cognito',
       },
       storage: sessionStorage,
       crypto: createCryptoMock(),
@@ -247,14 +248,14 @@ describe('OAuth redirect helpers', () => {
     }
   })
 
-  it('builds Cognito Hosted UI logout URLs without provider secrets', () => {
+  it('uses the current origin for Cognito logout even when a legacy URI is configured', () => {
     const logoutUrl = new URL(
       createCognitoLogoutUrl({
         origin: 'https://lovv.example',
         env: {
           VITE_COGNITO_DOMAIN: 'https://lovv-test.auth.ap-northeast-2.amazoncognito.com/',
           VITE_COGNITO_CLIENT_ID: 'lovv-cognito-client-id',
-          VITE_COGNITO_LOGOUT_URI: 'https://lovv.example/',
+          VITE_COGNITO_LOGOUT_URI: 'https://d3nuef0zacpyj.cloudfront.net/',
         },
       }),
     )

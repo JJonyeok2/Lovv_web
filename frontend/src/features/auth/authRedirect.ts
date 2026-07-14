@@ -284,19 +284,15 @@ const getCognitoClientId = (env: OAuthClientEnv = import.meta.env) =>
 
 const getCognitoRedirectUri = ({
   origin,
-  env = import.meta.env,
 }: {
   origin: string
-  env?: OAuthClientEnv
-}) => readString(env.VITE_COGNITO_REDIRECT_URI) || `${normalizeOrigin(origin)}${cognitoAuthCallbackPath}`
+}) => `${normalizeOrigin(origin)}${cognitoAuthCallbackPath}`
 
 const getCognitoLogoutUri = ({
   origin,
-  env = import.meta.env,
 }: {
   origin: string
-  env?: OAuthClientEnv
-}) => readString(env.VITE_COGNITO_LOGOUT_URI) || `${normalizeOrigin(origin)}/`
+}) => `${normalizeOrigin(origin)}/`
 
 export const createCognitoAuthorizeUrl = ({
   hostedUiBaseUrl,
@@ -336,7 +332,7 @@ export const createCognitoLogoutUrl = ({
 }) => {
   const hostedUiBaseUrl = getCognitoHostedUiBaseUrl(env)
   const clientId = getCognitoClientId(env)
-  const logoutUri = getCognitoLogoutUri({ origin, env })
+  const logoutUri = getCognitoLogoutUri({ origin })
 
   if (!hostedUiBaseUrl) {
     throw new OAuthRedirectConfigError(
@@ -392,7 +388,7 @@ export const createCognitoAuthorizationRequest = async (
     )
   }
 
-  const redirectUri = getCognitoRedirectUri({ origin, env })
+  const redirectUri = getCognitoRedirectUri({ origin })
   const state = createOAuthState(crypto)
   const codeVerifier = createPkceCodeVerifier(crypto)
   const codeChallenge = await createPkceCodeChallenge(codeVerifier, crypto)

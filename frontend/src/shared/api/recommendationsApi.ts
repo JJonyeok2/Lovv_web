@@ -503,19 +503,19 @@ const normalizeRecommendationRoute = (value: unknown): PlanRoute | null => {
       ? route.durationSeconds
       : undefined,
     segments: Array.isArray(route.segments)
-      ? route.segments.flatMap((segment) => {
+      ? route.segments.map((segment) => {
           if (!segment || typeof segment !== 'object') {
-            return []
+            return {}
           }
           const record = segment as Record<string, unknown>
-          return [{
+          return {
             distanceMeters: typeof record.distanceMeters === 'number' && Number.isFinite(record.distanceMeters)
               ? record.distanceMeters
               : undefined,
             durationSeconds: typeof record.durationSeconds === 'number' && Number.isFinite(record.durationSeconds)
               ? record.durationSeconds
               : undefined,
-          }]
+          }
         })
       : undefined,
   }

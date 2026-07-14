@@ -688,7 +688,10 @@ export function PlanDetailView({
             status: 'ready',
           })
           if (activeDay && onReplacePlanDay) {
-            onReplacePlanDay(activeDay.day, applyCalculatedRouteToDay(activeDay, route))
+            onReplacePlanDay(
+              activeDay.day,
+              applyCalculatedRouteToDay(activeDay, route, nameToCoords, activeMapStops),
+            )
           }
           return
         }
@@ -712,7 +715,7 @@ export function PlanDetailView({
     return () => {
       isCancelled = true
     }
-  }, [activeDay, activeRouteCoordinateKey, activeRouteRequestKey, authAccessToken, currentCalculatedRouteResult, onReplacePlanDay])
+  }, [activeDay, activeMapStops, activeRouteCoordinateKey, activeRouteRequestKey, authAccessToken, currentCalculatedRouteResult, nameToCoords, onReplacePlanDay])
 
   const displayedRoutePath = resolveDisplayedRoutePath({
     calculatedPath: calculatedRoutePath,

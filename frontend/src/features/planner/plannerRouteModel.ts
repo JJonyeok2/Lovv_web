@@ -82,10 +82,66 @@ export const getPlanRouteCoordinates = (
 ): RoutePathCoordinate[] =>
   getPlanStopRoutePoints(stops, nameToCoords).map((point) => point.routeCoordinate)
 
-export const applyCalculatedRouteToDay = (day: PlanDay, route: PlanRoute): PlanDay => ({
-  ...day,
-  route,
-})
+export const applyCalculatedRouteToDay = (
+  day: PlanDay,
+  route: PlanRoute,
+  nameToCoords: Record<string, LatLng> = {},
+  routeStops: PlanStop[] = day.stops,
+): PlanDay => {
+  if (!route.segments?.length) {
+    return {
+      ...day,
+      route,
+    }
+  }
+
+  const originatingStopIndices = getPlanStopRoutePoints(routeStops, nameToCoords)
+    .slice(0, -1)
+    .map((point) => day.stops.indexOf(point.stop))
+  let updatedStops = day.stops
+
+  route.segments.slice(0, originatingStopIndices.length).forEach((segment, segmentIndex) => {
+    const durationSeconds =
+      isFiniteNumber(segment.durationSeconds) && segment.durationSeconds >= 0
+        ? segment.durationSeconds
+        : null
+    const distanceMeters =
+      isFiniteNumber(segment.distanceMeters) && segment.distanceMeters >= 0
+        ? segment.distanceMeters
+        : null
+
+    if (durationSeconds === null && distanceMeters === null) {
+      return
+    }
+
+    const stopIndex = originatingStopIndices[segmentIndex]
+    if (stopIndex < 0) {
+      return
+    }
+
+    if (updatedStops === day.stops) {
+      updatedStops = [...day.stops]
+    }
+
+    const stop = updatedStops[stopIndex]
+    updatedStops[stopIndex] = {
+      ...stop,
+      ...(durationSeconds !== null
+        ? {
+            moveDurationSeconds: durationSeconds,
+            move: `차량 ${Math.max(1, Math.ceil(durationSeconds / 60))}분`,
+          }
+        : {}),
+      ...(distanceMeters !== null ? { moveDistanceMeters: distanceMeters } : {}),
+    }
+  })
+
+  return {
+    ...day,
+    stops: updatedStops,
+    route,
+  }
+}
 
 export const resolveDisplayedRoutePath = ({
   calculatedPath,

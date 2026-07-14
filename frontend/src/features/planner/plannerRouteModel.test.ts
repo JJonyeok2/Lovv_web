@@ -116,6 +116,176 @@ describe('plannerRouteModel', () => {
     expect(updated.route).toEqual(route)
   })
 
+  it('fallback 생성 카드와 직접 좌표 위시 카드에 Kakao 구간 시간과 거리를 반영한다', () => {
+    const routeStops: PlanStop[] = [
+      { ...stops[0], title: 'AI가 재작성한 안목해변', contentId: 'attraction#100' },
+      { ...stops[1] },
+      {
+        time: '저녁',
+        move: '이동 없음',
+        title: '숙소',
+        body: '체크인',
+        reason: '마지막 일정',
+      },
+    ]
+    const day: PlanDay = { day: 1, title: '1일차', summary: '', stops: routeStops }
+    const route: PlanRoute = {
+      provider: 'kakao-mobility',
+      segments: [
+        { durationSeconds: 61, distanceMeters: 1200 },
+        { durationSeconds: 600, distanceMeters: 8300 },
+      ],
+    }
+
+    const updated = applyCalculatedRouteToDay(day, route, {
+      100: { lat: 37.75, lng: 128.91 },
+      숙소: { lat: 37.79, lng: 128.99 },
+    })
+
+    expect(updated.stops[0]).toMatchObject({
+      move: '차량 2분',
+      moveDurationSeconds: 61,
+      moveDistanceMeters: 1200,
+    })
+    expect(updated.stops[1]).toMatchObject({
+      title: '위시맛집',
+      move: '차량 10분',
+      moveDurationSeconds: 600,
+      moveDistanceMeters: 8300,
+    })
+    expect(updated.stops[2]).toBe(routeStops[2])
+    expect(updated.route).toBe(route)
+  })
+
+  it('좌표 없는 정류장은 Kakao 구간 매핑에서 건너뛴다', () => {
+    const routeStops: PlanStop[] = [
+      { ...stops[0], latitude: 37.75, longitude: 128.91 },
+      {
+        time: '점심',
+        move: '기존 이동',
+        title: '좌표 없는 장소',
+        body: '본문',
+        reason: '사유',
+      },
+      { ...stops[1] },
+      {
+        time: '저녁',
+        move: '이동 없음',
+        title: '숙소',
+        body: '체크인',
+        reason: '마지막 일정',
+        latitude: 37.79,
+        longitude: 128.99,
+      },
+    ]
+    const route: PlanRoute = {
+      segments: [
+        { durationSeconds: 120, distanceMeters: 1000 },
+        { durationSeconds: 240, distanceMeters: 3000 },
+      ],
+    }
+
+    const updated = applyCalculatedRouteToDay(
+      { day: 1, title: '1일차', summary: '', stops: routeStops },
+      route,
+    )
+
+    expect(updated.stops[0]).toMatchObject({ move: '차량 2분', moveDurationSeconds: 120 })
+    expect(updated.stops[1]).toBe(routeStops[1])
+    expect(updated.stops[2]).toMatchObject({ move: '차량 4분', moveDurationSeconds: 240 })
+    expect(updated.stops[3]).toBe(routeStops[3])
+  })
+
+  it('경로 요청에서 제외된 식사 placeholder는 Kakao 구간 매핑에서도 제외한다', () => {
+    const dayStops: PlanStop[] = [
+      { ...stops[0], latitude: 37.75, longitude: 128.91 },
+      {
+        time: '점심',
+        move: '기존 placeholder 이동',
+        title: '식사 장소 추천 예정',
+        body: '식사 placeholder',
+        reason: '식사 장소 선택 전',
+        latitude: 37.76,
+        longitude: 128.92,
+      },
+      { ...stops[1] },
+      {
+        time: '저녁',
+        move: '이동 없음',
+        title: '숙소',
+        body: '체크인',
+        reason: '마지막 일정',
+        latitude: 37.79,
+        longitude: 128.99,
+      },
+    ]
+    const requestedRouteStops = [dayStops[0], dayStops[2], dayStops[3]]
+    const route: PlanRoute = {
+      segments: [
+        { durationSeconds: 180, distanceMeters: 1400 },
+        { durationSeconds: 480, distanceMeters: 6200 },
+      ],
+    }
+
+    const updated = applyCalculatedRouteToDay(
+      { day: 1, title: '1일차', summary: '', stops: dayStops },
+      route,
+      {},
+      requestedRouteStops,
+    )
+
+    expect(updated.stops[0]).toMatchObject({ move: '차량 3분', moveDurationSeconds: 180 })
+    expect(updated.stops[1]).toBe(dayStops[1])
+    expect(updated.stops[2]).toMatchObject({ move: '차량 8분', moveDurationSeconds: 480 })
+    expect(updated.stops[3]).toBe(dayStops[3])
+  })
+
+  it('없거나 불완전하고 유효하지 않은 Kakao 구간 값은 기존 이동 값을 보존한다', () => {
+    const routeStops: PlanStop[] = [
+      {
+        ...stops[0],
+        latitude: 37.75,
+        longitude: 128.91,
+        moveDurationSeconds: 300,
+        moveDistanceMeters: 1500,
+      },
+      {
+        ...stops[1],
+        moveDurationSeconds: 420,
+        moveDistanceMeters: 2300,
+      },
+      {
+        time: '저녁',
+        move: '이동 없음',
+        title: '숙소',
+        body: '체크인',
+        reason: '마지막 일정',
+        latitude: 37.79,
+        longitude: 128.99,
+      },
+    ]
+    const day: PlanDay = { day: 1, title: '1일차', summary: '', stops: routeStops }
+
+    expect(applyCalculatedRouteToDay(day, { provider: 'kakao-mobility' }).stops).toBe(routeStops)
+
+    const updated = applyCalculatedRouteToDay(day, {
+      provider: 'kakao-mobility',
+      segments: [
+        { durationSeconds: Number.NaN, distanceMeters: 1800 },
+        { durationSeconds: -1, distanceMeters: Number.POSITIVE_INFINITY },
+        { durationSeconds: 60, distanceMeters: 9999 },
+      ],
+    })
+
+    expect(updated.stops[0]).toMatchObject({
+      move: '도보 5분',
+      moveDurationSeconds: 300,
+      moveDistanceMeters: 1800,
+    })
+    expect(updated.stops[1]).toBe(routeStops[1])
+    expect(updated.stops[2]).toBe(routeStops[2])
+  })
+
   it('변경 경로 계산 중이거나 실패하면 이전 저장 경로를 표시하지 않는다', () => {
     const persistedPath = [[128.91, 37.75], [128.95, 37.77]] as [number, number][]
 

@@ -72,6 +72,29 @@ describe('requestRecommendationRoute', () => {
       { accessToken: 'access-token', fetchImpl },
     )).resolves.toBeNull()
   })
+
+  it('유효하지 않은 route segment 슬롯을 유지해 이후 segment 순서를 보존한다', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        route: {
+          provider: 'kakao-mobility',
+          geometry: {
+            type: 'LineString',
+            coordinates: [[128.91, 37.75], [128.93, 37.76], [128.95, 37.77]],
+          },
+          segments: [null, { distanceMeters: 4200, durationSeconds: 780 }],
+        },
+      }),
+    })
+
+    await expect(requestRecommendationRoute(
+      [[128.91, 37.75], [128.93, 37.76], [128.95, 37.77]],
+      { accessToken: 'access-token', fetchImpl },
+    )).resolves.toMatchObject({
+      segments: [{}, { distanceMeters: 4200, durationSeconds: 780 }],
+    })
+  })
 })
 
 const makeItem = (overrides: Partial<RecommendationItinerary['days'][0]['items'][0]> = {}) => ({

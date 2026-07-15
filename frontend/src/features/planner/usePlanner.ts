@@ -351,9 +351,15 @@ export function usePlanner({
     selectedTravelMonth,
   ])
 
-  const plannerBasisLabel = plannerCityContext
-    ? `${plannerCityContext.cityName} · ${plannerCityContext.region}`
-    : plannerPreferenceLabel
+  const hasGeneratedDestinationOverride = Boolean(
+    generatedPlanDestinationName &&
+    generatedPlanDestinationName !== plannerCityContext?.cityName,
+  )
+  const plannerBasisLabel = hasGeneratedDestinationOverride
+    ? generatedPlanDestinationName!
+    : plannerCityContext
+      ? `${plannerCityContext.cityName} · ${plannerCityContext.region}`
+      : plannerPreferenceLabel
 
   const currentPlanId = createPlanId(
     plannerBasisLabel,
@@ -486,11 +492,11 @@ export function usePlanner({
     sourceRecommendationId: string,
   ): SavedPlanApiCreatePayload => {
     const destinationId =
+      generatedPlanDestinationId ??
       plannerCityContext?.agentCoreId ??
       plannerCityContext?.cityId ??
-      generatedPlanDestinationId ??
       sourceRecommendationId
-    const destinationName = plannerCityContext?.cityName ?? generatedPlanDestinationName ?? plannerBasisLabel
+    const destinationName = generatedPlanDestinationName ?? plannerCityContext?.cityName ?? plannerBasisLabel
 
     const payloadWithoutIdempotencyKey: Omit<SavedPlanApiCreatePayload, 'idempotencyKey'> = {
       sourceRecommendationId,
@@ -518,7 +524,7 @@ export function usePlanner({
         activeRequiredThemes: plannerConditionExtraction?.activeRequiredThemes ?? [],
         softPreferences: plannerConditionExtraction?.softPreferences ?? [],
         unsupportedConditions: plannerConditionExtraction?.unsupportedConditions ?? [],
-        cityId: plannerCityContext?.cityId ?? generatedPlanDestinationId ?? null,
+        cityId: generatedPlanDestinationId ?? plannerCityContext?.cityId ?? null,
       },
       requestSummary: plan.conditionSummary,
       itinerary: {
@@ -569,9 +575,9 @@ export function usePlanner({
     const savedAt = new Date().toISOString()
     const sourceRecommendationId = currentPlanId
     const savedPlanDestinationId =
+      generatedPlanDestinationId ??
       plannerCityContext?.agentCoreId ??
       plannerCityContext?.cityId ??
-      generatedPlanDestinationId ??
       sourceRecommendationId
     const savedPlanTitle = createSavedItineraryTitle()
     const draftPlan: SavedPlan = {
@@ -1055,7 +1061,7 @@ export function usePlanner({
       threadId,
       actorId: currentUser?.id,
       recommendationId: generatedRecommendationId ?? undefined,
-      destinationId: plannerCityContext?.cityId ?? generatedPlanDestinationId ?? undefined,
+      destinationId: generatedPlanDestinationId ?? plannerCityContext?.cityId ?? undefined,
       country: plannerCityContext?.country || 'KR',
       travelYear: new Date().getFullYear(),
       travelMonth,
@@ -1075,6 +1081,20 @@ export function usePlanner({
     const modifiedDraft = mapRecommendationToDraft(response, { preferAlternativeItinerary })
 
     if (scope.kind === 'plan') {
+      const responseDestinationId = response.destination?.cityId || response.destination?.destinationId
+      const responseDestinationName = resolveSmallCityDisplayName(
+        response.destination?.name,
+        responseDestinationId,
+        generatedPlanDestinationName ?? plannerCityContext?.cityName,
+      )
+
+      if (responseDestinationId) {
+        setGeneratedPlanDestinationId(responseDestinationId)
+      }
+      if (responseDestinationName) {
+        setGeneratedPlanDestinationName(responseDestinationName)
+      }
+
       return modifiedDraft
     }
 
@@ -1089,6 +1109,7 @@ export function usePlanner({
     createRecommendationMutation,
     currentUser?.id,
     generatedPlanDestinationId,
+    generatedPlanDestinationName,
     generatedRecommendationId,
     generatedRecommendationSessionId,
     generatedRecommendationThreadId,

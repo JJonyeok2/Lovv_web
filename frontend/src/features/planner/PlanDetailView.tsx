@@ -578,6 +578,22 @@ export function PlanDetailView({
 
   const [localChatMessages, setLocalChatMessages] = useState<ChatMessage[]>([])
 
+  const appendLocalChatMessage = (role: ChatMessage['role'], content: string) => {
+    setLocalChatMessages((current) => [
+      ...current,
+      {
+        id: createLocalChatMessageId(`plan-detail-${role}`),
+        role,
+        content,
+      },
+    ])
+  }
+
+  const reportFloatingChatResult = (content: string) => {
+    setFloatingChatNotice(content)
+    appendLocalChatMessage('assistant', content)
+  }
+
   const feedbackChips = [
     { id: 'healing_rest', label: t('feedback.chip_healing') },
     { id: 'nature_trekking', label: t('feedback.chip_nature') },
@@ -874,7 +890,7 @@ export function PlanDetailView({
       rawModifyQuery = `${day.day}일차 ${day.stops[stopIndex]?.time ?? ''} 일정 바꿔줘`.trim(),
     ) => {
       if (!onRequestPlanModification) {
-        setFloatingChatNotice('일정 수정 에이전트 연결이 아직 준비되지 않았어요.')
+        reportFloatingChatResult('일정 수정 에이전트 연결이 아직 준비되지 않았어요.')
         return
       }
 
@@ -890,7 +906,7 @@ export function PlanDetailView({
         })
 
         if (!candidate || !('time' in candidate)) {
-          setFloatingChatNotice('수정 후보를 받지 못했어요. 조건을 조금 더 구체적으로 다시 요청해 주세요.')
+          reportFloatingChatResult('수정 후보를 받지 못했어요. 조건을 조금 더 구체적으로 다시 요청해 주세요.')
           return
         }
 
@@ -900,9 +916,9 @@ export function PlanDetailView({
           stopIndex,
           candidate,
         })
-        setFloatingChatNotice('에이전트가 제안한 후보를 확인해 주세요.')
+        reportFloatingChatResult('에이전트가 제안한 후보를 확인해 주세요.')
       } catch (error) {
-        setFloatingChatNotice(getPlanModificationFailureMessage(error))
+        reportFloatingChatResult(getPlanModificationFailureMessage(error))
       } finally {
         setPendingModificationRequest(null)
       }
@@ -921,10 +937,7 @@ export function PlanDetailView({
       setFloatingChatNotice(null)
       setFloatingChatInput('')
       setFloatingChatOpen(true)
-      setLocalChatMessages((current) => [
-        ...current,
-        { id: createLocalChatMessageId('stop-replace'), role: 'user', content: requestMessage },
-      ])
+      appendLocalChatMessage('user', requestMessage)
 
       await requestStopReplacement(day, stopIndex, requestMessage)
     }
@@ -944,7 +957,7 @@ export function PlanDetailView({
       const targetDay = days.find((day) => day.day === dayNumber)
 
       if (!targetDay || !onRequestPlanModification) {
-        setFloatingChatNotice('일정 수정 에이전트 연결이 아직 준비되지 않았어요.')
+        reportFloatingChatResult('일정 수정 에이전트 연결이 아직 준비되지 않았어요.')
         return
       }
 
@@ -959,12 +972,12 @@ export function PlanDetailView({
         })
 
         if (!candidate || !('stops' in candidate) || 'days' in candidate) {
-          setFloatingChatNotice('수정 후보를 받지 못했어요. 조건을 조금 더 구체적으로 다시 요청해 주세요.')
+          reportFloatingChatResult('수정 후보를 받지 못했어요. 조건을 조금 더 구체적으로 다시 요청해 주세요.')
           return
         }
 
         if (!hasOnlyNewReplacementStops(targetDay, candidate)) {
-          setFloatingChatNotice('기존 방문지와 겹치지 않는 새 일차를 받지 못했어요. 잠시 후 다시 시도해 주세요.')
+          reportFloatingChatResult('기존 방문지와 겹치지 않는 새 일차를 받지 못했어요. 잠시 후 다시 시도해 주세요.')
           return
         }
 
@@ -973,9 +986,9 @@ export function PlanDetailView({
           dayNumber,
           candidate,
         })
-        setFloatingChatNotice('에이전트가 제안한 후보를 확인해 주세요.')
+        reportFloatingChatResult('에이전트가 제안한 후보를 확인해 주세요.')
       } catch (error) {
-        setFloatingChatNotice(getPlanModificationFailureMessage(error))
+        reportFloatingChatResult(getPlanModificationFailureMessage(error))
       } finally {
         setPendingModificationRequest(null)
       }
@@ -989,7 +1002,7 @@ export function PlanDetailView({
       } = {},
     ): Promise<boolean> => {
       if (!onRequestPlanModification || !onReplacePlanDraft) {
-        setFloatingChatNotice('일정 수정 에이전트 연결이 아직 준비되지 않았어요.')
+        reportFloatingChatResult('일정 수정 에이전트 연결이 아직 준비되지 않았어요.')
         return false
       }
 
@@ -1006,15 +1019,15 @@ export function PlanDetailView({
         })
 
         if (!candidate || !('days' in candidate)) {
-          setFloatingChatNotice('전체 일정 수정안을 받지 못했어요. 조건을 조금 더 구체적으로 다시 요청해 주세요.')
+          reportFloatingChatResult('전체 일정 수정안을 받지 못했어요. 조건을 조금 더 구체적으로 다시 요청해 주세요.')
           return false
         }
 
         onReplacePlanDraft(candidate)
-        setFloatingChatNotice(options.successNotice ?? '에이전트가 제안한 전체 일정 수정안을 반영했어요.')
+        reportFloatingChatResult(options.successNotice ?? '에이전트가 제안한 전체 일정 수정안을 반영했어요.')
         return true
       } catch (error) {
-        setFloatingChatNotice(getPlanModificationFailureMessage(error))
+        reportFloatingChatResult(getPlanModificationFailureMessage(error))
         return false
       } finally {
         setPendingModificationRequest(null)
@@ -1028,10 +1041,12 @@ export function PlanDetailView({
 
       if (pendingEdit.kind === 'stop' && onReplacePlanStop) {
         onReplacePlanStop(pendingEdit.dayNumber, pendingEdit.stopIndex, pendingEdit.candidate)
+        reportFloatingChatResult('선택한 장소 변경을 일정에 반영했어요.')
       }
 
       if (pendingEdit.kind === 'day' && onReplacePlanDay) {
         onReplacePlanDay(pendingEdit.dayNumber, pendingEdit.candidate)
+        reportFloatingChatResult(`${pendingEdit.dayNumber}일차 변경을 일정에 반영했어요.`)
       }
 
       setPendingEdit(null)
@@ -1307,8 +1322,10 @@ export function PlanDetailView({
         return
       }
 
+      appendLocalChatMessage('user', command)
+
       if (hasExplicitReplacementDestination(command)) {
-        setFloatingChatNotice('특정 장소 지정은 지원하지 않아요. 바꿀 시간대와 실내 여부, 분위기, 이동 부담을 알려주세요.')
+        reportFloatingChatResult('특정 장소 지정은 지원하지 않아요. 바꿀 시간대와 실내 여부, 분위기, 이동 부담을 알려주세요.')
         return
       }
 
@@ -1325,7 +1342,7 @@ export function PlanDetailView({
       }
 
       if (!editIntent) {
-        setFloatingChatNotice('“도시 바꿔줘”, “1일차 2번째 장소 바꿔줘”, “1일차 점심을 OO로 바꿔줘”처럼 요청해 주세요.')
+        reportFloatingChatResult('“도시 바꿔줘”, “1일차 2번째 장소 바꿔줘”, “1일차 점심을 OO로 바꿔줘”처럼 요청해 주세요.')
         return
       }
 
@@ -1342,7 +1359,7 @@ export function PlanDetailView({
       }
 
       if (editIntent.type === 'replace_day_confirmation') {
-        setFloatingChatNotice('요청을 확인했어요. 일정 화면에서 변경 범위를 확정해 주세요.')
+        reportFloatingChatResult('요청을 확인했어요. 일정 화면에서 변경 범위를 확정해 주세요.')
       }
       setFloatingChatInput('')
       setFloatingChatOpen(editIntent.type === 'replace_stop')
@@ -2263,7 +2280,7 @@ export function PlanDetailView({
                       ))}
                   </div>
                   {[...recentChatMessages, ...localChatMessages].length > 0 ? (
-                    <div className="mt-4 space-y-3" aria-label="최근 대화">
+                    <div role="group" className="mt-4 space-y-3" aria-label="최근 대화">
                       {[...recentChatMessages, ...localChatMessages].map((message) => {
                         const isAssistantMessage = message.role === 'assistant'
 

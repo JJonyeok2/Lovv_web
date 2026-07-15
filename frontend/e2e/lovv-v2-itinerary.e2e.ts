@@ -14,6 +14,7 @@ const itineraryId = 'itinerary-e2e-001'
 const destinationId = 'KR-51-170'
 const createQuery = '동해 1박 2일 바다 여행을 추천해줘.'
 const modifyQuery = '1일차 첫 장소 바꿔줘. 더 조용한 곳을 원해.'
+const unsupportedModifyQuery = '첫 번째 테스트 요청'
 
 type JsonRecord = Record<string, unknown>
 
@@ -485,6 +486,19 @@ test('authenticated onboarded user can clarify, modify, save, and reopen a V2 it
   await expect(dayOnePanel.getByText('한섬감성바닷길', { exact: true })).toBeVisible()
   await expect(dayOnePanel.getByText('묵호등대', { exact: true })).toHaveCount(0)
 
+  const modificationHistory = page.getByRole('group', { name: '최근 대화' })
+  await expect(modificationHistory.getByText(modifyQuery, { exact: true })).toBeVisible()
+  await expect(modificationHistory.getByText('에이전트가 제안한 후보를 확인해 주세요.', { exact: true })).toBeVisible()
+  await expect(modificationHistory.getByText('선택한 장소 변경을 일정에 반영했어요.', { exact: true })).toBeVisible()
+
+  await modifyInput.fill(unsupportedModifyQuery)
+  await page.getByRole('button', { name: '확인', exact: true }).click()
+  await expect(modificationHistory.getByText(unsupportedModifyQuery, { exact: true })).toBeVisible()
+  await expect(modificationHistory.getByText(
+    '“도시 바꿔줘”, “1일차 2번째 장소 바꿔줘”, “1일차 점심을 OO로 바꿔줘”처럼 요청해 주세요.',
+    { exact: true },
+  )).toBeVisible()
+
   const modifyRequest = recommendationRequests[2]
   expect(modifyRequest.entryType).toBe('modify')
   expect(modifyRequest.requestId).toEqual(expect.any(String))
@@ -507,6 +521,12 @@ test('authenticated onboarded user can clarify, modify, save, and reopen a V2 it
     indoorOutdoor: 'outdoor',
   })
 
+  await page.getByRole('button', { name: '세부 일정 수정 챗봇 닫기' }).click()
+  await page.getByRole('button', { name: 'Lovv 챗봇', exact: true }).click()
+  const reopenedModificationHistory = page.getByRole('group', { name: '최근 대화' })
+  await expect(reopenedModificationHistory.getByText(modifyQuery, { exact: true })).toBeVisible()
+  await expect(reopenedModificationHistory.getByText(unsupportedModifyQuery, { exact: true })).toBeVisible()
+  await expect(reopenedModificationHistory.getByText('선택한 장소 변경을 일정에 반영했어요.', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: '세부 일정 수정 챗봇 닫기' }).click()
   const saveButton = page.getByRole('button', { name: '마이페이지에 저장' })
   await saveButton.click()

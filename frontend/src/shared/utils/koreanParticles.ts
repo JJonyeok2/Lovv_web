@@ -1,3 +1,10 @@
+/**
+ * @file koreanParticles.ts
+ * @description Korean particle helpers for natural city copy.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 const hangulSyllableStart = 0xac00
 const hangulSyllableEnd = 0xd7a3
 const hangulFinalConsonantCount = 28
@@ -28,3 +35,5 @@ export const normalizeKoreanTopicParticle = (text: string, noun: string) =>
     new RegExp(`${escapeRegExp(noun)}(?:은|는)`, 'g'),
     withKoreanTopicParticle(noun),
   )
+
+// EOF: koreanParticles.ts

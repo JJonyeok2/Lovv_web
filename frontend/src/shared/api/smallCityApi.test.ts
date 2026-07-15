@@ -1,3 +1,10 @@
+/**
+ * @file smallCityApi.test.ts
+ * @description Tests for small-city pagination, details, and planner data mapping.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import {
   adaptSmallCityDetailApiResponse,
@@ -419,3 +426,5 @@ describe('small-city API contract adapter', () => {
     expect(result.placesByCategory['관광지'][0].name).toContain('산책')
   })
 })
+
+// EOF: smallCityApi.test.ts

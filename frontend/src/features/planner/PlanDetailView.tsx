@@ -1,3 +1,10 @@
+/**
+ * @file PlanDetailView.tsx
+ * @description Itinerary detail view for day navigation, route calculation, editing, and wishlist stops.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { ChatMessage, PlanDay, PlanDraft, PlanStop, RoutePathCoordinate, ThemeId, LovvUser, SelectedMealPlace, SavedPlanLike } from '../../shared/types/app'
@@ -2401,3 +2408,5 @@ export function PlanDetailView({
       </section>
     )
 }
+
+// EOF: PlanDetailView.tsx

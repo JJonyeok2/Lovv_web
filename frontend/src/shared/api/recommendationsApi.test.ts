@@ -1,3 +1,10 @@
+/**
+ * @file recommendationsApi.test.ts
+ * @description Tests for recommendation request payloads and AgentCore V2 response mapping.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import {
   RecommendationApiRequestError,
@@ -948,3 +955,5 @@ describe('mapRecommendationToDraft — day title/summary fallback', () => {
     expect(day.summary).toBe('핵심 요약')
   })
 })
+
+// EOF: recommendationsApi.test.ts

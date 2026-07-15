@@ -1,3 +1,10 @@
+/**
+ * @file smallCityApi.ts
+ * @description Small-city API adapter with pagination and detail normalization.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import {
   smallCityPlaceCategories,
   smallCityThemes,
@@ -1137,3 +1144,5 @@ export const requestGetSmallCityPlaces = async (
     return adaptSmallCityPlacesApiResponse(mockPlacesResponse, cityId)
   }
 }
+
+// EOF: smallCityApi.ts

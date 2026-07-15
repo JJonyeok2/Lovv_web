@@ -1,3 +1,10 @@
+/**
+ * @file authFlow.test.ts
+ * @description Tests for authentication runtime modes and session snapshots.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { describe, expect, it, vi } from 'vitest'
 import type { AuthApiState } from '../../shared/api/authApi'
 import {
@@ -179,3 +186,5 @@ describe('auth flow orchestration helpers', () => {
     })
   })
 })
+
+// EOF: authFlow.test.ts

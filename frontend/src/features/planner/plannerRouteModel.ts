@@ -1,3 +1,10 @@
+/**
+ * @file plannerRouteModel.ts
+ * @description Pure helpers for validating and selecting itinerary route paths.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import type { PlanDay, PlanRoute, PlanStop, RoutePathCoordinate } from '../../shared/types/app'
 
 type LatLng = {
@@ -199,3 +206,5 @@ export const formatEstimatedMoveLabel = (
 
   return `차량 ${Math.max(5, Math.ceil(distanceMeters / DRIVING_METERS_PER_MINUTE))}분`
 }
+
+// EOF: plannerRouteModel.ts

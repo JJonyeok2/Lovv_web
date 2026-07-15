@@ -1,6 +1,8 @@
 /**
  * @file recommendationsApi.ts
  * @description Frontend adapter for calling the recommendation API and mapping the response.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
  */
 
 import type { ThemeId, PlanDraft, PlanDay, PlanRoute, PlanStop, RoutePathCoordinate } from '../types/app'
@@ -722,3 +724,5 @@ export const mapDraftToRecommendationCurrentOrder = (draft: PlanDraft): Recommen
       })
       .filter((item) => item.title),
   )
+
+// EOF: recommendationsApi.ts

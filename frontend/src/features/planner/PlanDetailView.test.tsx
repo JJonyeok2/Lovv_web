@@ -1,3 +1,10 @@
+/**
+ * @file PlanDetailView.test.tsx
+ * @description Integration tests for itinerary detail editing and day-specific route state.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -246,3 +253,5 @@ describe('PlanDetailView day-keyed route results', () => {
     expect(requestRecommendationRoute).toHaveBeenCalledTimes(2)
   })
 })
+
+// EOF: PlanDetailView.test.tsx

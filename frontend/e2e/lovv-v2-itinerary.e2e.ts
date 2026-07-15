@@ -1,3 +1,10 @@
+/**
+ * @file lovv-v2-itinerary.e2e.ts
+ * @description End-to-end coverage for the AgentCore V2 itinerary workflow.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { expect, test, type Route, type Page } from '@playwright/test'
 
 const fixedNow = '2026-07-13T03:00:00.000Z'
@@ -579,3 +586,5 @@ test('authenticated onboarded user can clarify, modify, save, and reopen a V2 it
   ])
   expect(unexpectedRequests).toEqual([])
 })
+
+// EOF: lovv-v2-itinerary.e2e.ts

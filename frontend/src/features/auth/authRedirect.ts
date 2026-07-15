@@ -1,7 +1,8 @@
 /**
  * @file authRedirect.ts
  * @description OAuth authorization-code redirect and callback helpers.
- * @lastModified 2026-06-12
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
  */
 
 import type { AuthLoginRequest } from '../../shared/api/authApi'

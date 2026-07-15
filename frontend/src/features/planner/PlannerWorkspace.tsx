@@ -1,3 +1,10 @@
+/**
+ * @file PlannerWorkspace.tsx
+ * @description Planner workspace coordinating chat, generation progress, and itinerary summaries.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { useEffect, useRef } from 'react'
 import type { FormEvent, MouseEvent } from 'react'
 import { getPlannerStepClassName } from './plannerModel'
@@ -317,3 +324,5 @@ export function PlannerWorkspace({
     </section>
   )
 }
+
+// EOF: PlannerWorkspace.tsx

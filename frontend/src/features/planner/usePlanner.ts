@@ -1,7 +1,8 @@
 /**
  * @file usePlanner.ts
  * @description Custom hook for managing the chatbot-based interactive planner, itineraries drafts, and AI generation state.
- * @lastModified 2026-06-23
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'

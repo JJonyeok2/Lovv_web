@@ -1,3 +1,10 @@
+/**
+ * @file kakaoPlaceImageApi.ts
+ * @description Client adapter for Kakao place image lookup.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 export type KakaoPlaceImageFetchResponse = {
   ok: boolean
   status: number
@@ -64,3 +71,5 @@ export const requestKakaoPlaceImage = async (
     window.clearTimeout(timeoutId)
   }
 }
+
+// EOF: kakaoPlaceImageApi.ts

@@ -1,7 +1,8 @@
 /**
  * @file CityMapListPanel.tsx
  * @description List panel rendering search result cards of small cities when viewing results.
- * @lastModified 2026-06-23
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
  */
 
 import { useState } from 'react'
@@ -159,3 +160,5 @@ export function CityMapListPanel({
     </div>
   )
 }
+
+// EOF: CityMapListPanel.tsx

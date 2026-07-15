@@ -1,3 +1,10 @@
+/**
+ * @file MyPageView.tsx
+ * @description My Page view for profile, saved itineraries, reactions, and admin access.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { useEffect, useState } from 'react'
 import type { FormEvent, MouseEvent } from 'react'
 import type {
@@ -560,3 +567,5 @@ export function MyPageView({
                 </section>
   )
 }
+
+// EOF: MyPageView.tsx

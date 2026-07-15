@@ -1,7 +1,8 @@
 /**
  * @file authFlow.ts
  * @description Auth runtime mode and session snapshot helpers.
- * @lastModified 2026-06-12
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
  */
 
 import type { AuthApiState } from '../../shared/api/authApi'

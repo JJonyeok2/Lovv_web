@@ -1,3 +1,10 @@
+/**
+ * @file App.test.tsx
+ * @description Integration tests for the Lovv application shell and primary routes.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -3605,3 +3612,5 @@ describe('MVP main entry screen', () => {
     expect(tabPanel).toHaveAttribute('aria-labelledby', 'day-tab-1')
   })
 })
+
+// EOF: App.test.tsx

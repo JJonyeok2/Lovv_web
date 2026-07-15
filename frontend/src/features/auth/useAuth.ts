@@ -1,7 +1,8 @@
 /**
  * @file useAuth.ts
  * @description Custom hook for managing authentication state, session restoring, Cognito configuration, and saved itineraries.
- * @lastModified 2026-06-23
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'

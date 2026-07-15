@@ -1,3 +1,10 @@
+/**
+ * @file kakaoPlaceImageApi.test.ts
+ * @description Tests for Kakao place image lookup and response validation.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { describe, expect, it, vi } from 'vitest'
 import { requestKakaoPlaceImage } from './kakaoPlaceImageApi'
 
@@ -42,3 +49,5 @@ describe('Kakao place image API', () => {
     await expect(requestKakaoPlaceImage('26338954', { fetchImpl })).resolves.toBeUndefined()
   })
 })
+
+// EOF: kakaoPlaceImageApi.test.ts

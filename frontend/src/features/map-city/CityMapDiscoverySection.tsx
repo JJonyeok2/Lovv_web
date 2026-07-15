@@ -1,7 +1,8 @@
 /**
  * @file CityMapDiscoverySection.tsx
  * @description Main entry panel coordinating filters, list, details view, and the interactive Google Map.
- * @lastModified 2026-06-23
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
  */
 
 import type { RefObject } from 'react'
@@ -217,3 +218,5 @@ export function CityMapDiscoverySection({
     </section>
   )
 }
+
+// EOF: CityMapDiscoverySection.tsx

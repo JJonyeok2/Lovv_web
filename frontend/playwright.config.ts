@@ -1,3 +1,10 @@
+/**
+ * @file playwright.config.ts
+ * @description Playwright configuration for Lovv frontend end-to-end tests.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { defineConfig, devices } from '@playwright/test'
 
 const baseURL = 'http://127.0.0.1:4173'
@@ -37,3 +44,5 @@ export default defineConfig({
     },
   },
 })
+
+// EOF: playwright.config.ts

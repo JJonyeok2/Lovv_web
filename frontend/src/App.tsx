@@ -1,7 +1,8 @@
 /**
  * @file App.tsx
  * @description Main Lovv frontend route and state coordinator.
- * @lastModified 2026-06-23
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'

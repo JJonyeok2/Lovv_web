@@ -1,3 +1,10 @@
+/**
+ * @file RecommendationView.tsx
+ * @description Recommendation feed for public and personalized itinerary discovery.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { Compass, Heart, ImageIcon, Sparkles, TrendingUp } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -505,3 +512,5 @@ function RankingListSkeleton({ title }: { title: string }) {
     </section>
   )
 }
+
+// EOF: RecommendationView.tsx

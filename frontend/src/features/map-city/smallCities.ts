@@ -1,3 +1,10 @@
+/**
+ * @file smallCities.ts
+ * @description Small-city models, normalization helpers, and planner context mapping.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import busanImg from '../../assets/cities/busan.jpg'
 import gangneungImg from '../../assets/cities/gangneung.jpg'
 import gyeongjuImg from '../../assets/cities/gyeongju.jpg'
@@ -915,3 +922,5 @@ export const createSmallCityDetail = (city: SmallCity): SmallCityDetail => {
     festivalCount: getSmallCityFestivalCount(city, festivals),
   }
 }
+
+// EOF: smallCities.ts

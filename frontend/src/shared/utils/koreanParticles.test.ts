@@ -1,3 +1,10 @@
+/**
+ * @file koreanParticles.test.ts
+ * @description Tests for Korean topic-particle selection.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { describe, expect, it } from 'vitest'
 import {
   getKoreanTopicParticle,
@@ -24,3 +31,5 @@ describe('Korean topic particles', () => {
     ).toBe('경기도 화성은 전통·자연 여행 후보가 모여 있는 소도시입니다.')
   })
 })
+
+// EOF: koreanParticles.test.ts

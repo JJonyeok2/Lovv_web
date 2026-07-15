@@ -1,3 +1,10 @@
+/**
+ * @file plannerRouteModel.test.ts
+ * @description Tests for calculated, persisted, and fallback route selection.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { describe, expect, it } from 'vitest'
 import type { PlanDay, PlanRoute, PlanStop } from '../../shared/types/app'
 import {
@@ -318,3 +325,5 @@ describe('plannerRouteModel', () => {
   })
 
 })
+
+// EOF: plannerRouteModel.test.ts

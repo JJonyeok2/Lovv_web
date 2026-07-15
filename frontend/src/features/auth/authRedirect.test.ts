@@ -1,3 +1,10 @@
+/**
+ * @file authRedirect.test.ts
+ * @description Tests for OAuth and Cognito redirect request helpers.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { describe, expect, it, vi } from 'vitest'
 import {
   authCallbackPath,
@@ -331,3 +338,5 @@ describe('OAuth redirect helpers', () => {
     })
   })
 })
+
+// EOF: authRedirect.test.ts

@@ -1,3 +1,10 @@
+/**
+ * @file MyPageView.test.tsx
+ * @description Tests for saved plans, personalization, and admin access in My Page.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { LovvUser } from '../../shared/types/app'
@@ -58,3 +65,5 @@ describe('MyPageView admin console access', () => {
     expect(screen.queryByRole('link', { name: 'Lovv 관리자 콘솔로 이동' })).not.toBeInTheDocument()
   })
 })
+
+// EOF: MyPageView.test.tsx

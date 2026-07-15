@@ -1,3 +1,10 @@
+/**
+ * @file CityMapListPanel.test.tsx
+ * @description Tests for small-city result pagination and selection.
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
+ */
+
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { CityMapListPanel } from './CityMapListPanel'
@@ -36,3 +43,5 @@ describe('CityMapListPanel', () => {
     expect(screen.getByRole('button', { name: '다음 페이지' })).toBeDisabled()
   })
 })
+
+// EOF: CityMapListPanel.test.tsx

@@ -1,7 +1,8 @@
 /**
  * @file PlannerTimelineView.tsx
  * @description Summary timeline view displaying the day-by-day generated plans stops, saving controls, and details navigation.
- * @lastModified 2026-06-23
+ * @author JJonyeok2
+ * @lastModified 2026-07-15
  */
 
 import { useState } from 'react'

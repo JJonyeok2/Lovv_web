@@ -143,6 +143,30 @@ const renderEditablePlanDetail = (
   </MemoryRouter>,
 )
 
+const renderWishlistPlanDetail = (planDraft: PlanDraft) => render(
+  <MemoryRouter>
+    <PlanDetailView
+      isPlannerReady
+      shouldAskFestivalTheme={false}
+      returnToChatWorkspace={vi.fn()}
+      currentPlanTitle="wishlist layout test"
+      planDraft={planDraft}
+      plannerBasisLabel="Donghae"
+      destinationName="Donghae"
+      planId="wishlist-layout-plan"
+      saveGeneratedPlan={vi.fn()}
+      isCurrentPlanSaved={false}
+      onDeleteSavedPlan={vi.fn()}
+      openMyPage={vi.fn()}
+      savedPlanNotice={null}
+      authAccessToken="access-token"
+      onReplacePlanDay={vi.fn()}
+      addWishlistRestaurant={vi.fn()}
+      removeWishlistRestaurant={vi.fn()}
+    />
+  </MemoryRouter>,
+)
+
 const expectDisplayedRoute = async (routePath: RoutePathCoordinate[] | null) => {
   await waitFor(() => {
     expect(screen.getByTestId('plan-detail-google-map')).toHaveAttribute(
@@ -161,6 +185,45 @@ describe('PlanDetailView day-keyed route results', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.clearAllMocks()
+  })
+
+  it('keeps a selected wishlist card intact inside the desktop scroll list', () => {
+    vi.mocked(requestRecommendationRoute).mockResolvedValue(null)
+    const planDraft: PlanDraft = {
+      ...createPlanDraft([
+        createDay(1, [[129.11, 37.52]], [[129.11, 37.52], [129.12, 37.53]]),
+      ]),
+      selectedRestaurants: [{
+        id: 'wishlist-long-card',
+        placeName: 'Desktop Wishlist Restaurant',
+        roadAddressName: 'Gangwon-do Donghae-si a deliberately long coastal road address for layout verification 12345',
+        phone: '033-123-4567',
+        placeUrl: 'https://place.map.kakao.com/12345',
+        imageUrl: 'https://img1.kakaocdn.net/place.jpg',
+        source: 'kakao',
+        lat: 37.52,
+        lng: 129.11,
+      }],
+    }
+
+    renderWishlistPlanDetail(planDraft)
+
+    const title = screen.getByText('Desktop Wishlist Restaurant')
+    const list = title.closest('ul')
+    const card = title.closest('li')
+    const address = screen.getByText(/deliberately long coastal road address/)
+    const mapPanel = screen.getByTestId('plan-detail-google-map').parentElement
+
+    expect(list).not.toBeNull()
+    expect(mapPanel).toHaveClass('min-h-[220px]', 'max-lg:min-h-[280px]')
+    expect(list).toHaveClass('flex-1', 'overflow-y-auto', 'lg:max-h-[300px]')
+    expect(list?.parentElement).toHaveClass('lg:h-[400px]')
+    expect(card).toHaveClass('shrink-0')
+    expect(address).toHaveClass('line-clamp-2')
+    expect(within(list as HTMLUListElement).getAllByRole('button')).toHaveLength(2)
+    within(list as HTMLUListElement).getAllByRole('button').forEach((button) => {
+      expect(button).toBeVisible()
+    })
   })
 
   it('keeps day 2 persisted route visible while its request is pending after day 1 completes', async () => {

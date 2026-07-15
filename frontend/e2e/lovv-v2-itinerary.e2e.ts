@@ -118,6 +118,18 @@ const modifiedDays = [
   initialDays[1],
 ]
 
+const kakaoWishlistPlaces = Array.from({ length: 10 }, (_, index) => ({
+  id: String(12345 + index),
+  place_name: index === 0 ? 'E2E Desktop Wishlist Restaurant' : `E2E Restaurant ${index + 1}`,
+  road_address_name: index === 0
+    ? '강원특별자치도 동해시 아주 길고 긴 해안도로 주소 12345 테스트 빌딩 10층'
+    : `강원특별자치도 동해시 테스트로 ${index + 1}`,
+  phone: '033-123-4567',
+  place_url: `https://place.map.kakao.com/${12345 + index}`,
+  x: String(129.11 + index / 1000),
+  y: String(37.52 + index / 1000),
+}))
+
 const recommendationResponse = (sessionId: string, days: typeof initialDays) => ({
   status: 'completed',
   state: 'ready',
@@ -178,9 +190,32 @@ const installDeterministicIds = (page: Page) =>
     })
   }, { sessionIdSuffix: recommendationSessionId.replace(/^session-/, '') })
 
+const installKakaoPlaces = (page: Page) =>
+  page.addInitScript(({ places }) => {
+    Object.defineProperty(window, 'kakao', {
+      configurable: true,
+      value: {
+        maps: {
+          load: (callback: () => void) => callback(),
+          services: {
+            Places: class {
+              keywordSearch(
+                _query: string,
+                callback: (results: typeof places, status: 'OK') => void,
+              ) {
+                callback(places, 'OK')
+              }
+            },
+          },
+        },
+      },
+    })
+  }, { places: kakaoWishlistPlaces })
+
 test('authenticated onboarded user can clarify, modify, save, and reopen a V2 itinerary', async ({ page }) => {
   await installFixedDate(page)
   await installDeterministicIds(page)
+  await installKakaoPlaces(page)
 
   const recommendationRequests: JsonRecord[] = []
   const unexpectedRequests: string[] = []
@@ -373,6 +408,14 @@ test('authenticated onboarded user can clarify, modify, save, and reopen a V2 it
       return
     }
 
+    if (path === '/api/v1/kakao-places/12345/image' && method === 'GET') {
+      await fulfillJson(route, {
+        placeId: '12345',
+        imageUrl: 'https://img1.kakaocdn.net/place.jpg',
+      })
+      return
+    }
+
     if (path.startsWith('/api/')) {
       unexpectedRequests.push(`${method} ${path}`)
       await route.abort('failed')
@@ -389,6 +432,15 @@ test('authenticated onboarded user can clarify, modify, save, and reopen a V2 it
 
     if (url.hostname === 'cdn.jsdelivr.net' && path.endsWith('.woff2')) {
       await route.fulfill({ status: 200, contentType: 'font/woff2', body: '' })
+      return
+    }
+
+    if (url.hostname === 'img1.kakaocdn.net' && path === '/place.jpg') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'image/gif',
+        body: Buffer.from('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==', 'base64'),
+      })
       return
     }
 
@@ -475,6 +527,42 @@ test('authenticated onboarded user can clarify, modify, save, and reopen a V2 it
   await expect(page).toHaveURL(/\/plans\//)
   const dayOnePanel = page.getByRole('tabpanel', { name: '1일차' })
   await expect(dayOnePanel.getByText('묵호등대', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: '검색 및 추가' }).click()
+  const restaurantSearchInput = page.getByRole('textbox', { name: '맛집 검색어' })
+  await restaurantSearchInput.fill('동해 맛집')
+  await page.getByRole('button', { name: '검색', exact: true }).click()
+
+  const restaurantCandidates = page.getByRole('list', { name: '식사 장소 후보' })
+  await expect(restaurantCandidates.getByRole('listitem')).toHaveCount(10)
+  const selectedCandidate = restaurantCandidates.getByRole('listitem').filter({
+    hasText: 'E2E Desktop Wishlist Restaurant',
+  })
+  await expect(selectedCandidate).toHaveCount(1)
+  await selectedCandidate.getByRole('button', { name: '추가' }).click()
+
+  for (const viewport of [{ width: 1366, height: 768 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(viewport)
+
+    const wishlistList = page.getByRole('list', { name: '담아둔 맛집 목록' })
+    const wishlistCard = wishlistList.getByText('E2E Desktop Wishlist Restaurant').locator('..').locator('..')
+    const wishlistPanel = wishlistList.locator('..')
+
+    await expect(wishlistList).toBeVisible()
+    await expect(wishlistList.getByRole('button', { name: '선택됨' })).toBeVisible()
+    await expect(wishlistList.getByRole('button', { name: '제거' })).toBeVisible()
+    await expect(wishlistPanel).toHaveCSS('height', '400px')
+
+    const listBox = await wishlistList.boundingBox()
+    const cardBox = await wishlistCard.boundingBox()
+    const panelBox = await wishlistPanel.boundingBox()
+    expect(listBox).not.toBeNull()
+    expect(cardBox).not.toBeNull()
+    expect(panelBox).not.toBeNull()
+    expect(cardBox!.y).toBeGreaterThanOrEqual(listBox!.y)
+    expect(cardBox!.y + cardBox!.height).toBeLessThanOrEqual(listBox!.y + listBox!.height + 1)
+    expect(panelBox!.y + panelBox!.height).toBeLessThanOrEqual(viewport.height)
+  }
 
   await page.getByRole('button', { name: 'Lovv 챗봇' }).click()
   const modifyInput = page.getByRole('textbox', { name: '세부 일정 수정 요청' })

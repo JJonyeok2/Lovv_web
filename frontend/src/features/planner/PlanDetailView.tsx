@@ -1942,9 +1942,9 @@ export function PlanDetailView({
                 ) : null}
               </aside>
 
-              <div className="grid min-h-0 grid-rows-[minmax(280px,1fr)_auto] gap-5 lg:sticky lg:top-[96px] lg:max-h-[calc(100dvh-7rem)] lg:min-h-[560px] max-lg:grid-rows-none">
+              <div className="grid min-h-0 grid-rows-[minmax(220px,1fr)_auto] gap-5 lg:sticky lg:top-[96px] lg:max-h-[calc(100dvh-7rem)] lg:min-h-[520px] max-lg:grid-rows-none">
                 {/* Interactive Route Map Panel */}
-                <div className="relative min-h-[280px] overflow-hidden rounded-[24px] border border-white/50 bg-[#fffffa]/30 shadow-[0_16px_42px_-28px_rgba(51,39,30,0.2)] backdrop-blur-sm max-lg:h-[420px]">
+                <div className="relative min-h-[220px] overflow-hidden rounded-[24px] border border-white/50 bg-[#fffffa]/30 shadow-[0_16px_42px_-28px_rgba(51,39,30,0.2)] backdrop-blur-sm max-lg:h-[420px] max-lg:min-h-[280px]">
                   <PlanDetailGoogleMap
                     stops={activeMapStops}
                     wishlistRestaurants={activeDayWishlistRestaurants}
@@ -1963,7 +1963,7 @@ export function PlanDetailView({
 
                 {/* 나의 맛집 위시리스트 (Pocket) */}
                 {canUseMealWishlist ? (
-                  <div className="flex min-h-0 flex-col rounded-[22px] border border-[#F3B489] bg-[#fffffa] p-5 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.2)] max-lg:max-h-[420px]">
+                  <div className="flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-[#F3B489] bg-[#fffffa] p-5 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.2)] lg:h-[400px] max-lg:max-h-[420px]">
                   <div className="shrink-0 flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h4 className="flex items-center gap-2 text-base font-black text-[#33271E]">
@@ -1992,7 +1992,7 @@ export function PlanDetailView({
                   ) : null}
 
                   {(planDraft.selectedRestaurants ?? []).length > 0 ? (
-                    <ul className="mt-4 min-h-0 max-h-[360px] space-y-3 overflow-y-auto overscroll-contain pb-2 pr-1" aria-label="담아둔 맛집 목록">
+                    <ul className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pb-2 pr-1 lg:max-h-[300px] max-lg:max-h-[360px]" aria-label="담아둔 맛집 목록">
                       {(planDraft.selectedRestaurants ?? []).map((restaurant) => {
                         const isSelectedForPlacement = selectedWishlistRestaurantId === restaurant.id
 
@@ -2007,7 +2007,7 @@ export function PlanDetailView({
                             onDragEnd={() => {
                               setIsDragging(false)
                             }}
-                            className={`flex cursor-grab flex-wrap items-start justify-between gap-4 rounded-[18px] border p-4 transition-colors active:cursor-grabbing ${
+                            className={`flex shrink-0 cursor-grab flex-wrap items-start justify-between gap-4 rounded-[18px] border p-4 transition-colors active:cursor-grabbing ${
                               isSelectedForPlacement
                                 ? 'border-[#F36B12] bg-[#FFF0E4] shadow-[0_12px_28px_-24px_rgba(51,39,30,0.3)]'
                                 : 'border-[#F3B489]/30 bg-[#FFF8F6] hover:border-[#F36B12]'
@@ -2025,7 +2025,7 @@ export function PlanDetailView({
                               <h5 className="break-keep text-sm font-black leading-6 text-[#33271E]">
                                 {restaurant.placeName}
                               </h5>
-                              <p className="mt-1 break-keep text-[12px] font-semibold leading-5 text-[#6E5A50]">
+                              <p className="mt-1 line-clamp-2 break-keep text-[12px] font-semibold leading-5 text-[#6E5A50]">
                                 {restaurant.roadAddressName ?? restaurant.addressName ?? '주소 정보 없음'}
                               </p>
                               {restaurant.phone ? (

@@ -191,7 +191,8 @@ it('keeps a selected wishlist card intact inside the desktop scroll list', () =>
   const card = within(list).getByText('노트북 화면 위시리스트 맛집').closest('li')
   const address = within(list).getByText(/아주 길고 긴 해안도로 주소/)
 
-  expect(list).toHaveClass('flex-1', 'overflow-y-auto', 'lg:max-h-[220px]')
+  expect(list).toHaveClass('flex-1', 'overflow-y-auto', 'lg:max-h-[300px]')
+  expect(list.parentElement).toHaveClass('lg:h-[400px]')
   expect(card).toHaveClass('shrink-0')
   expect(address).toHaveClass('line-clamp-2')
   expect(within(list).getByRole('button', { name: '위치 선택' })).toBeVisible()
@@ -217,13 +218,19 @@ Update the right column and wishlist classes without changing event handlers:
 <div className="grid min-h-0 grid-rows-[minmax(220px,1fr)_auto] gap-5 lg:sticky lg:top-[96px] lg:max-h-[calc(100dvh-7rem)] lg:min-h-[520px] max-lg:grid-rows-none">
 ```
 
+Keep the map panel aligned with the desktop row minimum while preserving its smaller-screen minimum:
+
 ```tsx
-<div className="flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-[#F3B489] bg-[#fffffa] p-5 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.2)] max-lg:max-h-[420px]">
+<div className="relative min-h-[220px] ... max-lg:h-[420px] max-lg:min-h-[280px]">
+```
+
+```tsx
+<div className="flex min-h-0 flex-col overflow-hidden rounded-[22px] border border-[#F3B489] bg-[#fffffa] p-5 shadow-[0_14px_36px_-24px_rgba(51,39,30,0.2)] lg:h-[400px] max-lg:max-h-[420px]">
 ```
 
 ```tsx
 <ul
-  className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pb-2 pr-1 lg:max-h-[220px] max-lg:max-h-[360px]"
+  className="mt-4 min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pb-2 pr-1 lg:max-h-[300px] max-lg:max-h-[360px]"
   aria-label="담아둔 맛집 목록"
 >
 ```
@@ -272,6 +279,7 @@ Run the app with mock auth and inspect the detail wishlist at `1366x768` and `14
 - Search returns up to 10 visible candidates inside its scroll container.
 - A selected card shows its full border, title, two-line address, phone, `상세 보기`, `위치 선택`, and `제거`.
 - With multiple cards, only `담아둔 맛집 목록` scrolls; the page and card are not clipped.
+- At laptop widths, the wishlist panel reserves 400px and its list can grow to 300px before scrolling so one or two detailed cards remain comfortably visible.
 
 - [ ] **Step 8: Commit Task 2**
 

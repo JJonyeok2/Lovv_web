@@ -100,6 +100,57 @@ function LoadingBubble({ query }: { query: string }) {
   )
 }
 
+function NewRecommendationButton({
+  availableAt,
+  isPlannerLoading,
+  onStart,
+}: {
+  availableAt: number
+  isPlannerLoading: boolean
+  onStart: () => void
+}) {
+  const getRemainingSeconds = () => Math.max(0, Math.ceil((availableAt - Date.now()) / 1_000))
+  const [remainingSeconds, setRemainingSeconds] = useState(getRemainingSeconds)
+
+  useEffect(() => {
+    if (remainingSeconds === 0) {
+      return
+    }
+
+    const interval = window.setInterval(() => {
+      setRemainingSeconds(Math.max(0, Math.ceil((availableAt - Date.now()) / 1_000)))
+    }, 250)
+
+    return () => window.clearInterval(interval)
+  }, [availableAt, remainingSeconds])
+
+  const isCoolingDown = remainingSeconds > 0
+  const isDisabled = isPlannerLoading || isCoolingDown
+
+  return (
+    <div className="mt-3 inline-grid gap-1">
+      <button
+        type="button"
+        disabled={isDisabled}
+        aria-disabled={isDisabled}
+        onClick={onStart}
+        className="inline-flex min-h-10 min-w-40 items-center justify-center rounded-full border border-[#F36B12]/45 bg-[#fffffa]/90 px-5 text-sm font-black tabular-nums text-[#A92B10] shadow-sm transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] disabled:cursor-not-allowed disabled:opacity-55"
+      >
+        {isPlannerLoading
+          ? '새 일정 생성 중'
+          : isCoolingDown
+            ? `새 일정 생성 (${remainingSeconds}초)`
+            : '새 일정 생성'}
+      </button>
+      <span className="sr-only" role="status" aria-live="polite">
+        {isCoolingDown
+          ? `${remainingSeconds}초 후 새 일정 생성 버튼을 사용할 수 있습니다.`
+          : '새 일정 생성 버튼을 사용할 수 있습니다.'}
+      </span>
+    </div>
+  )
+}
+
 type PlannerChatInterfaceProps = {
   chatScrollRef: React.RefObject<HTMLDivElement | null>
   chatMessages: ChatMessage[]
@@ -126,7 +177,7 @@ type PlannerChatInterfaceProps = {
   isPlannerLoading: boolean
   shouldAskFestivalTheme: boolean
   onSelectClarificationOption: (messageId: string, optionId: string) => void
-  retryLastRecommendation: () => void
+  startNewRecommendation: () => void
 }
 
 export function PlannerChatInterface({
@@ -151,7 +202,7 @@ export function PlannerChatInterface({
   isPlannerLoading,
   shouldAskFestivalTheme,
   onSelectClarificationOption,
-  retryLastRecommendation,
+  startNewRecommendation,
 }: PlannerChatInterfaceProps) {
   const [draftDurationLabel, setDraftDurationLabel] = useState<string | null>(selectedDurationLabel)
   const [draftTravelMonth, setDraftTravelMonth] = useState<number | null>(selectedTravelMonth)
@@ -359,15 +410,12 @@ export function PlannerChatInterface({
                     message.content
                   )}
                 </div>
-                {isAssistant && message.canRetryRecommendation ? (
-                  <button
-                    type="button"
-                    disabled={isPlannerLoading}
-                    onClick={retryLastRecommendation}
-                    className="mt-3 inline-flex min-h-10 items-center justify-center rounded-full border border-[#F36B12]/45 bg-[#fffffa]/90 px-5 text-sm font-black text-[#A92B10] shadow-sm transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] disabled:cursor-not-allowed disabled:opacity-55"
-                  >
-                    {isPlannerLoading ? '다시 생성 중' : '다시 시도'}
-                  </button>
+                {isAssistant && message.canStartNewRecommendation ? (
+                  <NewRecommendationButton
+                    availableAt={message.newRecommendationAvailableAt ?? 0}
+                    isPlannerLoading={isPlannerLoading}
+                    onStart={startNewRecommendation}
+                  />
                 ) : null}
                 {isAssistant && message.clarification ? (
                   <div

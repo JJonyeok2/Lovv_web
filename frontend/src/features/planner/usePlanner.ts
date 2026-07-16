@@ -46,6 +46,7 @@ import {
   requestCreateRecommendation,
   mapRecommendationToDraft,
   mapDraftToRecommendationCurrentOrder,
+  RecommendationApiRequestError,
   type RecommendationApiResponse,
   type RecommendationCreateRequestPayload,
   type RecommendationThemeLabel,
@@ -87,11 +88,46 @@ export type GeneratedPlanDestination = {
   region?: string
 }
 
-type FailedRecommendationRequest = {
-  payload: RecommendationCreateRequestPayload
-  query: string
-  nextPlannerContextText: string
-  nextExtraction: MockConditionExtraction
+type SubmitChatMessageOptions = {
+  kind: 'new-generation'
+  sessionId: string
+}
+
+export type RecommendationFailurePresentation = {
+  message: string
+  cooldownMs: number
+}
+
+export const getRecommendationFailurePresentation = (
+  error: unknown,
+): RecommendationFailurePresentation => {
+  const status = error instanceof RecommendationApiRequestError ? error.status : null
+
+  if (status === 502) {
+    return {
+      message: '일정 생성 서비스 연결이 일시적으로 불안정합니다. 입력한 조건은 그대로 보관했어요. 잠시 후 새 일정으로 생성해 주세요.',
+      cooldownMs: 5_000,
+    }
+  }
+
+  if (status === 503) {
+    return {
+      message: '현재 일정 생성 요청이 많거나 서비스를 사용할 수 없습니다. 입력한 조건은 그대로 보관했어요. 잠시 후 새 일정으로 생성해 주세요.',
+      cooldownMs: 10_000,
+    }
+  }
+
+  if (status === 504) {
+    return {
+      message: '일정 생성 결과를 확인하지 못했어요. 입력한 조건은 그대로 보관했어요. 잠시 후 새 일정으로 생성해 주세요.',
+      cooldownMs: 60_000,
+    }
+  }
+
+  return {
+    message: '일정 생성 결과를 확인하지 못했어요. 입력한 조건은 그대로 보관했어요. 새 일정으로 다시 생성해 주세요.',
+    cooldownMs: 0,
+  }
 }
 
 export const createGeneratedPlanDestination = (
@@ -309,8 +345,7 @@ export function usePlanner({
   const [generatedRecommendationSessionId, setGeneratedRecommendationSessionId] = useState<string | null>(null)
   const [plannerRecommendationSessionId, setPlannerRecommendationSessionId] = useState(createRecommendationSessionId)
   const [generatedRecommendationId, setGeneratedRecommendationId] = useState<string | null>(null)
-  const [failedRecommendationRequest, setFailedRecommendationRequest] =
-    useState<FailedRecommendationRequest | null>(null)
+  const [hasGeneratedRecommendation, setHasGeneratedRecommendation] = useState(false)
   const [isPlannerLoading, setIsPlannerLoading] = useState(false)
   const [isSavingPlan, setIsSavingPlan] = useState(false)
   const [isPlanCloning, setIsPlanCloning] = useState(false)
@@ -363,7 +398,8 @@ export function usePlanner({
   const hasSettledFestivalChoice = !shouldAskFestivalTheme || festivalThemeChoice !== 'undecided'
   const hasGuidedPlannerChoices =
     selectedDurationLabel !== null && selectedTravelMonth !== null && hasSettledFestivalChoice
-  const isPlannerReady = hasGuidedPlannerChoices && plannerConditionExtraction !== null
+  const isPlannerReady =
+    hasGuidedPlannerChoices && plannerConditionExtraction !== null && hasGeneratedRecommendation
   const canSubmitChatInput = hasGuidedPlannerChoices && chatInput.trim().length > 0 && !isPlannerLoading
 
   const plannerConditionSummary = useMemo(() => {
@@ -521,7 +557,7 @@ export function usePlanner({
     setGeneratedRecommendationSessionId(null)
     setPlannerRecommendationSessionId(createRecommendationSessionId())
     setGeneratedRecommendationId(null)
-    setFailedRecommendationRequest(null)
+    setHasGeneratedRecommendation(false)
   }, [
     plannerCityContext,
     selectedPreferenceProfile,
@@ -1157,7 +1193,7 @@ export function usePlanner({
 
   const submitChatMessage = async (
     message: string,
-    retryRequest: FailedRecommendationRequest | null = null,
+    options?: SubmitChatMessageOptions,
   ) => {
     const trimmedMessage = message.trim()
 
@@ -1241,6 +1277,7 @@ export function usePlanner({
         setPlannerConditionExtraction(null)
         setSavedPlanNotice(null)
         setChatInput('')
+        setHasGeneratedRecommendation(false)
         setIsPlannerLoading(true)
 
         try {
@@ -1276,7 +1313,10 @@ export function usePlanner({
             return
           }
 
-          const realDraft = mapRecommendationToDraft(response)
+          const realDraft = {
+            ...mapRecommendationToDraft(response),
+            festivalThemeLabel: getFestivalThemeLabel(festivalThemeChoice),
+          }
           const filteredNotices = (realDraft.userNotice || []).filter(
             (notice: string) => notice !== response.itinerary?.summary
           )
@@ -1295,6 +1335,7 @@ export function usePlanner({
           ])
           setPlannerConditionExtraction(nextExtraction)
           setPlanDraft(realDraft)
+          setHasGeneratedRecommendation(true)
           setSavedPlanNotice(null)
           const responseDestination = createGeneratedPlanDestination(response.destination)
           if (responseDestination) {
@@ -1302,16 +1343,20 @@ export function usePlanner({
           }
         } catch (err) {
           log.error('PLAN', 'Recommendation API failed for selected city duration', err)
+          const failure = getRecommendationFailurePresentation(err)
 
           setChatMessages((currentMessages) => [
             ...currentMessages.filter((m) => m.id !== assistantLoadingMessageId),
             {
               id: createMessageId('assistant', currentMessages.length),
               role: 'assistant',
-              content: '추천 서버 응답이 지연되고 있어요. 잠시 후 다시 시도해 주세요.',
+              content: failure.message,
+              canStartNewRecommendation: true,
+              newRecommendationAvailableAt: Date.now() + failure.cooldownMs,
             },
           ])
           setPlannerConditionExtraction(null)
+          setHasGeneratedRecommendation(false)
           setSavedPlanNotice(null)
         } finally {
           setIsPlannerLoading(false)
@@ -1382,25 +1427,27 @@ export function usePlanner({
       return
     }
 
-    const nextPlannerContextText = retryRequest?.nextPlannerContextText
-      ?? `${plannerContextText} ${trimmedMessage}`.trim()
-    const nextExtraction = retryRequest?.nextExtraction
-      ?? createMockConditionExtraction(
+    const isNewGeneration = options?.kind === 'new-generation'
+    const nextPlannerContextText = isNewGeneration
+      ? plannerContextText
+      : `${plannerContextText} ${trimmedMessage}`.trim()
+    const nextExtraction = isNewGeneration && plannerConditionExtraction
+      ? plannerConditionExtraction
+      : createMockConditionExtraction(
         trimmedMessage,
         getPlannerBaselineThemeIds(plannerPreferenceProfile, plannerCityContext),
       )
-    const recommendationPayload = retryRequest?.payload
-      ?? createRecommendationRequestPayload({
-        rawQuery: trimmedMessage,
-        sessionId: plannerRecommendationSessionId,
-        country: plannerCityContext?.country || 'KR',
-        tripType: getRecommendationTripType(selectedDurationLabel),
-        activeThemeIds: getPlannerBaselineThemeIds(plannerPreferenceProfile, plannerCityContext),
-        includeFestivals: festivalThemeChoice === 'include',
-        destinationId: plannerCityContext?.cityId ?? null,
-        travelYear: new Date().getFullYear(),
-        travelMonth: selectedTravelMonth ?? new Date().getMonth() + 1,
-      })
+    const recommendationPayload = createRecommendationRequestPayload({
+      rawQuery: isNewGeneration ? plannerContextText : trimmedMessage,
+      sessionId: options?.sessionId ?? plannerRecommendationSessionId,
+      country: plannerCityContext?.country || 'KR',
+      tripType: getRecommendationTripType(selectedDurationLabel),
+      activeThemeIds: getPlannerBaselineThemeIds(plannerPreferenceProfile, plannerCityContext),
+      includeFestivals: festivalThemeChoice === 'include',
+      destinationId: plannerCityContext?.cityId ?? null,
+      travelYear: new Date().getFullYear(),
+      travelMonth: selectedTravelMonth ?? new Date().getMonth() + 1,
+    })
 
     const userMessageId = createMessageId('user', chatMessages.length)
     const assistantLoadingMessageId = 'loading-assistant'
@@ -1408,14 +1455,14 @@ export function usePlanner({
     setChatMessages((currentMessages) => [
       ...currentMessages
         .filter((existingMessage) => existingMessage.id !== assistantLoadingMessageId)
-        .map((existingMessage) => existingMessage.canRetryRecommendation
-          ? { ...existingMessage, canRetryRecommendation: false }
+        .map((existingMessage) => existingMessage.canStartNewRecommendation
+          ? { ...existingMessage, canStartNewRecommendation: false }
           : existingMessage),
-      ...(retryRequest ? [] : [{
+      {
         id: userMessageId,
         role: 'user' as const,
         content: trimmedMessage,
-      }]),
+      },
       {
         id: assistantLoadingMessageId,
         role: 'assistant' as const,
@@ -1424,7 +1471,7 @@ export function usePlanner({
     ])
 
     setChatInput('')
-    setFailedRecommendationRequest(null)
+    setHasGeneratedRecommendation(false)
     setIsPlannerLoading(true)
 
     try {
@@ -1446,13 +1493,16 @@ export function usePlanner({
         ])
         setPlannerContextText(nextPlannerContextText)
         setPlannerConditionExtraction(null)
+        setHasGeneratedRecommendation(false)
         setSavedPlanNotice(null)
-        setFailedRecommendationRequest(null)
 
         return
       }
 
-      const realDraft = mapRecommendationToDraft(response)
+      const realDraft = {
+        ...mapRecommendationToDraft(response),
+        festivalThemeLabel: getFestivalThemeLabel(festivalThemeChoice),
+      }
 
       const filteredNotices = (realDraft.userNotice || []).filter(
         (notice: string) => notice !== response.itinerary?.summary
@@ -1475,63 +1525,59 @@ export function usePlanner({
       setPlannerContextText(nextPlannerContextText)
       setPlannerConditionExtraction(nextExtraction)
       setPlanDraft(realDraft)
+      setHasGeneratedRecommendation(true)
       setSavedPlanNotice(null)
-      setFailedRecommendationRequest(null)
       const responseDestination = createGeneratedPlanDestination(response.destination)
 
       if (responseDestination) {
         setGeneratedPlanDestination(responseDestination)
       }
     } catch (err) {
-      log.error('PLAN', 'Recommendation API failed, falling back to mock logic', err)
-
-      const fallbackDraft = createPlanDraft(
-        plannerPreference,
-        `${selectedDurationLabel} ${nextPlannerContextText}`,
-        festivalThemeChoice,
-        plannerCityContext,
-        selectedTravelMonth,
-      )
+      log.error('PLAN', 'Recommendation API failed without retrying the request', err)
+      const failure = getRecommendationFailurePresentation(err)
 
       setChatMessages((currentMessages) => [
         ...currentMessages.filter((m) => m.id !== assistantLoadingMessageId),
         {
           id: createMessageId('assistant', currentMessages.length),
           role: 'assistant',
-          content: '추천 서버 응답이 지연되고 있어요. 잠시 후 다시 시도해 주세요.',
-          canRetryRecommendation: true,
+          content: failure.message,
+          canStartNewRecommendation: true,
+          newRecommendationAvailableAt: Date.now() + failure.cooldownMs,
         },
       ])
 
-      setFailedRecommendationRequest({
-        payload: recommendationPayload,
-        query: trimmedMessage,
-        nextPlannerContextText,
-        nextExtraction,
-      })
       setPlannerContextText(nextPlannerContextText)
       setPlannerConditionExtraction(nextExtraction)
-      setPlanDraft(fallbackDraft)
+      setHasGeneratedRecommendation(false)
       setSavedPlanNotice(null)
-      if (plannerCityContext) {
-        setGeneratedPlanDestination({
-          destinationId: plannerCityContext.agentCoreId ?? plannerCityContext.cityId,
-          name: plannerCityContext.cityName,
-          country: 'KR',
-          region: plannerCityContext.region,
-        })
-      }
     } finally {
       setIsPlannerLoading(false)
     }
   }
 
-  const retryLastRecommendation = () => {
-    if (!failedRecommendationRequest || isPlannerLoading) {
+  const startNewRecommendation = () => {
+    const recoveryMessage = [...chatMessages]
+      .reverse()
+      .find((message) => message.canStartNewRecommendation)
+
+    if (
+      !recoveryMessage ||
+      isPlannerLoading ||
+      Date.now() < (recoveryMessage.newRecommendationAvailableAt ?? 0)
+    ) {
       return
     }
 
-    void submitChatMessage(failedRecommendationRequest.query, failedRecommendationRequest)
+    const nextSessionId = createRecommendationSessionId()
+    setPlannerRecommendationSessionId(nextSessionId)
+    setGeneratedRecommendationThreadId(null)
+    setGeneratedRecommendationSessionId(null)
+    setGeneratedRecommendationId(null)
+    void submitChatMessage('새 일정 생성', {
+      kind: 'new-generation',
+      sessionId: nextSessionId,
+    })
   }
 
   const selectClarificationOption = async (messageId: string, optionId: string) => {
@@ -1599,7 +1645,10 @@ export function usePlanner({
         return
       }
 
-      const realDraft = mapRecommendationToDraft(response)
+      const realDraft = {
+        ...mapRecommendationToDraft(response),
+        festivalThemeLabel: getFestivalThemeLabel(festivalThemeChoice),
+      }
       const filteredNotices = (realDraft.userNotice || []).filter(
         (notice: string) => notice !== response.itinerary?.summary,
       )
@@ -1623,6 +1672,7 @@ export function usePlanner({
           getPlannerBaselineThemeIds(plannerPreferenceProfile, plannerCityContext),
         ),
       )
+      setHasGeneratedRecommendation(true)
       setSavedPlanNotice(null)
       const responseDestination = createGeneratedPlanDestination(response.destination)
 
@@ -1829,7 +1879,7 @@ export function usePlanner({
     addWishlistRestaurant,
     removeWishlistRestaurant,
     submitChatMessage,
-    retryLastRecommendation,
+    startNewRecommendation,
     submitGuidedPlannerChoices,
     selectClarificationOption,
     submitChatForm,

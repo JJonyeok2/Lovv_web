@@ -88,7 +88,7 @@ type PlannerWorkspaceProps = {
   onAddThemePreference?: (themeId: ThemeId) => void
   onRemoveThemePreferences?: (themeIdsToRemove: ThemeId[]) => void
   selectClarificationOption: (messageId: string, optionId: string) => void
-  retryLastRecommendation: () => void
+  startNewRecommendation: () => void
 }
 
 export function PlannerWorkspace({
@@ -132,7 +132,7 @@ export function PlannerWorkspace({
   onAddThemePreference,
   onRemoveThemePreferences,
   selectClarificationOption,
-  retryLastRecommendation,
+  startNewRecommendation,
 }: PlannerWorkspaceProps) {
   const chatScrollRef = useRef<HTMLDivElement | null>(null)
   const planResultPanelRef = useRef<HTMLElement | null>(null)
@@ -292,7 +292,7 @@ export function PlannerWorkspace({
             isPlannerLoading={isPlannerLoading}
             shouldAskFestivalTheme={shouldAskFestivalTheme}
             onSelectClarificationOption={selectClarificationOption}
-            retryLastRecommendation={retryLastRecommendation}
+            startNewRecommendation={startNewRecommendation}
           />
           <PlannerTimelineView
             planResultPanelRef={planResultPanelRef}

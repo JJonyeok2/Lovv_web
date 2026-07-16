@@ -910,7 +910,7 @@ function App() {
                 canSubmitChatInput={planner.canSubmitChatInput}
                 submitChatForm={planner.submitChatForm}
                 selectClarificationOption={planner.selectClarificationOption}
-                retryLastRecommendation={planner.retryLastRecommendation}
+                startNewRecommendation={planner.startNewRecommendation}
                 currentPlanTitle={planner.currentPlanTitle}
                 plannerPreferenceProfile={planner.plannerPreferenceProfile}
                 openPlanDetailView={openPlanDetailView}

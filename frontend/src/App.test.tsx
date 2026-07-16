@@ -1562,7 +1562,7 @@ describe('MVP main entry screen', () => {
 
   it('opens the AI planner from a selected map city without mutating the stored preference', async () => {
     seedUser()
-    seedPreference('부산 · 오키나와')
+    seedPreference('제주 · 닛코')
     renderApp('/map')
 
     await waitFor(() => {
@@ -1638,9 +1638,9 @@ describe('MVP main entry screen', () => {
           rawQuery: '황리단길과 첨성대를 천천히 보고 싶어요',
           destinationId: expect.any(String),
           executionMode: 'anchored_place_search',
-          activeRequiredThemes: expect.arrayContaining(['역사·전통']),
+          activeRequiredThemes: ['자연·트레킹'],
           onboardingProfile: expect.objectContaining({
-            selectedThemeIds: expect.arrayContaining(['history_tradition']),
+            selectedThemeIds: ['nature_trekking'],
           }),
           tripType: '2d1n',
           includeFestivals: false,
@@ -1655,7 +1655,7 @@ describe('MVP main entry screen', () => {
     expect(screen.getByText(/경주 · 경북 1박 2일 초안/)).toBeInTheDocument()
     expect(screen.queryByText(/경주 중심으로 알맞은 1박 2일 일정을 구성해 보겠습니다/)).not.toBeInTheDocument()
     expect(screen.queryByText('축제 조건 없음 반영')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('조건 해석 결과')).toHaveTextContent('역사·전통')
+    expect(screen.getByLabelText('조건 해석 결과')).toHaveTextContent('자연·트레킹')
     expect(screen.getByPlaceholderText('추가로 원하는 조건을 입력해 주세요')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '마이페이지에 저장' }))

@@ -126,8 +126,11 @@ export const getPlannerBaselineThemeIds = (
   profile: PreferenceProfile,
   cityContext: PlannerCityContext | null,
 ) => {
-  if (!cityContext) {
-    return profile.selectedThemeIds
+  const profileThemeIds = Array.from(new Set(profile.selectedThemeIds)).slice(0, 3)
+
+  // A selected city narrows the destination, but must not replace the traveler's saved preferences.
+  if (profileThemeIds.length > 0 || !cityContext) {
+    return profileThemeIds
   }
 
   const cityThemeIds = Array.from(
@@ -138,7 +141,7 @@ export const getPlannerBaselineThemeIds = (
     ),
   )
 
-  return cityThemeIds.length > 0 ? cityThemeIds.slice(0, 3) : profile.selectedThemeIds
+  return cityThemeIds.slice(0, 3)
 }
 
 export const hasCityFestivalContent = (cityContext: PlannerCityContext | null) =>

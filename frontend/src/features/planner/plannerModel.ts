@@ -23,6 +23,11 @@ export const durationGuidePrompts = ['당일치기', '1박 2일', '2박 3일']
 
 export const travelMonthPrompts = Array.from({ length: 12 }, (_, index) => index + 1)
 
+export const plannerNaturalLanguageMaxLength = 300
+
+export const limitPlannerNaturalLanguageInput = (value: string) =>
+  value.slice(0, plannerNaturalLanguageMaxLength)
+
 // One-tap follow-up conditions shown above the planner chat input once a plan exists.
 // `label` is the chip text; `query` is the natural-language message sent to the recommender.
 export const followUpPrompts: { label: string; query: string }[] = [

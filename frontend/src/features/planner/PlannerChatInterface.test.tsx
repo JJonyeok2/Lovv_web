@@ -52,6 +52,22 @@ afterEach(() => {
 })
 
 describe('PlannerChatInterface clarification options', () => {
+  it('limits natural-language planner input to 300 characters', () => {
+    const setChatInput = vi.fn()
+
+    renderChat({ setChatInput })
+
+    const input = screen.getByRole('textbox', { name: '여행 조건 입력' })
+    const overLimitInput = '가'.repeat(301)
+
+    expect(input).toHaveAttribute('maxLength', '300')
+    expect(screen.getByText('0 / 300')).toBeInTheDocument()
+
+    fireEvent.change(input, { target: { value: overLimitInput } })
+
+    expect(setChatInput).toHaveBeenCalledWith('가'.repeat(300))
+  })
+
   it('continues guided planning without a festival choice when the destination has no festival prompt', () => {
     const submitGuidedPlannerChoices = vi.fn()
 

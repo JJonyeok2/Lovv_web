@@ -2,7 +2,7 @@
  * @file usePlanner.ts
  * @description Custom hook for managing the chatbot-based interactive planner, itineraries drafts, and AI generation state.
  * @author JJonyeok2
- * @lastModified 2026-07-15
+ * @lastModified 2026-07-16
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -30,6 +30,7 @@ import {
   getTravelMonthLabel,
   resolveFestivalThemeChoice,
   formatThemeList,
+  limitPlannerNaturalLanguageInput,
   shouldAskFestivalForCity,
 } from './plannerModel'
 import {
@@ -1201,7 +1202,7 @@ export function usePlanner({
     message: string,
     options?: SubmitChatMessageOptions,
   ) => {
-    const trimmedMessage = message.trim()
+    const trimmedMessage = limitPlannerNaturalLanguageInput(message.trim())
 
     if (!trimmedMessage) {
       return

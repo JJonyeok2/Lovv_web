@@ -126,6 +126,7 @@ type PlannerChatInterfaceProps = {
   isPlannerLoading: boolean
   shouldAskFestivalTheme: boolean
   onSelectClarificationOption: (messageId: string, optionId: string) => void
+  retryLastRecommendation: () => void
 }
 
 export function PlannerChatInterface({
@@ -150,6 +151,7 @@ export function PlannerChatInterface({
   isPlannerLoading,
   shouldAskFestivalTheme,
   onSelectClarificationOption,
+  retryLastRecommendation,
 }: PlannerChatInterfaceProps) {
   const [draftDurationLabel, setDraftDurationLabel] = useState<string | null>(selectedDurationLabel)
   const [draftTravelMonth, setDraftTravelMonth] = useState<number | null>(selectedTravelMonth)
@@ -357,6 +359,16 @@ export function PlannerChatInterface({
                     message.content
                   )}
                 </div>
+                {isAssistant && message.canRetryRecommendation ? (
+                  <button
+                    type="button"
+                    disabled={isPlannerLoading}
+                    onClick={retryLastRecommendation}
+                    className="mt-3 inline-flex min-h-10 items-center justify-center rounded-full border border-[#F36B12]/45 bg-[#fffffa]/90 px-5 text-sm font-black text-[#A92B10] shadow-sm transition hover:border-[#F36B12] hover:bg-[#FFE0CA] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#33271E] disabled:cursor-not-allowed disabled:opacity-55"
+                  >
+                    {isPlannerLoading ? '다시 생성 중' : '다시 시도'}
+                  </button>
+                ) : null}
                 {isAssistant && message.clarification ? (
                   <div
                     role="group"

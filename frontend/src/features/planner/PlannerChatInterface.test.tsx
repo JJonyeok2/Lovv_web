@@ -38,6 +38,7 @@ const renderChat = (
     isPlannerLoading: false,
     shouldAskFestivalTheme: false,
     onSelectClarificationOption: vi.fn(),
+    retryLastRecommendation: vi.fn(),
     ...overrides,
   }
 
@@ -112,5 +113,25 @@ describe('PlannerChatInterface clarification options', () => {
       'assistant-clarify-1',
       'continue_without_festival',
     )
+  })
+
+  it('offers a manual retry action for a failed recommendation', () => {
+    const retryLastRecommendation = vi.fn()
+
+    renderChat({
+      retryLastRecommendation,
+      chatMessages: [
+        {
+          id: 'assistant-retry-1',
+          role: 'assistant',
+          content: '추천 서버 응답이 지연되고 있어요.',
+          canRetryRecommendation: true,
+        },
+      ],
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
+
+    expect(retryLastRecommendation).toHaveBeenCalledTimes(1)
   })
 })

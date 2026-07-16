@@ -2462,9 +2462,50 @@ describe('MVP main entry screen', () => {
     expect(input).toHaveValue('')
     expect(screen.getByText('전시랑 편집숍 위주로 덜 걷고 싶어요')).toBeInTheDocument()
     await screen.findByText('추천 서버 응답이 지연되고 있어요. 잠시 후 다시 시도해 주세요.')
-    expect(screen.getByRole('heading', { name: '예술·감성 2박 3일 초안' })).toBeInTheDocument()
-    expect(screen.getByText('덜 걷는 일정')).toBeInTheDocument()
-    expect(screen.getByText(/전시와 편집숍 사이 이동을 줄이는 쪽/)).toBeInTheDocument()
+    const failedPayload = vi.mocked(requestCreateRecommendation).mock.calls.at(-1)?.[0]
+
+    vi.mocked(requestCreateRecommendation).mockResolvedValueOnce({
+      threadId: 'thread-retry-1',
+      recommendationId: 'rec-retry-1',
+      destination: {
+        cityId: 'KR-Jeonju',
+        name: '전주',
+        country: 'KR',
+        region: '전북',
+      },
+      itinerary: {
+        tripType: '3d2n',
+        title: '전주 예술 여행',
+        summary: '재시도 후 생성된 일정입니다.',
+        durationLabel: '2박 3일',
+        days: [
+          {
+            day: 1,
+            title: '전주 첫날',
+            summary: '전시와 골목을 천천히 둘러봅니다.',
+            items: [
+              {
+                itemId: 'retry-stop-1',
+                sortOrder: 1,
+                timeOfDay: 'morning',
+                title: '전주 전시 공간',
+                body: '전시를 관람합니다.',
+                reason: '예술 취향을 반영했습니다.',
+                moveMinutes: 10,
+              },
+            ],
+          },
+        ],
+      },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }))
+
+    expect((await screen.findAllByText(/재시도 후 생성된 일정입니다/)).length).toBeGreaterThan(0)
+    expect(vi.mocked(requestCreateRecommendation).mock.calls.at(-1)?.[0]).toEqual(failedPayload)
+    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '전주 2박 3일 초안' })).toBeInTheDocument()
+    expect(screen.getByText('전주 첫날')).toBeInTheDocument()
   })
 
   it('submits a duration guide chip without storing the full chat transcript', async () => {

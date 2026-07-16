@@ -104,6 +104,7 @@ export type ChatMessage = {
   role: 'assistant' | 'user'
   content: string
   clarification?: ChatClarification
+  canRetryRecommendation?: boolean
 }
 
 export type PlannerStepStatus = 'completed' | 'active' | 'pending'
